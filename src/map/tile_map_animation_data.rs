@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::LazyLock};
+
 use basic_raylib_core::graphics::{animation_data::AnimationData, sprite::Sprite};
 
 const SHORE_AND_CORNER_FRAME_DURATION: f32 = 0.4;
@@ -16,6 +18,32 @@ pub enum RiverType {
     Inlet,
     Outlet,
 }
+
+static RIVER_CORNER_ANIM_KEY: LazyLock<HashMap<(u8, u8, bool), usize>> = LazyLock::new(|| {
+    HashMap::from([
+        ((2, 1, true), 0),
+        ((2, 1, false), 1),
+        ((2, 3, true), 2),
+        ((2, 3, false), 3),
+        ((0, 3, true), 4),
+        ((0, 3, false), 5),
+        ((0, 1, true), 6),
+        ((0, 1, false), 7),
+    ])
+});
+
+static RIVER_T_SECTION_ANIM_KEY: LazyLock<HashMap<(u8, u8, u8, bool), usize>> = LazyLock::new(|| {
+    HashMap::from([
+        ((0, 1, 2, true), 0),
+        ((0, 2, 3, true), 1),
+        ((0, 1, 2, false), 2),
+        ((0, 2, 3, false), 3),
+        ((0, 1, 3, true), 4),
+        ((0, 1, 3, false), 5),
+        ((1, 2, 3, true), 6),
+        ((1, 2, 3, false), 7),
+    ])
+});
 
 // (ANIM_NAME, bitmask)
 static LAKE_TILE_SHORE_ANIMATION_REFERENCE: [AnimationData; 15] = [
@@ -290,7 +318,6 @@ static RIVER_TILE_CORNER_ANIMS: [(AnimationData, SpriteFlip); 8] = [
         },
         SpriteFlip::None,
     ),
-
     // RIGHT TO DOWN, 1
     (
         AnimationData {
@@ -396,25 +423,24 @@ static RIVER_TILE_T_SECTION_ANIMS: [(AnimationData, SpriteFlip); 8] = [
     (
         AnimationData {
             frames: &[
-                Sprite::new(96,48, 8, 8),
-                Sprite::new(104,48, 8, 8),
-                Sprite::new(112,48, 8, 8),
-                Sprite::new(120,48, 8, 8),
+                Sprite::new(96, 48, 8, 8),
+                Sprite::new(104, 48, 8, 8),
+                Sprite::new(112, 48, 8, 8),
+                Sprite::new(120, 48, 8, 8),
             ],
             frame_duration: REGULAR_TILE_FRAME_DURATION,
             should_loop: true,
         },
         SpriteFlip::None,
     ),
-
     // IN LEFT FLOWING UP
     (
         AnimationData {
             frames: &[
-                Sprite::new(96,48, 8, 8),
-                Sprite::new(104,48, 8, 8),
-                Sprite::new(112,48, 8, 8),
-                Sprite::new(120,48, 8, 8),
+                Sprite::new(96, 48, 8, 8),
+                Sprite::new(104, 48, 8, 8),
+                Sprite::new(112, 48, 8, 8),
+                Sprite::new(120, 48, 8, 8),
             ],
             frame_duration: REGULAR_TILE_FRAME_DURATION,
             should_loop: true,
@@ -564,7 +590,7 @@ static OUTLETS_ANIMS: [(AnimationData, SpriteFlip); 4] = [
             should_loop: true,
         },
         SpriteFlip::Horizontal,
-    )
+    ),
 ];
 
 // moving INTO the lake FROM the river
@@ -624,5 +650,5 @@ static INLET_ANIMS: [(AnimationData, SpriteFlip); 4] = [
             should_loop: true,
         },
         SpriteFlip::Horizontal,
-    )
+    ),
 ];

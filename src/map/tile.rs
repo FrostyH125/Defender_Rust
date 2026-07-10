@@ -1,6 +1,9 @@
+#[derive(Copy, Clone)]
+
+#[derive(PartialEq, Eq)]
 pub enum TileType {
     Grass,
-    Lake(),
+    Lake,
     River
 }
 
