@@ -8,7 +8,6 @@ pub enum TileType {
 }
 
 pub struct LakeSpriteData {
-    base_animation_index: u8,
-    shore_animation_index: u8,
-    corner_animation_index: u8
+    pub shore_animation_index: u8,
+    pub corner_animation_index: u8
 }

@@ -1,1 +1,2 @@
-pub mod cardinal_deltas;
+pub mod directional_deltas;
+pub mod map_cord;
