@@ -274,7 +274,7 @@ impl TileMap {
         let ok_shore_masks: [u8; 4] = [1, 2, 4, 8];
 
         // (cord, flow dir)
-        let mut all_rivers: HashMap<MapCord, u8> = HashMap::new();
+        let mut all_rivers: HashMap<MapCord, u8> = HashMap::with_capacity((map_width as f32 * map_height as f32 * 0.02) as usize);
 
         for (cord, data) in lake_data {
             if !ok_shore_masks.contains(&lake_data.get(&cord).unwrap().shore_animation_index) {
@@ -329,15 +329,12 @@ impl TileMap {
 
                 if current_river.contains_key(&check_tile) {
                     // i dont personally want river loops from one origin
-                    current_river.clear();
                     break;
                 }
                 
                 if !Self::is_tile_in_bounds_no_self(map_width, map_height, check_tile.x, check_tile.y) {
                     // end river it reached the end
-                    for riv_tile in &current_river {
-                        all_rivers.insert(*riv_tile.0, *riv_tile.1);
-                    }
+                    Self::add_river(&mut current_river, &mut all_rivers, map, map_width);
                     break;
                 }
 
@@ -349,18 +346,15 @@ impl TileMap {
                     let lake_sh = lake_data.get(&check_tile).unwrap().shore_animation_index;
 
                     if ok_shore_masks.contains(&lake_sh) {
-                        // end river here, but add it
+                        // end river here, but add shore tile to river for inlet/outlet
                         current_river.insert(check_tile, direction as u8);
-                        for riv_tile in &current_river {
-                            all_rivers.insert(*riv_tile.0, *riv_tile.1);
-                        }
+                        Self::add_river(&mut current_river, &mut all_rivers, map, map_width);
                         break;
                     }
                     else {
                         // scrap river
                         // i didnt program it to connect with this tile
                         // im too lazy too so scrap it
-                        current_river.clear();
                         break;
                     }
                 }
@@ -375,9 +369,7 @@ impl TileMap {
 
                 if left_type == TileType::River || right_type == TileType::River {
                     // end and keep river
-                    for riv_tile in &current_river {
-                        all_rivers.insert(*riv_tile.0, *riv_tile.1);
-                    }
+                    Self::add_river(&mut current_river, &mut all_rivers, map, map_width);
                     break;
                 }
 
@@ -390,9 +382,17 @@ impl TileMap {
         return all_rivers;
     }
 
+    fn add_river(current_river: &mut HashMap<MapCord, u8>, all_rivers: &mut HashMap<MapCord, u8>, map: &mut MapData, map_width: u16) {
+        for riv_tile in current_river {
+            map[Self::cords_to_index(map_width, riv_tile.0.x, riv_tile.0.y)] = TileType::River;
+            all_rivers.insert(*riv_tile.0, *riv_tile.1);
+        }
+    }
+    
     fn set_river_tile_animations() -> HashMap<MapCord, (RiverType, u8)> {
         
     }
+
 
     pub fn get_tile_at_cords(&self, x: u16, y: u16) -> TileType {
         let index = y * self.map_width + x;
