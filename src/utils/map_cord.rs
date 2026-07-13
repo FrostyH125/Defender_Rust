@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct MapCord {
     // i16 because then its easy to check when cords are out of bounds without doing weird stuff
     pub x: i16,
