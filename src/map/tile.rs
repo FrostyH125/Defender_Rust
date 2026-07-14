@@ -2,6 +2,7 @@
 
 #[derive(PartialEq, Eq)]
 pub enum TileType {
+    OutOfBounds,
     Grass,
     Lake,
     River

@@ -56,10 +56,10 @@ pub static RIVER_T_SECTION_ANIM_KEY: LazyLock<HashMap<(Direction, Direction, Dir
 pub static GRASS_TILE: Sprite = Sprite::new(0, 0, 8, 8);
 
 // (ANIM_NAME, bitmask)
-static LAKE_TILE_SHORE_ANIMATION_REFERENCE: [AnimationData; 15] = [
+pub static LAKE_TILE_SHORE_ANIMATION_REFERENCE: [AnimationData; 15] = [
     // TOP, 1
     AnimationData {
-        frames: &[Sprite::new(16, 17, 8, 8), Sprite::new(24, 17, 8, 8)],
+        frames: &[Sprite::new(16, 16, 8, 8), Sprite::new(24, 16, 8, 8)],
         frame_duration: SHORE_AND_CORNER_FRAME_DURATION,
         should_loop: true,
     },
@@ -150,7 +150,7 @@ static LAKE_TILE_SHORE_ANIMATION_REFERENCE: [AnimationData; 15] = [
 ];
 
 // (ANIM_NAME, bitmask)
-static LAKE_TILE_CORNER_ANIMATION_REFERENCE: [AnimationData; 15] = [
+pub static LAKE_TILE_CORNER_ANIMATION_REFERENCE: [AnimationData; 15] = [
     // TOP LEFT CORNER, 1
     AnimationData {
         frames: &[Sprite::new(48, 16, 8, 8), Sprite::new(56, 16, 8, 8)],
@@ -213,7 +213,7 @@ static LAKE_TILE_CORNER_ANIMATION_REFERENCE: [AnimationData; 15] = [
     },
     // TOP LEFT, BOTTOM LEFT, AND TOP RIGHT CORNER, 11
     AnimationData {
-        frames: &[Sprite::new(64, 32, 8, 8), Sprite::new(64, 32, 8, 8)],
+        frames: &[Sprite::new(64, 32, 8, 8), Sprite::new(72, 32, 8, 8)],
         frame_duration: SHORE_AND_CORNER_FRAME_DURATION,
         should_loop: true,
     },
