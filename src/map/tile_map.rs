@@ -12,10 +12,7 @@ use raylib::{
 use crate::{
     TILE_SIZE, V_HEIGHT, V_WIDTH, map::{
         tile::{LakeSpriteData, TileType::{self, OutOfBounds}}, tile_map_animation_data::{
-            FlowDirection, GRASS_TILE, LAKE_TILE_ANIM, LAKE_TILE_CORNER_ANIMATION_REFERENCE,
-            LAKE_TILE_SHORE_ANIMATION_REFERENCE, REGULAR_TILE_FRAME_DURATION,
-            RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType,
-            SHORE_AND_CORNER_FRAME_DURATION,
+            FlowDirection, GRASS_TILE, LAKE_TILE_ANIM, LAKE_TILE_CORNER_ANIMATION_REFERENCE, LAKE_TILE_SHORE_ANIMATION_REFERENCE, REGULAR_TILE_FRAME_DURATION, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RIVER_TILE_STRAIGHT_ANIMS, RiverType, SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
     }, utils::{
         directional_deltas::{CARDINAL_DELTAS, Direction},
@@ -37,6 +34,7 @@ pub struct TileMap {
     river_sprite_data: HashMap<MapCord, (RiverType, u8)>,
     lake_shore_corner_tile_anim_instance: SpriteAnimationInstance,
     default_tile_anim_instance: SpriteAnimationInstance,
+    river_tile_anim_instance: SpriteAnimationInstance,
     rng: ThreadRng,
 }
 
@@ -48,7 +46,7 @@ impl TileMap {
 
     pub fn update(&mut self, dt: f32) {
         self.lake_shore_corner_tile_anim_instance.current_frame_time += dt;
-        if self.lake_shore_corner_tile_anim_instance.current_frame_time >= SHORE_AND_CORNER_FRAME_DURATION {
+        if self.lake_shore_corner_tile_anim_instance.current_frame_time >= SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION {
             self.lake_shore_corner_tile_anim_instance.current_frame_index += 1;
             self.lake_shore_corner_tile_anim_instance.current_frame_index %= 2;
             self.lake_shore_corner_tile_anim_instance.current_frame_time = 0.0;
@@ -61,17 +59,26 @@ impl TileMap {
             self.default_tile_anim_instance.current_frame_time = 0.0;
         }
 
+        self.river_tile_anim_instance.current_frame_time += dt;
+        if self.river_tile_anim_instance.current_frame_time >= SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION {
+            self.river_tile_anim_instance.current_frame_index += 1;
+            self.river_tile_anim_instance.current_frame_index %= 4;
+            self.river_tile_anim_instance.current_frame_time = 0.0;
+        }
+
+
         // spawn grass randomly over time
     }
 
-    pub fn draw(&self, d: &mut RaylibDrawHandle, camera: &Camera2D, texture: &Texture2D) {
-        let start_x = camera.target.x;
-        let start_y = camera.target.y;
-        let end_x = start_x + V_WIDTH;
-        let end_y = start_y + V_HEIGHT;
+    pub fn draw(&self, d: &mut RaylibDrawHandle, camera: &Camera2D, screen_width: f32, screen_height: f32, texture: &Texture2D) {
+        let start_x = camera.target.x - (screen_width / camera.zoom) / 2.0;
+        let start_y = camera.target.y - (screen_height / camera.zoom) / 2.0;
+        let end_x = start_x + screen_width / camera.zoom;
+        let end_y = start_y + screen_height / camera.zoom;
 
         let start_tile_x = (start_x / TILE_SIZE) as i16 - 1;
         let start_tile_y = (start_y / TILE_SIZE) as i16;
+        println!("end x: {}, end y: {}", end_x, end_y);
         let end_tile_x = (end_x / TILE_SIZE) as i16 + 2;
         let end_tile_y = (end_y / TILE_SIZE) as i16 + 2;
 
@@ -81,6 +88,7 @@ impl TileMap {
             for x in start_tile_x..=end_tile_x {
                 let cord = MapCord::new(x, y);
                 let pos = Vector2::new((x as f32 * TILE_SIZE).floor(), (y as f32 * TILE_SIZE).floor());
+                
                 if !self.is_tile_in_bounds(x, y) {
                     OOB_SP.draw(d, pos, texture);
                     continue;
@@ -107,7 +115,27 @@ impl TileMap {
                             }
                         }
                     }
-                    TileType::River => {}
+                    TileType::River => {
+                        let riv_data = self.river_sprite_data.get(&cord).unwrap();
+
+                        match riv_data.0 {
+                            RiverType::Straight => {
+                                let anim = &RIVER_TILE_STRAIGHT_ANIMS[riv_data.1 as usize];
+                                
+                                let (flp_h, flp_v) = match anim.1 {
+                                    SpriteFlip::None => (false, false),
+                                    SpriteFlip::Horizontal => (true, false),
+                                    SpriteFlip::Vertical => (false, true),
+                                };
+                                
+                                RIVER_TILE_STRAIGHT_ANIMS[riv_data.1 as usize].0.draw_flp(&self.river_tile_anim_instance, d, pos, texture, flp_h, flp_v);
+                            },
+                            RiverType::Corner => (),
+                            RiverType::TSection => (),
+                            RiverType::Inlet => (),
+                            RiverType::Outlet => (),
+                        }
+                    }
                     TileType::OutOfBounds => panic!("why TF is there a OOB tile stored in the map?")
                 }
             }
@@ -149,6 +177,7 @@ impl TileMap {
             river_sprite_data: river_sprite_data,
             lake_shore_corner_tile_anim_instance: SpriteAnimationInstance::new(),
             default_tile_anim_instance: SpriteAnimationInstance::new(),
+            river_tile_anim_instance: SpriteAnimationInstance::new(),
             rng,
         };
     }
@@ -488,6 +517,8 @@ impl TileMap {
             HashMap::with_capacity(all_rivers.iter().count());
 
         for (cord, dir) in all_rivers {
+
+            // find the number of neighboring river tiles around this tile
             let mut num_of_neighbors: u8 = 0;
             for direction in CARDINAL_DELTAS {
                 let check_tile = *cord + direction;
@@ -507,6 +538,10 @@ impl TileMap {
                         let check_tile = *cord + CARDINAL_DELTAS[i];
 
                         if !Self::is_tile_in_bounds_no_self(map_width, map_height, check_tile) {
+                            // river potentially only has a single neighbor due to OOB
+                            // it can only be flowing into it, so flow direction is pretty obvious
+                            let river_type = RiverType::Straight;
+                            river_data.insert(*cord, (river_type, *dir as u8));
                             continue;
                         }
 
@@ -543,7 +578,7 @@ impl TileMap {
                         }
                         // river found! now, determine whether its a straight or a corner (both have 2 neighbors)
 
-                        let straight_check_tile = first_tile + CARDINAL_DELTAS[(i + 2) % 4];
+                        let straight_check_tile = *cord + CARDINAL_DELTAS[(i + 2) % 4];
 
                         if Self::get_tile_at_cord_no_self(map, map_width, straight_check_tile)
                             == TileType::River
@@ -686,7 +721,7 @@ impl TileMap {
 
     pub fn is_tile_in_bounds(&self, x: i16, y: i16) -> bool {
         let x_in_bounds = x >= 0 && x < self.map_width as i16;
-        let y_in_bounds = x >= 0 && y < self.map_height as i16;
+        let y_in_bounds = y >= 0 && y < self.map_height as i16;
         return x_in_bounds && y_in_bounds;
     }
 

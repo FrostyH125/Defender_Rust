@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub};
+use std::ops::{Add, Mul, Sub};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct MapCord {
