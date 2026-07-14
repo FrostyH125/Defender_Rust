@@ -29,8 +29,8 @@ pub enum FlowDirection {
 
 pub static RIVER_CORNER_ANIM_KEY: LazyLock<HashMap<(Direction, Direction, FlowDirection), u8>> = LazyLock::new(|| {
     HashMap::from([
-        ((Direction::South, Direction::East, FlowDirection::UpStream), 0),
-        ((Direction::South, Direction::East, FlowDirection::DownStream), 1),
+        ((Direction::East, Direction::South, FlowDirection::UpStream), 0),
+        ((Direction::East, Direction::South, FlowDirection::DownStream), 1),
         ((Direction::South, Direction::West, FlowDirection::UpStream), 2),
         ((Direction::South, Direction::West, FlowDirection::DownStream), 3),
         ((Direction::North, Direction::West, FlowDirection::UpStream), 4),
@@ -313,7 +313,7 @@ pub static RIVER_TILE_STRAIGHT_ANIMS: [(AnimationData, SpriteFlip); 4] = [
     ),
 ];
 
-static RIVER_TILE_CORNER_ANIMS: [(AnimationData, SpriteFlip); 8] = [
+pub static RIVER_TILE_CORNER_ANIMS: [(AnimationData, SpriteFlip); 8] = [
     // DOWN TO RIGHT, 0
     (
         AnimationData {
@@ -428,7 +428,7 @@ static RIVER_TILE_CORNER_ANIMS: [(AnimationData, SpriteFlip); 8] = [
     ),
 ];
 
-static RIVER_TILE_T_SECTION_ANIMS: [(AnimationData, SpriteFlip); 8] = [
+pub static RIVER_TILE_T_SECTION_ANIMS: [(AnimationData, SpriteFlip); 8] = [
     // IN RIGHT FLOWING UP
     (
         AnimationData {

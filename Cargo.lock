@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "basic-raylib-core"
 version = "0.1.0"
-source = "git+https://github.com/FrostyH125/basic-raylib-core#bb8f5873577f14418657eefe31649da9d22222db"
+source = "git+https://github.com/FrostyH125/basic-raylib-core#3a0be3270e1a70a7ec9a57f7401568d503a49404"
 dependencies = [
  "rand",
  "raylib",
