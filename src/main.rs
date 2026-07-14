@@ -1,4 +1,4 @@
-use raylib::{camera::Camera2D, color::Color, drawing::RaylibDraw, math::Vector2};
+use raylib::{camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt}, math::Vector2};
 
 use crate::map::tile_map::TileMap;
 
@@ -12,16 +12,16 @@ pub const TILE_SIZE: f32 = 8.0;
 
 fn main() {
     let camera = Camera2D {
-        offset: Vector2::new(-V_WIDTH / 2.0, -V_HEIGHT as f32 / 2.0),
-        target: Vector2::new(V_WIDTH / 2.0, V_HEIGHT as f32 / 2.0),
+        offset: Vector2::zero(),
+        target: Vector2::zero(),
         rotation: 0.0,
-        zoom: 1.0,
+        zoom: 6.0,
     };
 
     let mut map = TileMap::new(500, 500);
 
     let (mut rl, thread) = raylib::init()
-        .size(V_WIDTH as i32, V_HEIGHT as i32)
+        .size(V_WIDTH as i32 * 6, V_HEIGHT as i32 * 6)
         .title("Rust Raylib Starter")
         .build();
 
@@ -35,9 +35,13 @@ fn main() {
         map.update(dt);
 
         let mut d = rl.begin_drawing(&thread);
-
         d.clear_background(Color::RAYWHITE);
-        map.draw(&mut d, &camera, &texture);
+
+        {
+            let mut cam_handle = d.begin_mode2D(camera);
+            map.draw(&mut cam_handle, &camera, &texture);
+        }
+
     }
 
     println!("Hello, world!");

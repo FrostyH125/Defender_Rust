@@ -243,7 +243,7 @@ static LAKE_TILE_CORNER_ANIMATION_REFERENCE: [AnimationData; 15] = [
     },
 ];
 
-static LAKE_TILE_ANIM: AnimationData = AnimationData {
+pub static LAKE_TILE_ANIM: AnimationData = AnimationData {
     frames: &[
         Sprite::new(16, 0, 8, 8),
         Sprite::new(24, 0, 8, 8),
