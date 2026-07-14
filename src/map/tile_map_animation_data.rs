@@ -2,8 +2,10 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use basic_raylib_core::graphics::{animation_data::AnimationData, sprite::Sprite};
 
-const SHORE_AND_CORNER_FRAME_DURATION: f32 = 0.4;
-const REGULAR_TILE_FRAME_DURATION: f32 = 0.2;
+use crate::utils::directional_deltas::Direction;
+
+pub const SHORE_AND_CORNER_FRAME_DURATION: f32 = 0.4;
+pub const REGULAR_TILE_FRAME_DURATION: f32 = 0.2;
 
 pub enum SpriteFlip {
     None,
@@ -19,31 +21,39 @@ pub enum RiverType {
     Outlet,
 }
 
-static RIVER_CORNER_ANIM_KEY: LazyLock<HashMap<(u8, u8, bool), usize>> = LazyLock::new(|| {
+#[derive(Hash, PartialEq, Eq, Copy, Clone)]
+pub enum FlowDirection {
+    UpStream,
+    DownStream
+}
+
+pub static RIVER_CORNER_ANIM_KEY: LazyLock<HashMap<(Direction, Direction, FlowDirection), u8>> = LazyLock::new(|| {
     HashMap::from([
-        ((2, 1, true), 0),
-        ((2, 1, false), 1),
-        ((2, 3, true), 2),
-        ((2, 3, false), 3),
-        ((0, 3, true), 4),
-        ((0, 3, false), 5),
-        ((0, 1, true), 6),
-        ((0, 1, false), 7),
+        ((Direction::South, Direction::East, FlowDirection::UpStream), 0),
+        ((Direction::South, Direction::East, FlowDirection::DownStream), 1),
+        ((Direction::South, Direction::West, FlowDirection::UpStream), 2),
+        ((Direction::South, Direction::West, FlowDirection::DownStream), 3),
+        ((Direction::North, Direction::West, FlowDirection::UpStream), 4),
+        ((Direction::North, Direction::West, FlowDirection::DownStream), 5),
+        ((Direction::North, Direction::East, FlowDirection::UpStream), 6),
+        ((Direction::North, Direction::East, FlowDirection::DownStream), 7),
     ])
 });
 
-static RIVER_T_SECTION_ANIM_KEY: LazyLock<HashMap<(u8, u8, u8, bool), usize>> = LazyLock::new(|| {
+pub static RIVER_T_SECTION_ANIM_KEY: LazyLock<HashMap<(Direction, Direction, Direction, FlowDirection), u8>> = LazyLock::new(|| {
     HashMap::from([
-        ((0, 1, 2, true), 0),
-        ((0, 2, 3, true), 1),
-        ((0, 1, 2, false), 2),
-        ((0, 2, 3, false), 3),
-        ((0, 1, 3, true), 4),
-        ((0, 1, 3, false), 5),
-        ((1, 2, 3, true), 6),
-        ((1, 2, 3, false), 7),
+        ((Direction::North, Direction::East, Direction::South, FlowDirection::UpStream), 0),
+        ((Direction::North, Direction::South, Direction::West, FlowDirection::UpStream), 1),
+        ((Direction::North, Direction::East, Direction::South, FlowDirection::DownStream), 2),
+        ((Direction::North, Direction::South, Direction::West, FlowDirection::DownStream), 3),
+        ((Direction::North, Direction::East, Direction::West, FlowDirection::UpStream), 4),
+        ((Direction::North, Direction::East, Direction::West, FlowDirection::DownStream), 5),
+        ((Direction::East, Direction::South, Direction::West, FlowDirection::UpStream), 6),
+        ((Direction::East, Direction::South, Direction::West, FlowDirection::DownStream), 7),
     ])
 });
+
+pub static GRASS_TILE: Sprite = Sprite::new(0, 0, 8, 8);
 
 // (ANIM_NAME, bitmask)
 static LAKE_TILE_SHORE_ANIMATION_REFERENCE: [AnimationData; 15] = [
@@ -535,35 +545,7 @@ static RIVER_TILE_T_SECTION_ANIMS: [(AnimationData, SpriteFlip); 8] = [
 
 // moving out of the lake INTO the river
 static OUTLETS_ANIMS: [(AnimationData, SpriteFlip); 4] = [
-    // OUT UP (land on top)
-    (
-        AnimationData {
-            frames: &[
-                Sprite::new(96, 88, 8, 8),
-                Sprite::new(104, 88, 8, 8),
-                Sprite::new(112, 88, 8, 8),
-                Sprite::new(120, 88, 8, 8),
-            ],
-            frame_duration: REGULAR_TILE_FRAME_DURATION,
-            should_loop: true,
-        },
-        SpriteFlip::None,
-    ),
-    // OUT RIGHT (land on right)
-    (
-        AnimationData {
-            frames: &[
-                Sprite::new(96, 96, 8, 8),
-                Sprite::new(104, 96, 8, 8),
-                Sprite::new(112, 96, 8, 8),
-                Sprite::new(120, 96, 8, 8),
-            ],
-            frame_duration: REGULAR_TILE_FRAME_DURATION,
-            should_loop: true,
-        },
-        SpriteFlip::None,
-    ),
-    // OUT DOWN
+    // OUT DOWN (land on bottom, lake on top)
     (
         AnimationData {
             frames: &[
@@ -577,7 +559,7 @@ static OUTLETS_ANIMS: [(AnimationData, SpriteFlip); 4] = [
         },
         SpriteFlip::None,
     ),
-    // OUT LEFT
+    // OUT LEFT (land on left, lake on right)
     (
         AnimationData {
             frames: &[
@@ -590,6 +572,34 @@ static OUTLETS_ANIMS: [(AnimationData, SpriteFlip); 4] = [
             should_loop: true,
         },
         SpriteFlip::Horizontal,
+    ),
+    // OUT UP (land on top, lake on bottom)
+    (
+        AnimationData {
+            frames: &[
+                Sprite::new(96, 88, 8, 8),
+                Sprite::new(104, 88, 8, 8),
+                Sprite::new(112, 88, 8, 8),
+                Sprite::new(120, 88, 8, 8),
+            ],
+            frame_duration: REGULAR_TILE_FRAME_DURATION,
+            should_loop: true,
+        },
+        SpriteFlip::None,
+    ),
+    // OUT RIGHT (land on right, lake on left)
+    (
+        AnimationData {
+            frames: &[
+                Sprite::new(96, 96, 8, 8),
+                Sprite::new(104, 96, 8, 8),
+                Sprite::new(112, 96, 8, 8),
+                Sprite::new(120, 96, 8, 8),
+            ],
+            frame_duration: REGULAR_TILE_FRAME_DURATION,
+            should_loop: true,
+        },
+        SpriteFlip::None,
     ),
 ];
 
