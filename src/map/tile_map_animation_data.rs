@@ -544,35 +544,7 @@ pub static RIVER_TILE_T_SECTION_ANIMS: [(AnimationData, SpriteFlip); 8] = [
 ];
 
 // moving out of the lake INTO the river
-static OUTLETS_ANIMS: [(AnimationData, SpriteFlip); 4] = [
-    // OUT DOWN (land on bottom, lake on top)
-    (
-        AnimationData {
-            frames: &[
-                Sprite::new(96, 120, 8, 8),
-                Sprite::new(104, 120, 8, 8),
-                Sprite::new(112, 120, 8, 8),
-                Sprite::new(120, 120, 8, 8),
-            ],
-            frame_duration: REGULAR_TILE_FRAME_DURATION,
-            should_loop: true,
-        },
-        SpriteFlip::None,
-    ),
-    // OUT LEFT (land on left, lake on right)
-    (
-        AnimationData {
-            frames: &[
-                Sprite::new(96, 96, 8, 8),
-                Sprite::new(104, 96, 8, 8),
-                Sprite::new(112, 96, 8, 8),
-                Sprite::new(120, 96, 8, 8),
-            ],
-            frame_duration: REGULAR_TILE_FRAME_DURATION,
-            should_loop: true,
-        },
-        SpriteFlip::Horizontal,
-    ),
+pub static OUTLETS_ANIMS: [(AnimationData, SpriteFlip); 4] = [
     // OUT UP (land on top, lake on bottom)
     (
         AnimationData {
@@ -601,10 +573,38 @@ static OUTLETS_ANIMS: [(AnimationData, SpriteFlip); 4] = [
         },
         SpriteFlip::None,
     ),
+    // OUT DOWN (land on bottom, lake on top)
+    (
+        AnimationData {
+            frames: &[
+                Sprite::new(96, 120, 8, 8),
+                Sprite::new(104, 120, 8, 8),
+                Sprite::new(112, 120, 8, 8),
+                Sprite::new(120, 120, 8, 8),
+            ],
+            frame_duration: REGULAR_TILE_FRAME_DURATION,
+            should_loop: true,
+        },
+        SpriteFlip::None,
+    ),
+    // OUT LEFT (land on left, lake on right)
+    (
+        AnimationData {
+            frames: &[
+                Sprite::new(96, 96, 8, 8),
+                Sprite::new(104, 96, 8, 8),
+                Sprite::new(112, 96, 8, 8),
+                Sprite::new(120, 96, 8, 8),
+            ],
+            frame_duration: REGULAR_TILE_FRAME_DURATION,
+            should_loop: true,
+        },
+        SpriteFlip::Horizontal,
+    ),
 ];
 
 // moving INTO the lake FROM the river
-static INLET_ANIMS: [(AnimationData, SpriteFlip); 4] = [
+pub static INLET_ANIMS: [(AnimationData, SpriteFlip); 4] = [
     // IN UP
     (
         AnimationData {

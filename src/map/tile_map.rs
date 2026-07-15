@@ -12,22 +12,24 @@ use crate::{
             TileType::{self},
         },
         tile_map_animation_data::{
-            FlowDirection, GRASS_TILE, LAKE_TILE_ANIM, LAKE_TILE_CORNER_ANIMATION_REFERENCE,
-            LAKE_TILE_SHORE_ANIMATION_REFERENCE, REGULAR_TILE_FRAME_DURATION,
-            RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RIVER_TILE_CORNER_ANIMS,
-            RIVER_TILE_STRAIGHT_ANIMS, RIVER_TILE_T_SECTION_ANIMS, RiverType,
+            FlowDirection, GRASS_TILE, INLET_ANIMS, LAKE_TILE_ANIM,
+            LAKE_TILE_CORNER_ANIMATION_REFERENCE, LAKE_TILE_SHORE_ANIMATION_REFERENCE,
+            OUTLETS_ANIMS, REGULAR_TILE_FRAME_DURATION, RIVER_CORNER_ANIM_KEY,
+            RIVER_T_SECTION_ANIM_KEY, RIVER_TILE_CORNER_ANIMS, RIVER_TILE_STRAIGHT_ANIMS,
+            RIVER_TILE_T_SECTION_ANIMS,
+            RiverType::{self, Inlet},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
     },
     utils::{
-        directional_deltas::{CARDINAL_DELTAS, Direction},
+        directional_deltas::{self, CARDINAL_DELTAS, Direction},
         map_cord::MapCord,
     },
 };
 
 type MapData = Vec<TileType>;
 
-const LAKE_CHANCE: f32 = 0.0002;
+const LAKE_CHANCE: f32 = 0.001;
 
 pub struct TileMap {
     map: MapData,
@@ -202,8 +204,42 @@ impl TileMap {
                                     flp_v,
                                 );
                             }
-                            RiverType::Inlet => (),
-                            RiverType::Outlet => (),
+                            RiverType::Inlet => {
+                                let anim = &INLET_ANIMS[riv_data.1 as usize];
+
+                                let (flp_h, flp_v) = match anim.1 {
+                                    SpriteFlip::None => (false, false),
+                                    SpriteFlip::Horizontal => (true, false),
+                                    SpriteFlip::Vertical => (false, true),
+                                };
+
+                                anim.0.draw_flp(
+                                    &self.river_tile_anim_instance,
+                                    d,
+                                    pos,
+                                    texture,
+                                    flp_h,
+                                    flp_v,
+                                );
+                            }
+                            RiverType::Outlet => {
+                                let anim = &OUTLETS_ANIMS[riv_data.1 as usize];
+
+                                let (flp_h, flp_v) = match anim.1 {
+                                    SpriteFlip::None => (false, false),
+                                    SpriteFlip::Horizontal => (true, false),
+                                    SpriteFlip::Vertical => (false, true),
+                                };
+
+                                anim.0.draw_flp(
+                                    &self.river_tile_anim_instance,
+                                    d,
+                                    pos,
+                                    texture,
+                                    flp_h,
+                                    flp_v,
+                                );
+                            }
                         }
                     }
                     TileType::OutOfBounds => {
@@ -230,8 +266,13 @@ impl TileMap {
         let all_river_tiles =
             Self::create_rivers(&mut map, &lake_sprite_data, map_width, map_height, &mut rng);
         println!("River generated!");
-        let river_sprite_data =
-            Self::set_river_tile_animations(&all_river_tiles, &map, map_width, map_height);
+        let river_sprite_data = Self::set_river_tile_animations(
+            &all_river_tiles,
+            &map,
+            map_width,
+            map_height,
+            &lake_sprite_data,
+        );
         println!("River sprites added!");
         //SetRiverTileAnimations();
         //CheckForRiverCorner(); //also checks for t sections as it involves the corner variables anyway
@@ -585,6 +626,7 @@ impl TileMap {
         map: &MapData,
         map_width: u16,
         map_height: u16,
+        lake_data: &HashMap<MapCord, LakeSpriteData>,
     ) -> HashMap<MapCord, (RiverType, u8)> {
         let mut river_data: HashMap<MapCord, (RiverType, u8)> =
             HashMap::with_capacity(all_rivers.iter().count());
@@ -606,34 +648,31 @@ impl TileMap {
 
             match num_of_neighbors {
                 1 => {
-                    for i in 0..CARDINAL_DELTAS.len() {
-                        let check_tile = *cord + CARDINAL_DELTAS[i];
+                    let check_dir = CARDINAL_DELTAS[*dir as usize];
+                    let check_tile = *cord + check_dir;
 
-                        if !Self::is_tile_in_bounds_no_self(map_width, map_height, check_tile) {
-                            // river potentially only has a single neighbor due to OOB
-                            // it can only be flowing into it, so flow direction is pretty obvious
-                            let river_type = RiverType::Straight;
-                            river_data.insert(*cord, (river_type, *dir as u8));
-                            continue;
-                        }
-
-                        if Self::get_tile_at_cord_no_self(map, map_width, check_tile)
-                            != TileType::Lake
-                        {
-                            // no inlet/outlet info found
-                            continue;
-                        }
-                        //found lake tile!
-                        let river_type = if *dir as usize == i {
-                            // goes into the lake from the river
-                            RiverType::Inlet
-                        } else {
-                            // goes out of the lake into the river
-                            RiverType::Outlet
-                        };
-
+                    if !Self::is_tile_in_bounds_no_self(map_width, map_height, check_tile) {
+                        // actually a straight but just had 1 neighbor due to oob
+                        let river_type = RiverType::Straight;
                         river_data.insert(*cord, (river_type, *dir as u8));
+                        continue;
                     }
+
+                    let river_type = if Self::get_tile_at_cord_no_self(map, map_width, check_tile)
+                        == TileType::Lake
+                    {
+                        RiverType::Inlet
+                    } else {
+                        RiverType::Outlet
+                    };
+
+                    let index = if let RiverType::Inlet = river_type {
+                        (*dir as u8 + 2) % 4
+                    } else {
+                        *dir as u8
+                    };
+
+                    river_data.insert(*cord, (river_type, index));
                 }
                 2 => {
                     for i in 0..CARDINAL_DELTAS.len() {
