@@ -10,6 +10,12 @@ use crate::map::tile_map::TileMap;
 
 pub mod map;
 pub mod utils;
+pub mod entities;
+
+// Object::update() -> match update()
+// Object::draw(WHITE) -> match draw(WHITE) // actually draws normally since WHITE is the whitelisted color from being changed by shader
+// Object::draw_shadow(Color::0,0,0,0) -> match draw(Color::0,0,0,0)
+// Sprite::draw_col(... ... ... Color) -> draw_texture_pro(... ... ... Color)
 
 pub const V_WIDTH: f32 = 320.0;
 pub const V_HEIGHT: f32 = 180.0;
