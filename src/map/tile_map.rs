@@ -17,22 +17,24 @@ use crate::{
             OUTLETS_ANIMS, REGULAR_TILE_FRAME_DURATION, RIVER_CORNER_ANIM_KEY,
             RIVER_T_SECTION_ANIM_KEY, RIVER_TILE_CORNER_ANIMS, RIVER_TILE_STRAIGHT_ANIMS,
             RIVER_TILE_T_SECTION_ANIMS,
-            RiverType::{self, Inlet},
+            RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
     },
     utils::{
-        directional_deltas::{self, CARDINAL_DELTAS, Direction},
+        directional_deltas::{CARDINAL_DELTAS, Direction},
         map_cord::MapCord,
     },
 };
 
-type MapData = Vec<TileType>;
+type MapTileData = Vec<TileType>;
+// type MapObjectData = Vec<Object>;
 
 const LAKE_CHANCE: f32 = 0.001;
 
 pub struct TileMap {
-    map: MapData,
+    map_tile_data: MapTileData,
+    // map_object_data: MapObjectData,
     map_width: u16,
     map_height: u16,
     lake_sprite_data: HashMap<MapCord, LakeSpriteData>,
@@ -97,7 +99,6 @@ impl TileMap {
 
         let start_tile_x = (start_x / TILE_SIZE) as i16 - 1;
         let start_tile_y = (start_y / TILE_SIZE) as i16;
-        println!("end x: {}, end y: {}", end_x, end_y);
         let end_tile_x = (end_x / TILE_SIZE) as i16 + 2;
         let end_tile_y = (end_y / TILE_SIZE) as i16 + 2;
 
@@ -257,33 +258,30 @@ impl TileMap {
         // of the functions rely on checking for grass, and so that the tiles are
         // initialized with a value and i dont need to add "None" to TileType just
         // for this one singular purpose
-        let mut map: MapData = vec![TileType::Grass; map_width as usize * map_height as usize];
+        let mut map_tile_data: MapTileData = vec![TileType::Grass; map_width as usize * map_height as usize];
 
-        Self::create_lakes(&mut map, map_width, map_height, &mut rng);
+        Self::create_lakes(&mut map_tile_data, map_width, map_height, &mut rng);
         println!("Lakes created!");
-        let lake_sprite_data = Self::set_lake_shore_and_corner_sprites(&map, map_width, map_height);
+        let lake_sprite_data = Self::set_lake_shore_and_corner_sprites(&map_tile_data, map_width, map_height);
         println!("Lake sprites added!");
         let all_river_tiles =
-            Self::create_rivers(&mut map, &lake_sprite_data, map_width, map_height, &mut rng);
+            Self::create_rivers(&mut map_tile_data, &lake_sprite_data, map_width, map_height, &mut rng);
         println!("River generated!");
         let river_sprite_data = Self::set_river_tile_animations(
             &all_river_tiles,
-            &map,
+            &map_tile_data,
             map_width,
             map_height,
-            &lake_sprite_data,
         );
         println!("River sprites added!");
-        //SetRiverTileAnimations();
-        //CheckForRiverCorner(); //also checks for t sections as it involves the corner variables anyway
-        //CheckInletsAndOutlets();
-        //SetGrassTileGrowMultiplier();
         //CreateForests();
         //CreateStandAloneTrees();
-        //CreateGrass();
-        //SpawnGrassAroundLakesAndRivers();
+        //CreateGrass() // maybe if a tile is a tree theres a chance to spawn a bunch of grass around it ... ?
+        //SpawnGrassAroundLakes();
+        //SpawnGrassAroundRivers(); // i remember the og code had some cracked af math for this one, just use that
+        //SetGrassTileGrowMultiplier();
         return TileMap {
-            map,
+            map_tile_data,
             map_width,
             map_height,
             lake_sprite_data,
@@ -295,7 +293,7 @@ impl TileMap {
         };
     }
 
-    fn create_lakes(map: &mut MapData, map_width: u16, map_height: u16, rng: &mut ThreadRng) {
+    fn create_lakes(map: &mut MapTileData, map_width: u16, map_height: u16, rng: &mut ThreadRng) {
         let map_len = map.len() as f32;
         let variance_bound = map_len * LAKE_CHANCE / 5.0;
         let final_variance = rng.random_range(-variance_bound..=variance_bound);
@@ -367,7 +365,7 @@ impl TileMap {
     }
 
     fn set_lake_shore_and_corner_sprites(
-        map: &MapData,
+        map: &MapTileData,
         map_width: u16,
         map_height: u16,
     ) -> HashMap<MapCord, LakeSpriteData> {
@@ -463,7 +461,7 @@ impl TileMap {
     }
 
     fn create_rivers(
-        map: &mut MapData,
+        map: &mut MapTileData,
         lake_data: &HashMap<MapCord, LakeSpriteData>,
         map_width: u16,
         map_height: u16,
@@ -612,7 +610,7 @@ impl TileMap {
     fn add_river(
         current_river: &mut HashMap<MapCord, Direction>,
         all_rivers: &mut HashMap<MapCord, Direction>,
-        map: &mut MapData,
+        map: &mut MapTileData,
         map_width: u16,
     ) {
         for riv_tile in current_river {
@@ -623,10 +621,9 @@ impl TileMap {
 
     fn set_river_tile_animations(
         all_rivers: &HashMap<MapCord, Direction>,
-        map: &MapData,
+        map: &MapTileData,
         map_width: u16,
-        map_height: u16,
-        lake_data: &HashMap<MapCord, LakeSpriteData>,
+        map_height: u16
     ) -> HashMap<MapCord, (RiverType, u8)> {
         let mut river_data: HashMap<MapCord, (RiverType, u8)> =
             HashMap::with_capacity(all_rivers.iter().count());
@@ -691,7 +688,8 @@ impl TileMap {
 
                         let straight_check_tile = *cord + CARDINAL_DELTAS[(i + 2) % 4];
 
-                        if Self::get_tile_at_cord_no_self(map, map_width, straight_check_tile)
+                        // if its not in bounds, wont check which tile it is, because this has to be a corner
+                        if Self::is_tile_in_bounds_no_self(map_width, map_height, straight_check_tile) && Self::get_tile_at_cord_no_self(map, map_width, straight_check_tile)
                             == TileType::River
                         {
                             river_data.insert(*cord, (RiverType::Straight, *dir as u8));
@@ -827,7 +825,7 @@ impl TileMap {
 
     pub fn get_tile_from_x_y(&self, x: u16, y: u16) -> TileType {
         let index = y as usize * self.map_width as usize + x as usize;
-        return self.map[index as usize];
+        return self.map_tile_data[index as usize];
     }
 
     pub fn is_tile_in_bounds(&self, x: i16, y: i16) -> bool {
@@ -844,13 +842,13 @@ impl TileMap {
         return is_x_in_bounds && is_y_in_bounds;
     }
 
-    fn get_tile_at_cord_no_self(map: &MapData, map_width: u16, cord: MapCord) -> TileType {
+    fn get_tile_at_cord_no_self(map: &MapTileData, map_width: u16, cord: MapCord) -> TileType {
         let idx = cord.y as usize * map_width as usize + cord.x as usize;
 
         return map[idx];
     }
 
-    fn get_tile_from_x_y_no_self(map: &MapData, map_width: u16, x: i16, y: i16) -> TileType {
+    fn get_tile_from_x_y_no_self(map: &MapTileData, map_width: u16, x: i16, y: i16) -> TileType {
         let idx = y as usize * map_width as usize + x as usize;
 
         return map[idx];
