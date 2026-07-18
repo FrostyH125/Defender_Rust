@@ -2,16 +2,22 @@ use basic_raylib_core::system::input_handler::InputState;
 use raylib::{
     camera::Camera2D,
     color::Color,
-    drawing::{RaylibDraw, RaylibMode2DExt},
+    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt},
+    ffi::EndShaderMode,
     math::Vector2,
+    shaders::RaylibShader,
 };
 
-use crate::{map::tile_map::TileMap, systems::day_night_cycle::{self, DayNightCycle}};
+use crate::{
+    entities::entity_manager::EntityManager,
+    map::tile_map::TileMap,
+    systems::day_night_cycle::{self, DayNightCycle},
+};
 
-pub mod map;
-pub mod utils;
 pub mod entities;
+pub mod map;
 pub mod systems;
+pub mod utils;
 
 // Object::update() -> match update()
 // Object::draw(WHITE) -> match draw(WHITE) // actually draws normally since WHITE is the whitelisted color from being changed by shader
@@ -19,7 +25,7 @@ pub mod systems;
 
 // DayNightCycle::update_shadow_info() -> changes shear and scale based on time_of_day (which goes from 0.0..=360.0), 180.0..=360.0 is night and will use the night time shear and scale
 // DayNightCycle::update_day_night_color() -> more tint info to be passed to the shader
- 
+
 // shadows_and_lighting.fs
 
 pub const V_WIDTH: f32 = 320.0;
@@ -48,6 +54,7 @@ fn main() {
     let mut input_state = InputState::new();
 
     let mut map = TileMap::new(500, 500);
+    let mut entity_manager = EntityManager::new(500, 500);
 
     let mut day_night_cycle = DayNightCycle::new();
 
@@ -57,6 +64,7 @@ fn main() {
         .build();
 
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
+    let mut outline_shader = rl.load_shader(&thread, None, Some("outline.frag"));
 
     rl.set_target_fps(60);
 
@@ -73,7 +81,15 @@ fn main() {
 
         //--UPDATE BEGINS HERE--//
         map.update(dt);
+        entity_manager.update(
+            &mut map.map_object_grid,
+            dt,
+            screen_width,
+            screen_height,
+            &camera,
+        );
         day_night_cycle.update(dt, &mut rl);
+
         //--UPDATE ENDS HERE--//
 
         //--DRAWING BEINGS HERE--//
@@ -89,6 +105,11 @@ fn main() {
                 screen_height,
                 &texture,
             );
+
+            {
+                let mut outline_shader_handle = cam_handle.begin_shader_mode(&mut outline_shader);
+                entity_manager.draw(&map.map_object_grid, &mut outline_shader_handle, &texture);
+            }
         }
         day_night_cycle.draw_dbg(&mut d);
         //--DRAWING ENDS HERE--//
