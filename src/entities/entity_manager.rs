@@ -1,10 +1,15 @@
+use std::iter::MapWhile;
+
 use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, texture::Texture2D};
 
-use crate::{TILE_SIZE, map::tile_map::{MapObjectGrid, TileMap}, utils::map_cord::MapCord};
+use crate::{
+    TILE_SIZE,
+    map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
+    utils::map_cord::MapCord,
+};
 
 pub struct EntityManager {
-    map_width: u16,
-    map_height: u16,
+    map_dimensions: MapDimensions,
     start_tile_x: i16,
     start_tile_y: i16,
     end_tile_x: i16,
@@ -13,9 +18,28 @@ pub struct EntityManager {
 
 impl EntityManager {
     pub fn new(map_width: u16, map_height: u16) -> Self {
-        return EntityManager { map_width, map_height, start_tile_x: 0, start_tile_y: 0, end_tile_x: 0, end_tile_y: 0 }
+        let map_dimensions = MapDimensions {
+            width: map_width,
+            height: map_height,
+        };
+
+        return EntityManager {
+            map_dimensions,
+            start_tile_x: 0,
+            start_tile_y: 0,
+            end_tile_x: 0,
+            end_tile_y: 0,
+        };
     }
-    pub fn update(&mut self, object_grid: &mut MapObjectGrid, dt: f32, screen_width: f32, screen_height: f32, camera: &Camera2D) {
+
+    pub fn update(
+        &mut self,
+        object_grid: &mut MapObjectGrid,
+        dt: f32,
+        screen_width: f32,
+        screen_height: f32,
+        camera: &Camera2D,
+    ) {
         let start_x = camera.target.x - (screen_width / camera.zoom) / 2.0;
         let start_y = camera.target.y - (screen_height / camera.zoom) / 2.0;
         let end_x = start_x + screen_width / camera.zoom;
@@ -28,14 +52,13 @@ impl EntityManager {
 
         for y in self.start_tile_y..=self.end_tile_y {
             for x in self.start_tile_x..=self.end_tile_x {
-
                 let cord = MapCord::new(x, y);
 
-                if !TileMap::is_tile_in_bounds_no_ref(self.map_width, self.map_height, cord) {
+                if !TileMap::is_tile_in_bounds_no_ref(self.map_dimensions, cord) {
                     continue;
                 }
 
-                let index = TileMap::cords_to_index(self.map_width, cord);
+                let index = TileMap::cords_to_index(self.map_dimensions, cord);
 
                 object_grid[index].update(dt);
             }
@@ -43,15 +66,15 @@ impl EntityManager {
     }
 
     pub fn draw(&self, object_grid: &MapObjectGrid, d: &mut RaylibDrawHandle, texture: &Texture2D) {
-        for y in self.start_tile_y..= self.end_tile_y {
+        for y in self.start_tile_y..=self.end_tile_y {
             for x in self.start_tile_x..=self.end_tile_x {
                 let cord = MapCord::new(x, y);
 
-                if !TileMap::is_tile_in_bounds_no_ref(self.map_width, self.map_height, cord) {
+                if !TileMap::is_tile_in_bounds_no_ref(self.map_dimensions, cord) {
                     continue;
                 }
 
-                let index = TileMap::cords_to_index(self.map_width, cord);
+                let index = TileMap::cords_to_index(self.map_dimensions, cord);
 
                 object_grid[index].draw(d, texture);
             }

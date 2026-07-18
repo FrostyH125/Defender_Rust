@@ -29,7 +29,7 @@ impl Tree {
         TREE_SPRITE.draw(d, self.data.pos - Vector2::new(0.0, TILE_SIZE), texture);
     }
 
-    pub fn draw_outline(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+    pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         draw_utils::draw_outline(d, &TREE_SPRITE, self.data.pos - Vector2::new(0.0, TILE_SIZE), texture);
     }
 }

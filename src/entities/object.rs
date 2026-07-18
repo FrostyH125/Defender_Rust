@@ -42,10 +42,18 @@ impl Object {
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
-        
         match self {
             TreeObj(tree) => {
                 tree.draw(d, texture);
+            },
+            NoObject => ()
+        }
+    }
+
+    pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        match self {
+            TreeObj(tree) => {
+                tree.draw_hover(d, texture);
             },
             NoObject => ()
         }
