@@ -22,14 +22,14 @@ impl DayNightCycle {
         }
 
         if rl.is_key_down(KeyboardKey::KEY_W) {
-            self.current_shadow_shear += dt
+            self.current_shadow_shear += dt;
         }
         if rl.is_key_down(KeyboardKey::KEY_E) {
-            self.current_shadow_scale_y -= dt;
+            self.current_shadow_scale_y -= dt * 10.0;
         }
 
         if rl.is_key_down(KeyboardKey::KEY_R) {
-            self.current_shadow_scale_y += dt
+            self.current_shadow_scale_y += dt * 10.0;
         }
 
         // set shadow variables

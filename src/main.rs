@@ -20,14 +20,19 @@ pub mod map;
 pub mod systems;
 pub mod utils;
 
-// Object::update() -> match update()
-// Object::draw(WHITE) -> match draw(WHITE) // actually draws normally since WHITE is the whitelisted color from being changed by shader
-// Object::draw_shadow(Color::0,0,0,0) -> match draw(Color::0,0,0,0)
 
+// any of these can be done in any order:
 // DayNightCycle::update_shadow_info() -> changes shear and scale based on time_of_day (which goes from 0.0..=360.0), 180.0..=360.0 is night and will use the night time shear and scale
 // DayNightCycle::update_day_night_color() -> more tint info to be passed to the shader
 
-// shadows_and_lighting.fs
+// add the day night color stuff to the shader,
+// only tint sprites with it if its not a shadow or outline, easy enough
+
+// add outlining to game
+ 
+// make forest algorithms
+
+// add grass
 pub const TILE_SIZE: f32 = 8.0;
 
 fn main() {

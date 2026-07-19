@@ -46,8 +46,8 @@ impl EntityManager {
         self.end_tile_x = (end_x / TILE_SIZE) as i16 + 2;
         self.end_tile_y = (end_y / TILE_SIZE) as i16 + 2;
 
-        for y in self.start_tile_y..=self.end_tile_y {
-            for x in self.start_tile_x..=self.end_tile_x {
+        for y in (self.start_tile_y..=self.end_tile_y).rev() {
+            for x in (self.start_tile_x..=self.end_tile_x).rev() {
                 let cord = MapCord::new(x, y);
 
                 if !TileMap::is_tile_in_bounds_no_ref(self.map_dimensions, cord) {

@@ -1,5 +1,7 @@
 use basic_raylib_core::graphics::sprite::Sprite;
-use raylib::{color::Color, drawing::RaylibDrawHandle, math::{Rectangle, Vector2}, texture::Texture2D};
+use raylib::{
+    color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, ffi::rlScalef, math::{Rectangle, Vector2}, texture::Texture2D,
+};
 
 use crate::utils::directional_deltas::CARDINAL_DELTAS;
 
@@ -10,33 +12,48 @@ pub fn draw_shadow(
     shear_x: f32,
     scale_y: f32,
     texture: &Texture2D,
+    shadow_in_front: bool
 ) {
     let shear_matrix = [
-        1.0, 0.0, 0.0, 0.0, shear_x, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        1.0, 0.0, 0.0, 0.0, -shear_x, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
     ];
+    let sprite_pivot_x = pos.x + sprite.src_rect.width / 2.0;
+    let sprite_pivot_y = pos.y + sprite.src_rect.height;
 
     unsafe {
         raylib::ffi::rlPushMatrix();
 
-        let sprite_pivot_x = pos.x + sprite.src_rect.width / 2.0;
-        let sprite_pivot_y = pos.y + sprite.src_rect.height;
-
-        // Translate to the sprite's world position pivot
         raylib::ffi::rlTranslatef(sprite_pivot_x, sprite_pivot_y, 0.0);
-        // Apply shear matrix
+
         raylib::ffi::rlMultMatrixf(shear_matrix.as_ptr());
-        // Translate back to local origin
+
         raylib::ffi::rlTranslatef(-sprite_pivot_x, -sprite_pivot_y, 0.0);
     }
 
-    let dest_rect = Rectangle {
+    let mut dest_rect = Rectangle {
         x: pos.x,
         y: pos.y + scale_y,
         width: sprite.src_rect.width,
         height: sprite.src_rect.height - scale_y,
     };
 
-    sprite.draw_pro(d, dest_rect, Vector2::zero(), 0.0, texture, Color::new(255, 255, 0, 255));
+    let mut src_rect = sprite.src_rect;
+
+    if shadow_in_front {
+        dest_rect.y = pos.y + src_rect.height;
+        src_rect.height = -src_rect.height;  
+    }
+
+    d.draw_texture_pro(texture, src_rect, dest_rect, Vector2::zero(), 0.0, Color::new(255, 255, 0, 255));
+    
+    // sprite.draw_pro(
+    //     d,
+    //     dest_rect,
+    //     Vector2::zero(),
+    //     0.0,
+    //     texture,
+    //     Color::new(255, 255, 0, 255),
+    // );
 
     unsafe {
         raylib::ffi::rlPopMatrix();

@@ -36,6 +36,6 @@ impl Tree {
     }
 
     pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, shear_x: f32, scale_y: f32) {
-        draw_utils::draw_shadow(d, &TREE_SPRITE, self.data.pos - Vector2::new(0.0, TILE_SIZE), shear_x, scale_y, texture);
+        draw_utils::draw_shadow(d, &TREE_SPRITE, self.data.pos - Vector2::new(0.0, TILE_SIZE), shear_x, scale_y, texture, true);
     }
 }
