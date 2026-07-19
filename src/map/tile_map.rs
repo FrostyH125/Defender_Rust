@@ -1,4 +1,6 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+};
 
 use basic_raylib_core::graphics::{sprite::Sprite, sprite_animation::SpriteAnimationInstance};
 use rand::{RngExt, rngs::ThreadRng};
@@ -72,50 +74,48 @@ impl TileMap {
 
         let total_map_length = map_dimensions.total_tiles();
 
-        let mut map_tile_grid: MapTileGrid = vec![TileType::Grass; total_map_length];
+        let mut tile_grid: MapTileGrid = vec![TileType::Grass; total_map_length];
 
-        let mut map_object_grid = Vec::new();
-        map_object_grid.resize_with(total_map_length, || Object::NoObject);
+        let mut object_grid = Vec::new();
+        object_grid.resize_with(total_map_length, || Object::NoObject);
 
         // ok this looks bad (it is) because the functions purpose is to actually create lakes
         // but it returns a vec of tiles to make forest lakes of which isnt used until way later.
         // ive acknowledged the poor choice. if someone wants to fix it, let me know what you think
-        let forest_lake_tiles = Self::create_lakes(&mut map_tile_grid, map_dimensions, &mut rng);
+        let forest_lake_tiles = Self::create_lakes(&mut tile_grid, map_dimensions, &mut rng);
         println!("Lakes created!");
 
-        let lake_sprite_data =
-            Self::set_lake_shore_and_corner_sprites(&map_tile_grid, map_dimensions);
+        let lake_sprite_data = Self::set_lake_shore_and_corner_sprites(&tile_grid, map_dimensions);
         println!("Lake sprites added!");
 
-        let all_river_tiles = Self::create_rivers(
-            &mut map_tile_grid,
-            &lake_sprite_data,
-            map_dimensions,
-            &mut rng,
-        );
+        let all_river_tiles =
+            Self::create_rivers(&mut tile_grid, &lake_sprite_data, map_dimensions, &mut rng);
         println!("River generated!");
 
         let river_sprite_data =
-            Self::set_river_tile_animations(&all_river_tiles, &map_tile_grid, map_dimensions);
+            Self::set_river_tile_animations(&all_river_tiles, &tile_grid, map_dimensions);
         println!("River sprites added!");
 
         Self::create_forest_around_lake(
-            &map_tile_grid,
-            &mut map_object_grid,
+            &tile_grid,
+            &mut object_grid,
             forest_lake_tiles,
             map_dimensions,
             &mut rng,
         );
         println!("Made forest lakes!");
-        //CreateForests();
+
+        Self::create_forests(&tile_grid, &mut object_grid, map_dimensions, &mut rng);
+
+        println!("Forests created!");
         //CreateStandAloneTrees();
         //CreateGrass() // maybe if a tile is a tree theres a chance to spawn a bunch of grass around it ... ?
         //SpawnGrassAroundLakes();
         //SpawnGrassAroundRivers(); // i remember the og code had some cracked af math for this one, just use that
         //SetGrassTileGrowMultiplier();
         return TileMap {
-            map_tile_grid,
-            map_object_grid,
+            map_tile_grid: tile_grid,
+            map_object_grid: object_grid,
             map_dimensions,
             lake_sprite_data,
             river_sprite_data: river_sprite_data,
@@ -894,12 +894,154 @@ impl TileMap {
                 }
 
                 _ => panic!(
-                    "the only valid number of neighbors for a river are 1, 2, 3, this tile should not have made it to the neighbor check"
+                    "the only valid number of neighbors for a river are 1, 2, 3, this tile should not have made it to the neighbor check, num of neighbors: {}",
+                    num_of_neighbors
                 ),
             }
         }
 
         return river_data;
+    }
+
+    // helpers for world building specifically
+    fn create_forest_around_lake(
+        tile_grid: &MapTileGrid,
+        object_grid: &mut MapObjectGrid,
+        lake_tiles: Vec<MapCord>,
+        map_dimensions: MapDimensions,
+        rng: &mut ThreadRng,
+    ) {
+        for lake_tile in lake_tiles {
+            let range = rng.random_range(1..=10);
+
+            for dir in CARDINAL_DELTAS {
+                for r in 0..=range {
+                    let tree_target_tile = lake_tile + (dir * r);
+
+                    if !Self::is_tile_in_bounds_no_ref(map_dimensions, tree_target_tile) {
+                        continue;
+                    }
+
+                    if Self::get_tile_at_cord_no_self(tile_grid, map_dimensions, tree_target_tile)
+                        != TileType::Grass
+                    {
+                        continue;
+                    }
+
+                    //test if you will succeed in placing a tree on this tile
+                    if !rng.random_bool(0.1) {
+                        continue;
+                    }
+
+                    let index = Self::cords_to_index(map_dimensions, tree_target_tile);
+
+                    if let Object::NoObject = object_grid[index] {
+                        object_grid[index] = TreeObj(Tree::new(tree_target_tile))
+                    }
+                }
+            }
+        }
+    }
+
+    fn create_forests(
+        tile_grid: &MapTileGrid,
+        object_grid: &mut MapObjectGrid,
+        map_dimensions: MapDimensions,
+        rng: &mut ThreadRng,
+    ) {
+        let total_tiles = map_dimensions.total_tiles();
+        let cycles = rng.random_range(total_tiles / 10_000..=total_tiles / 5_000);
+
+        for _ in 0..=cycles {
+            let horizontal_dir = match rng.random_bool(0.5) {
+                true => Direction::West,
+                false => Direction::East,
+            };
+
+            let vertical_dir = match rng.random_bool(0.5) {
+                true => Direction::North,
+                false => Direction::South,
+            };
+
+            // check if forest will be vertical or horizontal
+            let (dir_1, dir_2) = match rng.random_bool(0.5) {
+                true => (vertical_dir, horizontal_dir),
+                false => (horizontal_dir, vertical_dir),
+            };
+
+            let mut start_pos = MapCord::new(
+                rng.random_range(0..map_dimensions.width) as i16,
+                rng.random_range(0..map_dimensions.height) as i16,
+            );
+
+            // height of a column of trees
+            let mut height = 1;
+
+            // how many columns there are
+            let mut length = 0;
+
+            while height > 0 {
+                // make a line of trees from 0 to height
+                for j in 0..height {
+                    let try_tree_tile = start_pos + CARDINAL_DELTAS[dir_1 as usize] * j;
+
+                    if !Self::is_tile_in_bounds_no_ref(map_dimensions, try_tree_tile) {
+                        continue;
+                    }
+                    if Self::get_tile_at_cord_no_self(tile_grid, map_dimensions, try_tree_tile)
+                        != TileType::Grass
+                    {
+                        continue;
+                    }
+
+                    let idx = Self::cords_to_index(map_dimensions, try_tree_tile);
+
+                    object_grid[idx] = Object::TreeObj(Tree::new(try_tree_tile));
+                }
+
+                // move it one tile to the left or right
+                start_pos += CARDINAL_DELTAS[dir_2 as usize];
+
+                // move randomly, primarily in the direction of the first dir
+                if rng.random_bool(0.5) {
+                    if rng.random_bool(0.2) {
+                        start_pos -= CARDINAL_DELTAS[dir_1 as usize];
+                    } else {
+                        start_pos += CARDINAL_DELTAS[dir_1 as usize];
+                    }
+                }
+
+                length += 1;
+
+                // change height based on length based weights
+                match length {
+                    ..=11 => {
+                        if rng.random_bool(0.2) {
+                            height += 1;
+                        }
+                        if rng.random_bool(0.05) {
+                            height -= 1;
+                        }
+                    }
+                    ..25 => {
+                        if rng.random_bool(0.8) {
+                            height += 1;
+                        }
+                        if rng.random_bool(0.8) {
+                            height -= 1;
+                        }
+                    }
+                    25.. => {
+                        if rng.random_bool(0.2) {
+                            height -= 1;
+                        }
+                        if rng.random_bool(0.05) {
+                            height += 1;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn get_tile_from_x_y(&self, x: u16, y: u16) -> TileType {
@@ -946,45 +1088,5 @@ impl TileMap {
         let y_u = cord.y as usize;
         let x_u = cord.x as usize;
         return y_u * map_dimensions.width as usize + x_u;
-    }
-
-    // helpers for world building specifically
-    fn create_forest_around_lake(
-        tile_grid: &MapTileGrid,
-        object_grid: &mut MapObjectGrid,
-        lake_tiles: Vec<MapCord>,
-        map_dimensions: MapDimensions,
-        rng: &mut ThreadRng,
-    ) {
-        for lake_tile in lake_tiles {
-            let range = rng.random_range(1..=10);
-
-            for dir in CARDINAL_DELTAS {
-                for r in 0..=range {
-                    let tree_target_tile = lake_tile + (dir * r);
-
-                    if !Self::is_tile_in_bounds_no_ref(map_dimensions, tree_target_tile) {
-                        continue;
-                    }
-
-                    if Self::get_tile_at_cord_no_self(tile_grid, map_dimensions, tree_target_tile)
-                        != TileType::Grass
-                    {
-                        continue;
-                    }
-
-                    //test if you will succeed in placing a tree on this tile
-                    if !rng.random_bool(0.1) {
-                        continue;
-                    }
-
-                    let index = Self::cords_to_index(map_dimensions, tree_target_tile);
-
-                    if let Object::NoObject = object_grid[index] {
-                        object_grid[index] = TreeObj(Tree::new(tree_target_tile))
-                    }
-                }
-            }
-        }
     }
 }

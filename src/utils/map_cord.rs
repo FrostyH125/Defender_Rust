@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct MapCord {
@@ -43,5 +43,19 @@ impl Mul<i32> for MapCord {
             x: self.x * rhs as i16,
             y: self.y * rhs as i16,
         }
+    }
+}
+
+impl AddAssign for MapCord {
+    fn add_assign(&mut self, rhs: Self) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+    }
+}
+
+impl SubAssign for MapCord {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.x -= rhs.x;
+        self.y -= rhs.y;
     }
 }

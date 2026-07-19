@@ -39,8 +39,6 @@ fn main() {
     let mut screen_width = 1920.0;
     let mut screen_height = 1080.0;
 
-
-
     let mut current_zoom = ZoomSizes::FiveX;
     let mut camera = Camera2D {
         offset: Vector2 {
