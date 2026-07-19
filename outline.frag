@@ -12,9 +12,16 @@ void main()
 {
     vec4 tex = texture(texture0, fragTexCoord);
 
-    if (fragColor.a < 0.5) {
+    if (fragColor.a == 0.0) {
         finalColor = vec4(1.0, 1.0, 1.0, tex.a);
-    } else {
-        finalColor = tex * fragColor * colDiffuse;
+        return;
+    } 
+
+    if (fragColor.b == 0.0) {
+        finalColor = vec4(0.6, 0.2, 0.6, tex.a * 0.5);
+        return;
     }
+    
+    finalColor = tex * fragColor * colDiffuse;
+
 }

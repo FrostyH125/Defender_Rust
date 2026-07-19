@@ -1,4 +1,4 @@
-use raylib::{color::Color, drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
+use raylib::{color::Color, drawing::RaylibDrawHandle, math::Vector2, texture::{self, Texture2D}};
 
 use crate::entities::{object::Object::*, objects::tree::Tree};
 
@@ -56,6 +56,13 @@ impl Object {
                 tree.draw_hover(d, texture);
             },
             NoObject => ()
+        }
+    }
+
+    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, shear_x: f32, shear_y: f32) {
+        match self {
+            TreeObj(tree) => tree.draw_shadow(d, texture, shear_x, shear_y),
+            NoObject => (),
         }
     }
 }

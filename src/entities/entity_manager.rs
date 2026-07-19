@@ -5,6 +5,7 @@ use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, texture::Texture2D};
 use crate::{
     TILE_SIZE,
     map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
+    systems::day_night_cycle::DayNightCycle,
     utils::map_cord::MapCord,
 };
 
@@ -17,12 +18,7 @@ pub struct EntityManager {
 }
 
 impl EntityManager {
-    pub fn new(map_width: u16, map_height: u16) -> Self {
-        let map_dimensions = MapDimensions {
-            width: map_width,
-            height: map_height,
-        };
-
+    pub fn new(map_dimensions: MapDimensions) -> Self {
         return EntityManager {
             map_dimensions,
             start_tile_x: 0,
@@ -65,8 +61,15 @@ impl EntityManager {
         }
     }
 
-    pub fn draw(&self, object_grid: &MapObjectGrid, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+    pub fn draw(
+        &self,
+        day_night_cycle: &DayNightCycle,
+        object_grid: &MapObjectGrid,
+        d: &mut RaylibDrawHandle,
+        texture: &Texture2D,
+    ) {
         for y in self.start_tile_y..=self.end_tile_y {
+            // separate shadow pass specifcialyl so the shadows dont cross over same row objects
             for x in self.start_tile_x..=self.end_tile_x {
                 let cord = MapCord::new(x, y);
 
@@ -76,6 +79,21 @@ impl EntityManager {
 
                 let index = TileMap::cords_to_index(self.map_dimensions, cord);
 
+                object_grid[index].draw_shadow(
+                    d,
+                    texture,
+                    day_night_cycle.current_shadow_shear,
+                    day_night_cycle.current_shadow_scale_y,
+                );
+            }
+            for x in self.start_tile_x..=self.end_tile_x {
+                let cord = MapCord::new(x, y);
+
+                if !TileMap::is_tile_in_bounds_no_ref(self.map_dimensions, cord) {
+                    continue;
+                }
+
+                let index = TileMap::cords_to_index(self.map_dimensions, cord);
                 object_grid[index].draw(d, texture);
             }
         }

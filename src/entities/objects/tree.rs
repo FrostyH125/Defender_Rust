@@ -24,6 +24,8 @@ impl Tree {
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        
+        
         // need to draw it at an offset since its 2 tiles tall, its real position
         // is still the tile that its on
         TREE_SPRITE.draw(d, self.data.pos - Vector2::new(0.0, TILE_SIZE), texture);
@@ -31,5 +33,9 @@ impl Tree {
 
     pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         draw_utils::draw_outline(d, &TREE_SPRITE, self.data.pos - Vector2::new(0.0, TILE_SIZE), texture);
+    }
+
+    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, shear_x: f32, scale_y: f32) {
+        draw_utils::draw_shadow(d, &TREE_SPRITE, self.data.pos - Vector2::new(0.0, TILE_SIZE), shear_x, scale_y, texture);
     }
 }
