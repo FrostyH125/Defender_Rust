@@ -5,11 +5,17 @@ use crate::entities::{object::Object::*, objects::tree::Tree};
 /// This houses data that all objects share, as to not repeat fields between objects
 pub struct ObjectData {
     pub pos: Vector2,
+    pub randomized_offset: Vector2,
+    pub draw_offset: Vector2
 }
 
 impl ObjectData {
-    pub fn new(pos: Vector2) -> Self {
-        return ObjectData { pos };
+    pub fn new(pos: Vector2, draw_offset: Vector2, randomized_offset: Vector2) -> Self {
+        return ObjectData { pos, draw_offset, randomized_offset };
+    }
+
+    pub fn draw_pos(&self) -> Vector2 {
+        return self.pos + self.draw_offset + self.randomized_offset;
     }
 }
 

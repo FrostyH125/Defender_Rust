@@ -936,7 +936,7 @@ impl TileMap {
                     let index = Self::cords_to_index(map_dimensions, tree_target_tile);
 
                     if let Object::NoObject = object_grid[index] {
-                        object_grid[index] = TreeObj(Tree::new(tree_target_tile))
+                        object_grid[index] = Tree::new(tree_target_tile, rng)
                     }
                 }
             }
@@ -996,7 +996,7 @@ impl TileMap {
 
                     let idx = Self::cords_to_index(map_dimensions, try_tree_tile);
 
-                    object_grid[idx] = Object::TreeObj(Tree::new(try_tree_tile));
+                    object_grid[idx] = Tree::new(try_tree_tile, rng);
                 }
 
                 // move it one tile to the left or right

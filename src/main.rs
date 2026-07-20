@@ -4,7 +4,9 @@ use basic_raylib_core::system::input_handler::InputState;
 use raylib::{
     camera::Camera2D,
     color::Color,
-    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
+    drawing::{
+        RaylibBlendModeExt, RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt,
+    },
     math::{Rectangle, Vector2},
 };
 
@@ -20,7 +22,6 @@ pub mod map;
 pub mod systems;
 pub mod utils;
 
-
 // any of these can be done in any order:
 // DayNightCycle::update_shadow_info() -> changes shear and scale based on time_of_day (which goes from 0.0..=360.0), 180.0..=360.0 is night and will use the night time shear and scale
 // DayNightCycle::update_day_night_color() -> more tint info to be passed to the shader
@@ -29,7 +30,7 @@ pub mod utils;
 // only tint sprites with it if its not a shadow or outline, easy enough
 
 // add outlining to game
- 
+
 // make forest algorithms
 
 // add grass
@@ -103,7 +104,7 @@ fn main() {
             camera_pos.x -= input_state.delta.x / (screen_width / current_zoom.v_width());
             camera_pos.y -= input_state.delta.y / (screen_height / current_zoom.v_height());
         }
-        
+
         // remove any floating points from camera pos
         camera.target.x = camera_pos.x.round();
         camera.target.y = camera_pos.y.round();
@@ -126,10 +127,10 @@ fn main() {
         {
             let mut d = rl.begin_drawing(&thread);
             {
-                let mut rt_handle = d.begin_texture_mode(&thread, current_rt);
-                rt_handle.clear_background(Color::RAYWHITE);
+                let mut render_texture_handle = d.begin_texture_mode(&thread, current_rt);
+                render_texture_handle.clear_background(Color::RAYWHITE);
                 {
-                    let mut cam_handle = rt_handle.begin_mode2D(camera);
+                    let mut cam_handle = render_texture_handle.begin_mode2D(camera);
                     map.draw(
                         &mut cam_handle,
                         &camera,
@@ -139,12 +140,12 @@ fn main() {
                     );
 
                     {
-                        let mut outline_shader_handle =
-                            cam_handle.begin_shader_mode(&mut outline_shader);
+                        let mut shader_handle = cam_handle.begin_shader_mode(&mut outline_shader);
+
                         entity_manager.draw(
                             &day_night_cycle,
                             &map.map_object_grid,
-                            &mut outline_shader_handle,
+                            &mut shader_handle,
                             &texture,
                         );
                     } // end shader mode - nothing drawn will pass through shader beyond here
@@ -197,9 +198,8 @@ impl ZoomSizes {
     }
 
     pub fn get_zoom_from_index(idx: usize) -> Self {
-
         let comp = idx.clamp(0, 4);
-        
+
         match comp {
             0 => OneX,
             1 => TwoX,
