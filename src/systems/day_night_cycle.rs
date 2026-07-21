@@ -1,19 +1,33 @@
-
 // need to add moon phases
 
-use raylib::{RaylibHandle, color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, ffi::KeyboardKey};
+use raylib::{
+    RaylibHandle,
+    color::Color,
+    drawing::{RaylibDraw, RaylibDrawHandle},
+    ffi::KeyboardKey,
+};
 
 pub struct DayNightCycle {
     pub current_time: f32,
     pub current_shadow_shear: f32,
-    pub current_shadow_scale_y: f32
+    pub current_shadow_scale_y: f32,
+    pub red_tint: f32,
+    pub blue_tint: f32,
+    pub brightness_modifier: f32,
 }
 
 impl DayNightCycle {
     pub fn new() -> Self {
-        return DayNightCycle { current_time: 0.0, current_shadow_shear: 0.0, current_shadow_scale_y: 0.0 }
-    }    
-    
+        return DayNightCycle {
+            current_time: 0.0,
+            current_shadow_shear: 0.0,
+            current_shadow_scale_y: 0.0,
+            red_tint: 0.0,
+            blue_tint: 0.0,
+            brightness_modifier: 0.0
+        };
+    }
+
     pub fn update(&mut self, dt: f32, rl: &mut RaylibHandle) {
         self.current_time += dt;
 
@@ -36,8 +50,32 @@ impl DayNightCycle {
     }
 
     pub fn draw_dbg(&self, d: &mut RaylibDrawHandle) {
-        d.draw_text(&format!("current time: {}", self.current_time), 5, 0, 30, Color::BLACK);
-        d.draw_text(&format!("current shear: {}", self.current_shadow_shear), 5, 40, 30, Color::BLACK);
-        d.draw_text(&format!("current scale_y: {}", self.current_shadow_scale_y), 5, 80, 30, Color::BLACK);
+        d.draw_text(
+            &format!("current time: {}", self.current_time),
+            5,
+            0,
+            30,
+            Color::BLACK,
+        );
+        d.draw_text(
+            &format!("current shear: {}", self.current_shadow_shear),
+            5,
+            40,
+            30,
+            Color::BLACK,
+        );
+        d.draw_text(
+            &format!("current scale_y: {}", self.current_shadow_scale_y),
+            5,
+            80,
+            30,
+            Color::BLACK,
+        );
+    }
+
+    fn update_shadow_values(&mut self) {
+        const MAX_SHEAR: f32 = -2.0;
+        const MIN_SCALE_Y: f32 = -12.0;
+        const MAX_SCALE_Y: f32 = 0.0;
     }
 }

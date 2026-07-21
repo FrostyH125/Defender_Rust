@@ -1,3 +1,4 @@
+use rand::random;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
@@ -9,10 +10,8 @@ use crate::entities::{object::Object::*, objects::tree::Tree};
 /// This houses data that all objects share, as to not repeat fields between objects
 pub struct ObjectData {
     pub pos: Vector2,
-    pub randomized_offset: Vector2,
-    pub draw_offset: Vector2,
-    width: f32,
-    height: f32,
+    pub draw_pos: Vector2,
+    pub hover_rect: Rectangle,
     pub is_hovering: bool,
 }
 
@@ -24,18 +23,18 @@ impl ObjectData {
         width: f32,
         height: f32,
     ) -> Self {
-        return ObjectData {
-            pos,
-            draw_offset,
-            randomized_offset,
-            is_hovering: false,
-            width,
-            height,
-        };
-    }
 
-    pub fn draw_pos(&self) -> Vector2 {
-        return self.pos + self.draw_offset + self.randomized_offset;
+        let true_pos = pos + randomized_offset;
+        let true_draw_pos = true_pos + draw_offset;
+
+        let hover_rect = Rectangle::new(true_draw_pos.x, true_draw_pos.y, width, height);
+        
+        return ObjectData {
+            pos: true_pos,
+            draw_pos: true_draw_pos,
+            is_hovering: false,
+            hover_rect
+        };
     }
 }
 
@@ -69,14 +68,7 @@ impl Object {
     }
 
     pub fn is_point_intersecting(&self, p: Vector2) -> bool {
-        return self.rect().check_collision_point_rec(p);
-    }
-
-    pub fn rect(&self) -> Rectangle {
-        let data = self.get_data();
-        let draw_pos = data.draw_pos();
-
-        return Rectangle::new(draw_pos.x, draw_pos.y, data.width, data.height);
+        return self.get_data().hover_rect.check_collision_point_rec(p);
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {

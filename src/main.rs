@@ -1,9 +1,6 @@
 use basic_raylib_core::system::input_handler::InputState;
 use raylib::{
-    camera::Camera2D,
-    color::Color,
-    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
-    math::{Rectangle, Vector2},
+    camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, math::{Rectangle, Vector2}, shaders::RaylibShader,
 };
 
 use crate::{
@@ -20,11 +17,11 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
+// 
+// enter moon phase info into DayNightCycle
+// 
 // DayNightCycle::update_shadow_info() -> changes shear and scale based on time_of_day (which goes from 0.0..=360.0), 180.0..=360.0 is night and will use the night time shear and scale
 // DayNightCycle::update_day_night_color() -> more tint info to be passed to the shader
-
-// add the day night color stuff to the shader,
-// only tint sprites with it if its not an outline, easy enough
 
 // add grass
 
@@ -64,7 +61,10 @@ fn main() {
         .build();
 
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
-    let mut outline_shader = rl.load_shader(&thread, None, Some("outline.frag"));
+    let mut shader = rl.load_shader(&thread, None, Some("outline.frag"));
+    let red_tint_loc = shader.get_shader_location("red_tint");
+    let blue_tint_loc = shader.get_shader_location("blue_tint");
+    let brightness_modifier_loc = shader.get_shader_location("brightness_modifier");
 
     let mut render_textures = vec![
         rl.load_render_texture(&thread, 1920, 1080).unwrap(),
@@ -118,6 +118,10 @@ fn main() {
             &input_state,
         );
         day_night_cycle.update(dt, &mut rl);
+        
+        shader.set_shader_value(red_tint_loc, day_night_cycle.red_tint);
+        shader.set_shader_value(blue_tint_loc, day_night_cycle.blue_tint);
+        shader.set_shader_value(brightness_modifier_loc, day_night_cycle.brightness_modifier);
 
         //--UPDATE ENDS HERE--//
         let current_rt = &mut render_textures[current_zoom as usize];
@@ -130,16 +134,16 @@ fn main() {
                 render_texture_handle.clear_background(Color::RAYWHITE);
                 {
                     let mut cam_handle = render_texture_handle.begin_mode2D(camera);
-                    map.draw(
-                        &mut cam_handle,
-                        &camera,
-                        current_zoom.v_width(),
-                        current_zoom.v_height(),
-                        &texture,
-                    );
-
                     {
-                        let mut shader_handle = cam_handle.begin_shader_mode(&mut outline_shader);
+                        let mut shader_handle = cam_handle.begin_shader_mode(&mut shader);
+
+                        map.draw(
+                            &mut shader_handle,
+                            &camera,
+                            current_zoom.v_width(),
+                            current_zoom.v_height(),
+                            &texture,
+                        );
 
                         entity_manager.draw(
                             &day_night_cycle,
