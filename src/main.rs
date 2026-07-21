@@ -1,12 +1,8 @@
-use std::{any::Any, thread::current};
-
 use basic_raylib_core::system::input_handler::InputState;
 use raylib::{
     camera::Camera2D,
     color::Color,
-    drawing::{
-        RaylibBlendModeExt, RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt,
-    },
+    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
     math::{Rectangle, Vector2},
 };
 
@@ -15,6 +11,7 @@ use crate::{
     entities::entity_manager::EntityManager,
     map::tile_map::TileMap,
     systems::day_night_cycle::DayNightCycle,
+    utils::mouse_utils,
 };
 
 pub mod entities;
@@ -27,18 +24,16 @@ pub mod utils;
 // DayNightCycle::update_day_night_color() -> more tint info to be passed to the shader
 
 // add the day night color stuff to the shader,
-// only tint sprites with it if its not a shadow or outline, easy enough
-
-// add outlining to game
-
-// make forest algorithms
+// only tint sprites with it if its not an outline, easy enough
 
 // add grass
+
+// add new tree variants
 pub const TILE_SIZE: f32 = 8.0;
 
 fn main() {
-    let mut screen_width = 1920.0;
-    let mut screen_height = 1080.0;
+    let mut window_width = 1920.0;
+    let mut window_height = 1080.0;
 
     let mut current_zoom = ZoomSizes::FiveX;
     let mut camera = Camera2D {
@@ -64,7 +59,7 @@ fn main() {
     let mut day_night_cycle = DayNightCycle::new();
 
     let (mut rl, thread) = raylib::init()
-        .size(screen_width as i32, screen_height as i32)
+        .size(window_width as i32, window_height as i32)
         .title("Rust Raylib Starter")
         .build();
 
@@ -80,6 +75,7 @@ fn main() {
     ];
 
     rl.set_target_fps(60);
+    rl.disable_cursor();
 
     while !rl.window_should_close() {
         let dt = rl.get_frame_time();
@@ -101,8 +97,8 @@ fn main() {
         println!("{}", current_zoom as usize);
 
         if input_state.middle_currently_held {
-            camera_pos.x -= input_state.delta.x / (screen_width / current_zoom.v_width());
-            camera_pos.y -= input_state.delta.y / (screen_height / current_zoom.v_height());
+            camera_pos.x -= input_state.delta.x / (window_width / current_zoom.v_width());
+            camera_pos.y -= input_state.delta.y / (window_height / current_zoom.v_height());
         }
 
         // remove any floating points from camera pos
@@ -114,9 +110,12 @@ fn main() {
         entity_manager.update(
             &mut map.map_object_grid,
             dt,
+            window_width,
+            window_height,
             current_zoom.v_width(),
             current_zoom.v_height(),
             &camera,
+            &input_state,
         );
         day_night_cycle.update(dt, &mut rl);
 
@@ -148,6 +147,18 @@ fn main() {
                             &mut shader_handle,
                             &texture,
                         );
+                        mouse_utils::draw_mouse(
+                            &mut shader_handle,
+                            mouse_utils::mouse_world_coords(
+                                input_state.mouse_pos,
+                                &camera,
+                                window_width,
+                                window_height,
+                                current_zoom.v_width(),
+                                current_zoom.v_height(),
+                            ),
+                            &texture,
+                        );
                     } // end shader mode - nothing drawn will pass through shader beyond here
                 } // end camera mode - nothing drawn will be drawn in world space beyond here
             } // end rt mode - nothing drawn will be drawn on the render texture beyond here
@@ -159,7 +170,7 @@ fn main() {
                 -current_rt.texture.height as f32, // Negative height flips it right-side up
             );
 
-            let dest_rec = Rectangle::new(0.0, 0.0, screen_width, screen_height);
+            let dest_rec = Rectangle::new(0.0, 0.0, window_width, window_height);
             let origin = Vector2::new(0.0, 0.0);
 
             d.draw_texture_pro(current_rt, source_rec, dest_rec, origin, 0.0, Color::WHITE);

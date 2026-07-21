@@ -1,12 +1,12 @@
-use std::iter::MapWhile;
-
+use basic_raylib_core::system::input_handler::InputState;
 use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, texture::Texture2D};
 
 use crate::{
     TILE_SIZE,
+    entities::object::Object,
     map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
     systems::day_night_cycle::DayNightCycle,
-    utils::map_cord::MapCord,
+    utils::{map_cord::MapCord, mouse_utils},
 };
 
 pub struct EntityManager {
@@ -32,14 +32,19 @@ impl EntityManager {
         &mut self,
         object_grid: &mut MapObjectGrid,
         dt: f32,
-        screen_width: f32,
-        screen_height: f32,
+        window_width: f32,
+        window_height: f32,
+        v_width: f32,
+        v_height: f32,
         camera: &Camera2D,
+        input_state: &InputState,
     ) {
-        let start_x = camera.target.x - (screen_width / camera.zoom) / 2.0;
-        let start_y = camera.target.y - (screen_height / camera.zoom) / 2.0;
-        let end_x = start_x + screen_width / camera.zoom;
-        let end_y = start_y + screen_height / camera.zoom;
+        let mut found_hovering: bool = false;
+
+        let start_x = camera.target.x - v_width / 2.0;
+        let start_y = camera.target.y - v_height / 2.0;
+        let end_x = start_x + v_width / camera.zoom;
+        let end_y = start_y + v_height / camera.zoom;
 
         self.start_tile_x = (start_x / TILE_SIZE) as i16 - 1;
         self.start_tile_y = (start_y / TILE_SIZE) as i16;
@@ -56,7 +61,25 @@ impl EntityManager {
 
                 let index = TileMap::cords_to_index(self.map_dimensions, cord);
 
+                if let Object::NoObject = object_grid[index] {
+                    continue;
+                }
+
                 object_grid[index].update(dt);
+
+                if !found_hovering {
+                    if object_grid[index].is_point_intersecting(mouse_utils::mouse_world_coords(
+                        input_state.mouse_pos,
+                        camera,
+                        window_width,
+                        window_height,
+                        v_width,
+                        v_height,
+                    )) {
+                        found_hovering = true;
+                        object_grid[index].get_mut_data().is_hovering = true;
+                    }
+                }
             }
         }
     }
@@ -68,6 +91,8 @@ impl EntityManager {
         d: &mut RaylibDrawHandle,
         texture: &Texture2D,
     ) {
+        let mut hover_obj: Option<&Object> = None;
+
         for y in self.start_tile_y..=self.end_tile_y {
             // separate shadow pass specifcialyl so the shadows dont cross over same row objects
             for x in self.start_tile_x..=self.end_tile_x {
@@ -78,6 +103,10 @@ impl EntityManager {
                 }
 
                 let index = TileMap::cords_to_index(self.map_dimensions, cord);
+
+                if let Object::NoObject = object_grid[index] {
+                    continue;
+                }
 
                 object_grid[index].draw_shadow(
                     d,
@@ -94,8 +123,23 @@ impl EntityManager {
                 }
 
                 let index = TileMap::cords_to_index(self.map_dimensions, cord);
+
+                if let Object::NoObject = object_grid[index] {
+                    continue;
+                }
+
                 object_grid[index].draw(d, texture);
+
+                if let None = hover_obj {
+                    if object_grid[index].get_data().is_hovering {
+                        hover_obj = Some(&object_grid[index]);
+                    }
+                }
             }
+        }
+
+        if let Some(obj) = hover_obj {
+            obj.draw_hover(d, texture);
         }
     }
 }

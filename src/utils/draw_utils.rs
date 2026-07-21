@@ -1,6 +1,9 @@
 use basic_raylib_core::graphics::sprite::Sprite;
 use raylib::{
-    color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, ffi::rlScalef, math::{Rectangle, Vector2}, texture::Texture2D,
+    color::Color,
+    drawing::{RaylibDraw, RaylibDrawHandle},
+    math::{Rectangle, Vector2},
+    texture::Texture2D,
 };
 
 use crate::utils::directional_deltas::CARDINAL_DELTAS;
@@ -12,13 +15,15 @@ pub fn draw_shadow(
     shear_x: f32,
     scale_y: f32,
     texture: &Texture2D,
-    shadow_in_front: bool
 ) {
     let shear_matrix = [
         1.0, 0.0, 0.0, 0.0, -shear_x, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
     ];
     let sprite_pivot_x = pos.x + sprite.src_rect.width / 2.0;
     let sprite_pivot_y = pos.y + sprite.src_rect.height;
+
+    let shadow_in_front = scale_y < -sprite.src_rect.height;
+    let real_scale_y = scale_y.abs();
 
     unsafe {
         raylib::ffi::rlPushMatrix();
@@ -32,28 +37,26 @@ pub fn draw_shadow(
 
     let mut dest_rect = Rectangle {
         x: pos.x,
-        y: pos.y + scale_y,
+        y: pos.y + real_scale_y,
         width: sprite.src_rect.width,
-        height: sprite.src_rect.height - scale_y,
+        height: sprite.src_rect.height - real_scale_y,
     };
 
     let mut src_rect = sprite.src_rect;
 
     if shadow_in_front {
         dest_rect.y = pos.y + src_rect.height;
-        src_rect.height = -src_rect.height;  
+        src_rect.height = -src_rect.height;
     }
 
-    d.draw_texture_pro(texture, src_rect, dest_rect, Vector2::zero(), 0.0, Color::new(255, 255, 0, 255));
-    
-    // sprite.draw_pro(
-    //     d,
-    //     dest_rect,
-    //     Vector2::zero(),
-    //     0.0,
-    //     texture,
-    //     Color::new(255, 255, 0, 255),
-    // );
+    d.draw_texture_pro(
+        texture,
+        src_rect,
+        dest_rect,
+        Vector2::zero(),
+        0.0,
+        Color::new(255, 255, 0, 255),
+    );
 
     unsafe {
         raylib::ffi::rlPopMatrix();
@@ -65,4 +68,6 @@ pub fn draw_outline(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vector2, tex
         let draw_pos = Vector2::new(pos.x + dir.x as f32, pos.y + dir.y as f32);
         sprite.draw_col(d, draw_pos, texture, Color::new(255, 255, 255, 0));
     }
+
+    sprite.draw(d, pos, texture);
 }

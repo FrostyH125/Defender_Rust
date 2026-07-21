@@ -9,7 +9,7 @@ use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, math::Vector2, texture
 use crate::{
     TILE_SIZE,
     entities::{
-        object::Object::{self, TreeObj},
+        object::Object,
         objects::tree::Tree,
     },
     map::{

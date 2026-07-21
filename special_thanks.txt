@@ -1,0 +1,17 @@
+Special Thanks:
+Diamond (rivers)
+Guildred (Shadows)
+Waiiki (Culling)
+PaperClip (string utilities)
+TheKrumpet (Object Hovering)
+ejc5Million (abstract and virtual properties (now unused but the help wasnt forgotten))
+Fenz
+Vic
+treebeard
+mathica2
+Belphegor
+Quaspen
+_Lupin_III_
+Grak
+Samwhale
+Aqua
