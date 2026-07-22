@@ -8,6 +8,9 @@ use raylib::{
 
 use crate::utils::directional_deltas::CARDINAL_DELTAS;
 
+/// scale_y is 0..=1.0, meaning how far the sprite is scaled down, 0 being not at all
+/// 1.0 being all the way to the base
+/// 1.0..=2.0 for scale_y will put the shadow in front of the sprite
 pub fn draw_shadow(
     d: &mut RaylibDrawHandle,
     sprite: &Sprite,
@@ -22,8 +25,10 @@ pub fn draw_shadow(
     let sprite_pivot_x = pos.x + sprite.src_rect.width / 2.0;
     let sprite_pivot_y = pos.y + sprite.src_rect.height;
 
-    let shadow_in_front = scale_y < -sprite.src_rect.height;
-    let real_scale_y = scale_y.abs();
+    let local_scale_y = scale_y * sprite.src_rect.height;
+    
+    let shadow_in_front = local_scale_y < -sprite.src_rect.height;
+    let real_scale_y = local_scale_y.abs();
 
     unsafe {
         raylib::ffi::rlPushMatrix();

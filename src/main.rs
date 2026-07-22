@@ -17,14 +17,9 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
-// 
-// enter moon phase info into DayNightCycle
-// 
-// DayNightCycle::update_day_night_color()
-
-// add grass
-
-// add new tree variants
+//  enter moon phase info into DayNightCycle
+//  add grass
+//  add new tree variants
 pub const TILE_SIZE: f32 = 8.0;
 
 fn main() {

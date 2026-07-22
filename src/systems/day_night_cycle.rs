@@ -8,6 +8,79 @@ use raylib::{
     ffi::KeyboardKey,
 };
 
+use crate::systems::day_night_cycle::MoonPhase::{FirstQuarter, NewMoon, WaxingCrescent};
+
+
+
+enum MoonPhase {
+    NewMoon,
+    WaxingCrescent,
+    FirstQuarter,
+    WaxingGibbous,
+    FullMoon,
+    WaningGibbous,
+    LastQuarter,
+    WaningCrescent,
+}
+
+struct NightDetails {
+    shadow_shear_x: f32,
+    shadow_scale_y: f32,
+    brightness: f32,
+    moon_phase: MoonPhase,
+}
+
+pub static NIGHTS: [NightDetails; 8] = [
+    NightDetails {
+        shadow_shear_x: 0.0,
+        shadow_scale_y: 0.0,
+        brightness: -0.4,
+        moon_phase: NewMoon,
+    },
+    NightDetails {
+        shadow_shear_x: 2.0,
+        shadow_scale_y: 0.5,
+        brightness: -0.3,
+        moon_phase: WaxingCrescent,
+    },
+    NightDetails {
+        shadow_shear_x: 4.0,
+        shadow_scale_y: 0.8,
+        brightness: -0.25,
+        moon_phase: FirstQuarter,
+    },
+    NightDetails {
+        shadow_shear_x: todo!(),
+        shadow_scale_y: todo!(),
+        brightness: todo!(),
+        moon_phase: todo!(),
+    },
+    NightDetails {
+        shadow_shear_x: todo!(),
+        shadow_scale_y: todo!(),
+        brightness: todo!(),
+        moon_phase: todo!(),
+    },
+    NightDetails {
+        shadow_shear_x: todo!(),
+        shadow_scale_y: todo!(),
+        brightness: todo!(),
+        moon_phase: todo!(),
+    },
+    NightDetails {
+        shadow_shear_x: todo!(),
+        shadow_scale_y: todo!(),
+        brightness: todo!(),
+        moon_phase: todo!(),
+    },
+    NightDetails {
+        shadow_shear_x: todo!(),
+        shadow_scale_y: todo!(),
+        brightness: todo!(),
+        moon_phase: todo!(),
+    },
+];
+
 pub struct DayNightCycle {
     pub current_time: f32,
     pub current_shadow_shear: f32,
@@ -80,8 +153,8 @@ impl DayNightCycle {
 
     fn update_shadow_values(&mut self) {
         const MAX_SHEAR: f32 = -6.0;
-        const MIN_SCALE_Y: f32 = -12.0;
-        const MAX_SCALE_Y: f32 = 0.0;
+        const MIN_SCALE_Y: f32 = 0.0;
+        const MAX_SCALE_Y: f32 = 0.8;
 
         let (shear, scale) = match self.current_time {
             0.0..=90.0 => (
@@ -93,7 +166,7 @@ impl DayNightCycle {
                 smooth_lerp_min_max(MAX_SCALE_Y, MIN_SCALE_Y, self.current_time, 90.0, 180.0),
             ),
             180.0..=360.0 => (0.0, 0.0),
-            _ => (0.0, 0.0)
+            _ => (0.0, 0.0),
         };
 
         self.current_shadow_scale_y = scale;
@@ -101,7 +174,6 @@ impl DayNightCycle {
     }
 
     fn update_sky_colors(&mut self) {
-
         // these will be replaced eventually with current_night.red/blue/darkness
         const MAX_BLUE_DAYTIME: f32 = 0.3;
         const MAX_RED_DAYTIME: f32 = 0.2;
@@ -120,7 +192,7 @@ impl DayNightCycle {
                 smooth_lerp_min_max(0.0, MIN_BRIGHTNESS_DAYTIME, self.current_time, 150.0, 180.0),
             ),
             180.0..=360.0 => (0.0, 0.0, 0.0),
-            _ => (0.0, 0.0, 0.0)
+            _ => (0.0, 0.0, 0.0),
         };
 
         self.blue_tint = blue;
