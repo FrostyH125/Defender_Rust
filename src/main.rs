@@ -20,8 +20,7 @@ pub mod utils;
 // 
 // enter moon phase info into DayNightCycle
 // 
-// DayNightCycle::update_shadow_info() -> changes shear and scale based on time_of_day (which goes from 0.0..=360.0), 180.0..=360.0 is night and will use the night time shear and scale
-// DayNightCycle::update_day_night_color() -> more tint info to be passed to the shader
+// DayNightCycle::update_day_night_color()
 
 // add grass
 

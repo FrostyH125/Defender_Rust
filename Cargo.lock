@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "basic-raylib-core"
 version = "0.1.0"
-source = "git+https://github.com/FrostyH125/basic-raylib-core#ab963b418bc58788bc7eb5ce161d0cdfab61f5a2"
+source = "git+https://github.com/FrostyH125/basic-raylib-core#ab61754af5a0b033e2915271c435600cd8b6b7d0"
 dependencies = [
  "rand",
  "raylib",
@@ -161,9 +161,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.188"
+version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22053b6a34f84abc97f9129e61334f40174659a1b9bd18c970b83db6a9a6348b"
+checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "libloading"

@@ -1,5 +1,6 @@
 // need to add moon phases
 
+use basic_raylib_core::utils::math_utils::{self, smooth_lerp_min_max};
 use raylib::{
     RaylibHandle,
     color::Color,
@@ -24,12 +25,12 @@ impl DayNightCycle {
             current_shadow_scale_y: 0.0,
             red_tint: 0.0,
             blue_tint: 0.0,
-            brightness_modifier: 0.0
+            brightness_modifier: 0.0,
         };
     }
 
     pub fn update(&mut self, dt: f32, rl: &mut RaylibHandle) {
-        self.current_time += dt;
+        self.current_time += dt * 4.0;
 
         if rl.is_key_down(KeyboardKey::KEY_Q) {
             self.current_shadow_shear -= dt;
@@ -46,7 +47,7 @@ impl DayNightCycle {
             self.current_shadow_scale_y += dt * 10.0;
         }
 
-        // set shadow variables
+        self.update_shadow_values();
     }
 
     pub fn draw_dbg(&self, d: &mut RaylibDrawHandle) {
@@ -74,8 +75,24 @@ impl DayNightCycle {
     }
 
     fn update_shadow_values(&mut self) {
-        const MAX_SHEAR: f32 = -2.0;
+        const MAX_SHEAR: f32 = -6.0;
         const MIN_SCALE_Y: f32 = -12.0;
         const MAX_SCALE_Y: f32 = 0.0;
+
+        let (shear, scale) = match self.current_time {
+            0.0..=90.0 => (
+                smooth_lerp_min_max(-MAX_SHEAR, 0.0, self.current_time, 0.0, 90.0),
+                smooth_lerp_min_max(MIN_SCALE_Y, MAX_SCALE_Y, self.current_time, 0.0, 90.0),
+            ),
+            90.0..=180.0 => (
+                smooth_lerp_min_max(0.0, MAX_SHEAR, self.current_time, 90.0, 180.0),
+                smooth_lerp_min_max(MAX_SCALE_Y, MIN_SCALE_Y, self.current_time, 90.0, 180.0),
+            ),
+            180.0..=360.0 => (0.0, 0.0),
+            _ => (0.0, 0.0)
+        };
+
+        self.current_shadow_scale_y = scale;
+        self.current_shadow_shear = shear;
     }
 }
