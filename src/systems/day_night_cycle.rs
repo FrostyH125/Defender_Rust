@@ -31,6 +31,9 @@ impl DayNightCycle {
 
     pub fn update(&mut self, dt: f32, rl: &mut RaylibHandle) {
         self.current_time += dt * 4.0;
+        if self.current_time > 360.0 {
+            self.current_time -= 360.0;
+        }
 
         if rl.is_key_down(KeyboardKey::KEY_Q) {
             self.current_shadow_shear -= dt;
@@ -48,6 +51,7 @@ impl DayNightCycle {
         }
 
         self.update_shadow_values();
+        self.update_sky_colors();
     }
 
     pub fn draw_dbg(&self, d: &mut RaylibDrawHandle) {
@@ -94,5 +98,33 @@ impl DayNightCycle {
 
         self.current_shadow_scale_y = scale;
         self.current_shadow_shear = shear;
+    }
+
+    fn update_sky_colors(&mut self) {
+
+        // these will be replaced eventually with current_night.red/blue/darkness
+        const MAX_BLUE_DAYTIME: f32 = 0.3;
+        const MAX_RED_DAYTIME: f32 = 0.2;
+        const MIN_BRIGHTNESS_DAYTIME: f32 = -0.2;
+
+        let (blue, red, light) = match self.current_time {
+            0.0..=30.0 => (
+                smooth_lerp_min_max(MAX_BLUE_DAYTIME, 0.0, self.current_time, 0.0, 30.0),
+                smooth_lerp_min_max(MAX_RED_DAYTIME, 0.0, self.current_time, 0.0, 30.0),
+                smooth_lerp_min_max(MIN_BRIGHTNESS_DAYTIME, 0.0, self.current_time, 0.0, 30.0),
+            ),
+            30.0..=150.0 => (0.0, 0.0, 0.0),
+            150.0..=180.0 => (
+                smooth_lerp_min_max(0.0, MAX_BLUE_DAYTIME, self.current_time, 150.0, 180.0),
+                smooth_lerp_min_max(0.0, MAX_RED_DAYTIME, self.current_time, 150.0, 180.0),
+                smooth_lerp_min_max(0.0, MIN_BRIGHTNESS_DAYTIME, self.current_time, 150.0, 180.0),
+            ),
+            180.0..=360.0 => (0.0, 0.0, 0.0),
+            _ => (0.0, 0.0, 0.0)
+        };
+
+        self.blue_tint = blue;
+        self.red_tint = red;
+        self.brightness_modifier = light;
     }
 }
