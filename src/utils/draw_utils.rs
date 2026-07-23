@@ -25,10 +25,8 @@ pub fn draw_shadow(
     let sprite_pivot_x = pos.x + sprite.src_rect.width / 2.0;
     let sprite_pivot_y = pos.y + sprite.src_rect.height;
 
-    let local_scale_y = scale_y * sprite.src_rect.height;
-    
-    let shadow_in_front = local_scale_y < -sprite.src_rect.height;
-    let real_scale_y = local_scale_y.abs();
+    let shadow_in_front = scale_y < 0.0;
+    let scale_pixels_y = sprite.src_rect.height - (sprite.src_rect.height * scale_y.abs());
 
     unsafe {
         raylib::ffi::rlPushMatrix();
@@ -42,9 +40,9 @@ pub fn draw_shadow(
 
     let mut dest_rect = Rectangle {
         x: pos.x,
-        y: pos.y + real_scale_y,
+        y: pos.y + scale_pixels_y,
         width: sprite.src_rect.width,
-        height: sprite.src_rect.height - real_scale_y,
+        height: sprite.src_rect.height - scale_pixels_y,
     };
 
     let mut src_rect = sprite.src_rect;

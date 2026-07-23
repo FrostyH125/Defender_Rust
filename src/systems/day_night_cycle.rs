@@ -30,56 +30,56 @@ struct NightDetails {
     moon_phase: MoonPhase,
 }
 
-pub static NIGHTS: [NightDetails; 8] = [
-    NightDetails {
-        shadow_shear_x: 0.0,
-        shadow_scale_y: 0.0,
-        brightness: -0.4,
-        moon_phase: NewMoon,
-    },
-    NightDetails {
-        shadow_shear_x: 2.0,
-        shadow_scale_y: 0.5,
-        brightness: -0.3,
-        moon_phase: WaxingCrescent,
-    },
-    NightDetails {
-        shadow_shear_x: 4.0,
-        shadow_scale_y: 0.8,
-        brightness: -0.25,
-        moon_phase: FirstQuarter,
-    },
-    NightDetails {
-        shadow_shear_x: todo!(),
-        shadow_scale_y: todo!(),
-        brightness: todo!(),
-        moon_phase: todo!(),
-    },
-    NightDetails {
-        shadow_shear_x: todo!(),
-        shadow_scale_y: todo!(),
-        brightness: todo!(),
-        moon_phase: todo!(),
-    },
-    NightDetails {
-        shadow_shear_x: todo!(),
-        shadow_scale_y: todo!(),
-        brightness: todo!(),
-        moon_phase: todo!(),
-    },
-    NightDetails {
-        shadow_shear_x: todo!(),
-        shadow_scale_y: todo!(),
-        brightness: todo!(),
-        moon_phase: todo!(),
-    },
-    NightDetails {
-        shadow_shear_x: todo!(),
-        shadow_scale_y: todo!(),
-        brightness: todo!(),
-        moon_phase: todo!(),
-    },
-];
+// pub static NIGHTS: [NightDetails; 8] = [
+//     NightDetails {
+//         shadow_shear_x: 0.0,
+//         shadow_scale_y: 0.0,
+//         brightness: -0.4,
+//         moon_phase: NewMoon,
+//     },
+//     NightDetails {
+//         shadow_shear_x: 2.0,
+//         shadow_scale_y: 0.5,
+//         brightness: -0.3,
+//         moon_phase: WaxingCrescent,
+//     },
+//     NightDetails {
+//         shadow_shear_x: 4.0,
+//         shadow_scale_y: 0.8,
+//         brightness: -0.25,
+//         moon_phase: FirstQuarter,
+//     },
+//     NightDetails {
+//         shadow_shear_x: todo!(),
+//         shadow_scale_y: todo!(),
+//         brightness: todo!(),
+//         moon_phase: todo!(),
+//     },
+//     NightDetails {
+//         shadow_shear_x: todo!(),
+//         shadow_scale_y: todo!(),
+//         brightness: todo!(),
+//         moon_phase: todo!(),
+//     },
+//     NightDetails {
+//         shadow_shear_x: todo!(),
+//         shadow_scale_y: todo!(),
+//         brightness: todo!(),
+//         moon_phase: todo!(),
+//     },
+//     NightDetails {
+//         shadow_shear_x: todo!(),
+//         shadow_scale_y: todo!(),
+//         brightness: todo!(),
+//         moon_phase: todo!(),
+//     },
+//     NightDetails {
+//         shadow_shear_x: todo!(),
+//         shadow_scale_y: todo!(),
+//         brightness: todo!(),
+//         moon_phase: todo!(),
+//     },
+// ];
 
 pub struct DayNightCycle {
     pub current_time: f32,
@@ -106,21 +106,6 @@ impl DayNightCycle {
         self.current_time += dt * 4.0;
         if self.current_time > 360.0 {
             self.current_time -= 360.0;
-        }
-
-        if rl.is_key_down(KeyboardKey::KEY_Q) {
-            self.current_shadow_shear -= dt;
-        }
-
-        if rl.is_key_down(KeyboardKey::KEY_W) {
-            self.current_shadow_shear += dt;
-        }
-        if rl.is_key_down(KeyboardKey::KEY_E) {
-            self.current_shadow_scale_y -= dt * 10.0;
-        }
-
-        if rl.is_key_down(KeyboardKey::KEY_R) {
-            self.current_shadow_scale_y += dt * 10.0;
         }
 
         self.update_shadow_values();
@@ -152,9 +137,9 @@ impl DayNightCycle {
     }
 
     fn update_shadow_values(&mut self) {
-        const MAX_SHEAR: f32 = -6.0;
-        const MIN_SCALE_Y: f32 = 0.0;
-        const MAX_SCALE_Y: f32 = 0.8;
+        const MAX_SHEAR: f32 = -10.0;
+        const MIN_SCALE_Y: f32 = 0.7;
+        const MAX_SCALE_Y: f32 = 0.3;
 
         let (shear, scale) = match self.current_time {
             0.0..=90.0 => (

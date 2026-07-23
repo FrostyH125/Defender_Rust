@@ -1,6 +1,6 @@
 use basic_raylib_core::system::input_handler::InputState;
 use raylib::{
-    camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, math::{Rectangle, Vector2}, shaders::RaylibShader,
+    camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, ffi::KeyboardKey, math::{Rectangle, Vector2}, shaders::RaylibShader, texture::RenderTexture2D,
 };
 
 use crate::{
@@ -60,7 +60,7 @@ fn main() {
     let blue_tint_loc = shader.get_shader_location("blue_tint");
     let brightness_modifier_loc = shader.get_shader_location("brightness_modifier");
 
-    let mut render_textures = vec![
+    let mut render_textures: [RenderTexture2D; 5] = [
         rl.load_render_texture(&thread, 1920, 1080).unwrap(),
         rl.load_render_texture(&thread, 960, 540).unwrap(),
         rl.load_render_texture(&thread, 640, 360).unwrap(),
@@ -88,7 +88,28 @@ fn main() {
             camera.offset.y = current_zoom.v_height() / 2.0;
         }
 
-        println!("{}", current_zoom as usize);
+        if rl.is_key_pressed(KeyboardKey::KEY_Z) {
+            current_zoom = current_zoom.change_res(false);
+            camera.offset.x = current_zoom.v_width() / 2.0;
+            camera.offset.y = current_zoom.v_height() / 2.0;
+        } else if rl.is_key_pressed(KeyboardKey::KEY_X) {
+            current_zoom = current_zoom.change_res(true);
+            camera.offset.x = current_zoom.v_width() / 2.0;
+            camera.offset.y = current_zoom.v_height() / 2.0;
+        }
+
+        if rl.is_key_down(KeyboardKey::KEY_D) {
+            camera_pos.x += current_zoom.v_width() * dt;
+        }
+        if rl.is_key_down(KeyboardKey::KEY_A) {
+            camera_pos.x -= current_zoom.v_width() * dt;
+        }
+        if rl.is_key_down(KeyboardKey::KEY_W) {
+            camera_pos.y -= current_zoom.v_width() * dt;
+        }
+        if rl.is_key_down(KeyboardKey::KEY_S) {
+            camera_pos.y += current_zoom.v_width() * dt;
+        }
 
         if input_state.middle_currently_held {
             camera_pos.x -= input_state.delta.x / (window_width / current_zoom.v_width());
