@@ -19,15 +19,38 @@ pub fn draw_shadow(
     scale_y: f32,
     texture: &Texture2D,
 ) {
-    let shear_matrix = [
-        1.0, 0.0, 0.0, 0.0, -shear_x, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ];
     let sprite_pivot_x = pos.x + sprite.src_rect.width / 2.0;
     let sprite_pivot_y = pos.y + sprite.src_rect.height;
 
-    let shadow_in_front = scale_y < 0.0;
     let scale_pixels_y = sprite.src_rect.height - (sprite.src_rect.height * scale_y.abs());
+    let shadow_in_front = scale_y < 0.0;
 
+    // this is not necessary but makes the shear_x value more logical when upside down
+    let mut final_shear_x = shear_x;
+    if shadow_in_front {
+        final_shear_x = -final_shear_x;
+    }
+    
+    let shear_matrix = [
+        1.0, 0.0, 0.0, 0.0, -final_shear_x, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+    ];
+    
+    let mut dest_rect = Rectangle {
+        x: pos.x,
+        y: pos.y + scale_pixels_y,
+        width: sprite.src_rect.width,
+        height: sprite.src_rect.height - scale_pixels_y,
+    };
+
+    let mut src_rect = sprite.src_rect;
+
+    // move the top to the base of the sprite being shadowed
+    // flip src to flip it across the x axis
+    if shadow_in_front {
+        dest_rect.y = pos.y + src_rect.height;
+        src_rect.height = -src_rect.height;
+    }
+    
     unsafe {
         raylib::ffi::rlPushMatrix();
 
@@ -38,19 +61,6 @@ pub fn draw_shadow(
         raylib::ffi::rlTranslatef(-sprite_pivot_x, -sprite_pivot_y, 0.0);
     }
 
-    let mut dest_rect = Rectangle {
-        x: pos.x,
-        y: pos.y + scale_pixels_y,
-        width: sprite.src_rect.width,
-        height: sprite.src_rect.height - scale_pixels_y,
-    };
-
-    let mut src_rect = sprite.src_rect;
-
-    if shadow_in_front {
-        dest_rect.y = pos.y + src_rect.height;
-        src_rect.height = -src_rect.height;
-    }
 
     d.draw_texture_pro(
         texture,
