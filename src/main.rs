@@ -24,14 +24,13 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
-//  enter moon phase info into DayNightCycle
 //  add grass
 //  add new tree variants
 pub const TILE_SIZE: f32 = 8.0;
 
 fn main() {
-    let mut window_width = 200.0;
-    let mut window_height = 200.0;
+    let mut window_width = 1920.0;
+    let mut window_height = 1080.0;
 
     let mut current_zoom = ZoomSizes::FiveX;
     let mut camera = Camera2D {
@@ -81,10 +80,7 @@ fn main() {
     ];
 
     rl.set_target_fps(60);
-    //rl.disable_cursor();
-    unsafe {
-        SetConfigFlags(FLAG_WINDOW_UNFOCUSED as u32);
-    }
+    rl.disable_cursor();
 
     while !rl.window_should_close() {
         let dt = rl.get_frame_time();
@@ -137,15 +133,6 @@ fn main() {
         camera.target.x = camera_pos.x.round();
         camera.target.y = camera_pos.y.round();
 
-        
-
-        if rl.is_key_pressed(KeyboardKey::KEY_P) {
-
-            let new_w = window_width * 2.0;
-            let new_h = window_height * 2.0;
-            
-            change_window_size(&mut rl, &thread, &mut render_textures, &mut window_width, &mut window_height, new_w, new_h);
-        }
 
         //--UPDATE BEGINS HERE--//
         map.update(dt);
@@ -154,10 +141,10 @@ fn main() {
             dt,
             window_width,
             window_height,
-            current_zoom.v_width(window_width),
-            current_zoom.v_height(window_height),
+            current_zoom.zoomf32(),
             &camera,
             &input_state,
+            &day_night_cycle
         );
         day_night_cycle.update(dt, &mut rl);
 
@@ -165,8 +152,8 @@ fn main() {
         shader.set_shader_value(blue_tint_loc, day_night_cycle.blue_tint);
         shader.set_shader_value(brightness_modifier_loc, day_night_cycle.brightness_modifier);
 
-        //--UPDATE ENDS HERE--//
         let current_rt = &mut render_textures[current_zoom as usize];
+        //--UPDATE ENDS HERE--//
 
         //--DRAWING BEINGS HERE--//
         {
@@ -188,7 +175,6 @@ fn main() {
                         );
 
                         entity_manager.draw(
-                            &day_night_cycle,
                             &map.map_object_grid,
                             &mut shader_handle,
                             &texture,
@@ -229,11 +215,11 @@ fn main() {
 #[repr(usize)]
 #[derive(Clone, Copy)]
 enum ZoomSizes {
-    OneX,   // 1920x1080
-    TwoX,   // 960x540
-    ThreeX, // 640x360
-    FourX,  // 480x270
-    FiveX,  // 320x180
+    OneX,
+    TwoX,
+    ThreeX,
+    FourX,
+    FiveX,
 }
 
 impl ZoomSizes {
@@ -275,6 +261,10 @@ impl ZoomSizes {
         return screen_height / (self as usize as f32 + 1.0);
     }
 
+    pub fn zoomf32(self) -> f32 {
+        let zoom = self as u32 + 1;
+        return zoom as f32;
+    }
 }
 
 fn change_window_size(rl: &mut RaylibHandle, thread: &RaylibThread, rt_array: &mut [RenderTexture2D], window_width: &mut f32, window_height: &mut f32, new_width: f32, new_height: f32) {

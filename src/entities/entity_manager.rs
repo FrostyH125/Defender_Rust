@@ -34,17 +34,19 @@ impl EntityManager {
         dt: f32,
         window_width: f32,
         window_height: f32,
-        v_width: f32,
-        v_height: f32,
+        zoom: f32,
         camera: &Camera2D,
         input_state: &InputState,
+        day_night_cycle: &DayNightCycle
     ) {
         let mut found_hovering: bool = false;
+        let v_width = window_width / zoom;
+        let v_height = window_height / zoom;
 
         let start_x = camera.target.x - v_width / 2.0;
         let start_y = camera.target.y - v_height / 2.0;
-        let end_x = start_x + v_width / camera.zoom;
-        let end_y = start_y + v_height / camera.zoom;
+        let end_x = start_x + v_width;
+        let end_y = start_y + v_height;
 
         self.start_tile_x = (start_x / TILE_SIZE) as i16 - 1;
         self.start_tile_y = (start_y / TILE_SIZE) as i16;
@@ -65,7 +67,7 @@ impl EntityManager {
                     continue;
                 }
 
-                object_grid[index].update(dt);
+                object_grid[index].update(dt, day_night_cycle);
 
                 if !found_hovering {
                     if object_grid[index].is_point_intersecting(mouse_utils::mouse_world_coords(
@@ -86,7 +88,6 @@ impl EntityManager {
 
     pub fn draw(
         &self,
-        day_night_cycle: &DayNightCycle,
         object_grid: &MapObjectGrid,
         d: &mut RaylibDrawHandle,
         texture: &Texture2D,
@@ -111,8 +112,6 @@ impl EntityManager {
                 object_grid[index].draw_shadow(
                     d,
                     texture,
-                    day_night_cycle.current_shadow_shear,
-                    day_night_cycle.current_shadow_scale_y,
                 );
             }
             for x in self.start_tile_x..=self.end_tile_x {

@@ -1,3 +1,4 @@
+use basic_raylib_core::graphics::sprite::Sprite;
 use rand::random;
 use raylib::{
     drawing::RaylibDrawHandle,
@@ -5,7 +6,7 @@ use raylib::{
     texture::Texture2D,
 };
 
-use crate::entities::{object::Object::*, objects::tree::Tree};
+use crate::{entities::{object::Object::*, objects::tree::Tree}, systems::day_night_cycle::{self, DayNightCycle}, utils::draw_utils};
 
 /// This houses data that all objects share, as to not repeat fields between objects
 pub struct ObjectData {
@@ -13,6 +14,8 @@ pub struct ObjectData {
     pub draw_pos: Vector2,
     pub hover_rect: Rectangle,
     pub is_hovering: bool,
+    pub shear_x: f32,
+    pub scale_y: f32
 }
 
 impl ObjectData {
@@ -33,7 +36,9 @@ impl ObjectData {
             pos: true_pos,
             draw_pos: true_draw_pos,
             is_hovering: false,
-            hover_rect
+            hover_rect,
+            shear_x: 0.0,
+            scale_y: 0.0
         };
     }
 }
@@ -58,8 +63,12 @@ impl Object {
         }
     }
 
-    pub fn update(&mut self, dt: f32) {
-        self.get_mut_data().is_hovering = false;
+    pub fn update(&mut self, dt: f32, day_night_cycle: &DayNightCycle) {
+        let data = self.get_mut_data();
+        
+        data.is_hovering = false;
+        data.shear_x = day_night_cycle.current_shadow_shear;
+        data.scale_y = day_night_cycle.current_shadow_scale_y;
 
         match self {
             TreeObj(tree) => tree.update(dt),
@@ -93,11 +102,9 @@ impl Object {
         &self,
         d: &mut RaylibDrawHandle,
         texture: &Texture2D,
-        shear_x: f32,
-        shear_y: f32,
     ) {
         match self {
-            TreeObj(tree) => tree.draw_shadow(d, texture, shear_x, shear_y),
+            TreeObj(tree) => tree.draw_shadow(d, texture),
             NoObject => (),
         }
     }

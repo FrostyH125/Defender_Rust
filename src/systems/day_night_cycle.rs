@@ -163,8 +163,8 @@ impl DayNightCycle {
 
     fn update_shadow_values(&mut self) {
         const MAX_SHEAR: f32 = -10.0;
-        const MIN_SCALE_Y: f32 = 0.7;
-        const MAX_SCALE_Y: f32 = 0.3;
+        const MIN_SCALE_Y: f32 = 0.05;
+        const MAX_SCALE_Y: f32 = 0.6;
 
         let (shear, scale) = match self.current_time {
             0.0..=90.0 => (
@@ -189,20 +189,20 @@ impl DayNightCycle {
 
     fn update_sky_colors(&mut self) {
         // these will be replaced eventually with current_night.red/blue/darkness
-        const MAX_BLUE: f32 = 0.3;
+        const MAX_BLUE: f32 = 0.2;
         const MAX_RED: f32 = 0.2;
         let current_night_brightness_modifier = NIGHTS[self.current_night].brightness_modifier;
 
         
 
         let (blue, red, light) = match self.current_time {
-            0.0..=30.0 => (
+            0.0..=35.0 => (
                 smooth_lerp_min_max(MAX_BLUE, 0.0, self.current_time, 0.0, 30.0),
                 smooth_lerp_min_max(MAX_RED, 0.0, self.current_time, 0.0, 30.0),
                 smooth_lerp_min_max(current_night_brightness_modifier, 0.0, self.current_time, 0.0, 30.0),
             ),
             30.0..=150.0 => (0.0, 0.0, 0.0),
-            150.0..=180.0 => (
+            145.0..=180.0 => (
                 smooth_lerp_min_max(0.0, MAX_BLUE, self.current_time, 150.0, 180.0),
                 smooth_lerp_min_max(0.0, MAX_RED, self.current_time, 150.0, 180.0),
                 smooth_lerp_min_max(0.0, current_night_brightness_modifier, self.current_time, 150.0, 180.0),

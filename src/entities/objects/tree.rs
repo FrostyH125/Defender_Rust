@@ -48,15 +48,13 @@ impl Tree {
         &self,
         d: &mut RaylibDrawHandle,
         texture: &Texture2D,
-        shear_x: f32,
-        scale_y: f32,
     ) {
         draw_utils::draw_shadow(
             d,
             &TREE_SPRITE,
             self.data.draw_pos,
-            shear_x,
-            scale_y,
+            self.data.shear_x,
+            self.data.scale_y,
             texture,
         );
     }

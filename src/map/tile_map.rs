@@ -1,6 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-};
+use std::collections::{HashMap, VecDeque};
 
 use basic_raylib_core::graphics::{sprite::Sprite, sprite_animation::SpriteAnimationInstance};
 use rand::{RngExt, rngs::ThreadRng};
@@ -8,10 +6,7 @@ use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, math::Vector2, texture
 
 use crate::{
     TILE_SIZE,
-    entities::{
-        object::Object,
-        objects::tree::Tree,
-    },
+    entities::{object::Object, objects::tree::Tree},
     map::{
         tile::{
             LakeSpriteData, RiverSpriteData,
@@ -106,9 +101,11 @@ impl TileMap {
         println!("Made forest lakes!");
 
         Self::create_forests(&tile_grid, &mut object_grid, map_dimensions, &mut rng);
-
         println!("Forests created!");
-        //CreateStandAloneTrees();
+
+        Self::create_standalone_trees(&tile_grid, &mut object_grid, map_dimensions, &mut rng);
+        println!("Standalone trees created!");
+        
         //CreateGrass() // maybe if a tile is a tree theres a chance to spawn a bunch of grass around it ... ?
         //SpawnGrassAroundLakes();
         //SpawnGrassAroundRivers(); // i remember the og code had some cracked af math for this one, just use that
@@ -996,7 +993,10 @@ impl TileMap {
 
                     let idx = Self::cords_to_index(map_dimensions, try_tree_tile);
 
-                    object_grid[idx] = Tree::new(try_tree_tile, rng);
+                    if let Object::NoObject = object_grid[idx] {
+                        object_grid[idx] = Tree::new(try_tree_tile, rng);
+                    }
+
                 }
 
                 // move it one tile to the left or right
@@ -1039,6 +1039,36 @@ impl TileMap {
                             height += 1;
                         }
                     }
+                }
+            }
+        }
+    }
+
+    fn create_standalone_trees(
+        tile_grid: &MapTileGrid,
+        object_grid: &mut MapObjectGrid,
+        map_dimensions: MapDimensions,
+        rng: &mut ThreadRng,
+    ) {
+        let num_of_trees = (map_dimensions.total_tiles() as f32 * rng.random_range(0.001..=0.002)) as i32;
+
+        for _ in 0..=num_of_trees {
+            loop {
+                let rand_x = rng.random_range(0..map_dimensions.width);
+                let rand_y = rng.random_range(0..map_dimensions.height);
+
+                let try_tile = MapCord::new(rand_x as i16, rand_y as i16);
+
+                // keep trying until you find a grass tile
+                if Self::get_tile_at_cord_no_self(tile_grid, map_dimensions, try_tile) != TileType::Grass {
+                    continue;
+                }
+
+                let idx = Self::cords_to_index(map_dimensions, try_tile);
+
+                if let Object::NoObject = object_grid[idx] {
+                    object_grid[idx] = Tree::new(try_tile, rng);
+                    break;
                 }
             }
         }
