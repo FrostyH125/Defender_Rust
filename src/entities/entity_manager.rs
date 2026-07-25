@@ -1,11 +1,9 @@
-use basic_raylib_core::system::input_handler::InputState;
-use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, texture::Texture2D};
+use raylib::{drawing::RaylibDrawHandle, texture::Texture2D};
 
 use crate::{
-    TILE_SIZE,
+    GameContext, TILE_SIZE,
     entities::object::Object,
     map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
-    systems::day_night_cycle::DayNightCycle,
     utils::{map_cord::MapCord, mouse_utils},
 };
 
@@ -31,27 +29,23 @@ impl EntityManager {
     pub fn update(
         &mut self,
         object_grid: &mut MapObjectGrid,
+        game_context: &mut GameContext,
+        zoom: u32,
         dt: f32,
-        window_width: f32,
-        window_height: f32,
-        zoom: f32,
-        camera: &Camera2D,
-        input_state: &InputState,
-        day_night_cycle: &DayNightCycle
     ) {
         let mut found_hovering: bool = false;
-        let v_width = window_width / zoom;
-        let v_height = window_height / zoom;
+        let v_width = (game_context.window_width / zoom) as i16;
+        let v_height = (game_context.window_height / zoom) as i16;
 
-        let start_x = camera.target.x - v_width / 2.0;
-        let start_y = camera.target.y - v_height / 2.0;
+        let start_x = game_context.camera.target.x as i16 - v_width / 2;
+        let start_y = game_context.camera.target.y as i16 - v_height / 2;
         let end_x = start_x + v_width;
         let end_y = start_y + v_height;
 
-        self.start_tile_x = (start_x / TILE_SIZE) as i16 - 1;
-        self.start_tile_y = (start_y / TILE_SIZE) as i16;
-        self.end_tile_x = (end_x / TILE_SIZE) as i16 + 2;
-        self.end_tile_y = (end_y / TILE_SIZE) as i16 + 2;
+        self.start_tile_x = start_x / TILE_SIZE as i16 - 1;
+        self.start_tile_y = start_y / TILE_SIZE as i16;
+        self.end_tile_x = end_x / TILE_SIZE as i16 + 2;
+        self.end_tile_y = end_y / TILE_SIZE as i16 + 2;
 
         for y in (self.start_tile_y..=self.end_tile_y).rev() {
             for x in (self.start_tile_x..=self.end_tile_x).rev() {
@@ -67,17 +61,17 @@ impl EntityManager {
                     continue;
                 }
 
-                object_grid[index].update(dt, day_night_cycle);
+                object_grid[index].update(
+                    dt,
+                    &game_context.day_night_cycle,
+                    game_context.total_game_time,
+                    &mut game_context.rng,
+                );
 
                 if !found_hovering {
-                    if object_grid[index].is_point_intersecting(mouse_utils::mouse_world_coords(
-                        input_state.mouse_pos,
-                        camera,
-                        window_width,
-                        window_height,
-                        v_width,
-                        v_height,
-                    )) {
+                    if object_grid[index]
+                        .is_point_intersecting(mouse_utils::mouse_world_coords(&game_context))
+                    {
                         found_hovering = true;
                         object_grid[index].get_mut_data().is_hovering = true;
                     }
@@ -86,12 +80,7 @@ impl EntityManager {
         }
     }
 
-    pub fn draw(
-        &self,
-        object_grid: &MapObjectGrid,
-        d: &mut RaylibDrawHandle,
-        texture: &Texture2D,
-    ) {
+    pub fn draw(&self, object_grid: &MapObjectGrid, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let mut hover_obj: Option<&Object> = None;
 
         for y in self.start_tile_y..=self.end_tile_y {
@@ -109,10 +98,7 @@ impl EntityManager {
                     continue;
                 }
 
-                object_grid[index].draw_shadow(
-                    d,
-                    texture,
-                );
+                object_grid[index].draw_shadow(d, texture);
             }
             for x in self.start_tile_x..=self.end_tile_x {
                 let cord = MapCord::new(x, y);

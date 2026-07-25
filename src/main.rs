@@ -1,13 +1,14 @@
 use basic_raylib_core::system::input_handler::InputState;
+use rand::rngs::ThreadRng;
 use raylib::{
     RaylibHandle, RaylibThread,
     camera::Camera2D,
     color::Color,
     drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
-    ffi::{ConfigFlags::FLAG_WINDOW_UNFOCUSED, KeyboardKey, SetConfigFlags},
+    ffi::KeyboardKey,
     math::{Rectangle, Vector2},
     shaders::RaylibShader,
-    texture::RenderTexture2D,
+    texture::{RenderTexture2D, Texture2D},
 };
 
 use crate::{
@@ -28,29 +29,56 @@ pub mod utils;
 //  add new tree variants
 pub const TILE_SIZE: f32 = 8.0;
 
+// object_grid: &mut MapObjectGrid,
+// dt: f32,
+// total_game_time: f32,
+// window_width: f32,
+// window_height: f32,
+// zoom: f32,
+// camera: &Camera2D,
+// input_state: &InputState,
+// day_night_cycle: &DayNightCycle,
+// rng: &mut ThreadRng
+
+pub struct GameContext {
+    total_game_time: f32,
+    window_width: u32,
+    window_height: u32,
+    v_width: u32,
+    v_height: u32,
+    camera: Camera2D,
+    day_night_cycle: DayNightCycle,
+    input_state: InputState,
+    rng: ThreadRng,
+    texture: Texture2D,
+}
+
 fn main() {
-    let mut window_width = 1920.0;
-    let mut window_height = 1080.0;
+    let mut window_width = 1920;
+    let mut window_height = 1080;
 
     let mut current_zoom = ZoomSizes::FiveX;
+    let v_width = current_zoom.v_width(window_width);
+    let v_height = current_zoom.v_height(window_height);
+
     let mut camera = Camera2D {
         offset: Vector2 {
-            x: current_zoom.v_width(window_width) / 2.0,
-            y: current_zoom.v_height(window_height) / 2.0,
+            x: v_width as f32 / 2.0,
+            y: v_height as f32 / 2.0,
         },
         target: Vector2 {
-            x: current_zoom.v_width(window_width) / 2.0,
-            y: current_zoom.v_height(window_height) / 2.0,
+            x: v_width as f32 / 2.0,
+            y: v_height as f32 / 2.0,
         },
         rotation: 0.0,
         zoom: 1.0,
     };
+    let mut rng = rand::rng();
 
     let mut camera_pos = camera.target;
-
     let mut input_state = InputState::new();
 
-    let mut map = TileMap::generate_map(500, 500);
+    let mut map = TileMap::generate_map(500, 500, &mut rng);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
 
     let mut day_night_cycle = DayNightCycle::new();
@@ -82,75 +110,86 @@ fn main() {
     rl.set_target_fps(60);
     rl.disable_cursor();
 
+    let mut game_context = GameContext {
+        total_game_time: 0.0,
+        window_width,
+        window_height,
+        v_width,
+        v_height,
+        camera,
+        day_night_cycle,
+        input_state,
+        rng,
+        texture,
+    };
+
     while !rl.window_should_close() {
         let dt = rl.get_frame_time();
 
+        game_context.total_game_time += dt;
+
         // update input first
-        input_state.update(&mut rl, camera.zoom);
+        game_context.input_state.update(&mut rl, camera.zoom);
 
-        if input_state.middle_roll.abs() >= 1.0 {
-            if input_state.middle_roll < 0.0 {
-                current_zoom = current_zoom.change_res(false);
-            } else {
-                current_zoom = current_zoom.change_res(true);
-            }
-
+        if game_context.input_state.middle_roll.abs() >= 1.0 {
+            let up = game_context.input_state.middle_roll < 0.0;
+            current_zoom = current_zoom.change_res(up);
+            game_context.v_width = current_zoom.v_width(game_context.window_width);
+            game_context.v_height = current_zoom.v_height(game_context.window_height);
         }
 
         if rl.is_key_pressed(KeyboardKey::KEY_Z) {
             current_zoom = current_zoom.change_res(false);
-
         } else if rl.is_key_pressed(KeyboardKey::KEY_X) {
             current_zoom = current_zoom.change_res(true);
         }
 
         if rl.is_key_down(KeyboardKey::KEY_D) {
-            camera_pos.x += current_zoom.v_width(window_width) * dt;
+            camera_pos.x += game_context.v_width as f32 * dt;
         }
         if rl.is_key_down(KeyboardKey::KEY_A) {
-            camera_pos.x -= current_zoom.v_width(window_width) * dt;
+            camera_pos.x -= game_context.v_width as f32 * dt;
         }
         if rl.is_key_down(KeyboardKey::KEY_W) {
-            camera_pos.y -= current_zoom.v_width(window_width) * dt;
+            camera_pos.y -= game_context.v_width as f32 * dt;
         }
         if rl.is_key_down(KeyboardKey::KEY_S) {
-            camera_pos.y += current_zoom.v_width(window_width) * dt;
+            camera_pos.y += game_context.v_width as f32 * dt;
         }
 
-        if input_state.middle_currently_held {
+        if game_context.input_state.middle_currently_held {
             camera_pos.x -=
-                input_state.delta.x / (window_width / current_zoom.v_width(window_width));
+                game_context.input_state.delta.x / (window_width as f32 / game_context.v_width as f32);
             camera_pos.y -=
-                input_state.delta.y / (window_height / current_zoom.v_height(window_height));
+                game_context.input_state.delta.y / (window_height as f32 / game_context.v_height as f32);
         }
 
         // keep cam offset synced no MATTER WHAT THIS WAS PISSING ME OFF FOR A WHILE
-        camera.offset.x = current_zoom.v_width(window_width) / 2.0;
-        camera.offset.y = current_zoom.v_height(window_height) / 2.0;
-        
-        // remove any floating points from camera pos
-         
-        camera.target.x = camera_pos.x.round();
-        camera.target.y = camera_pos.y.round();
+        game_context.camera.offset.x = current_zoom.v_width(window_width) as f32 / 2.0;
+        game_context.camera.offset.y = current_zoom.v_height(window_height) as f32 / 2.0;
 
+        // remove any floating points from camera pos
+
+        game_context.camera.target.x = camera_pos.x.round();
+        game_context.camera.target.y = camera_pos.y.round();
 
         //--UPDATE BEGINS HERE--//
         map.update(dt);
         entity_manager.update(
             &mut map.map_object_grid,
+            &mut game_context,
+            current_zoom.zoom(),
             dt,
-            window_width,
-            window_height,
-            current_zoom.zoomf32(),
-            &camera,
-            &input_state,
-            &day_night_cycle
         );
-        day_night_cycle.update(dt, &mut rl);
 
-        shader.set_shader_value(red_tint_loc, day_night_cycle.red_tint);
-        shader.set_shader_value(blue_tint_loc, day_night_cycle.blue_tint);
-        shader.set_shader_value(brightness_modifier_loc, day_night_cycle.brightness_modifier);
+        game_context.day_night_cycle.update(dt, &mut rl);
+
+        shader.set_shader_value(red_tint_loc, game_context.day_night_cycle.red_tint);
+        shader.set_shader_value(blue_tint_loc, game_context.day_night_cycle.blue_tint);
+        shader.set_shader_value(
+            brightness_modifier_loc,
+            game_context.day_night_cycle.brightness_modifier,
+        );
 
         let current_rt = &mut render_textures[current_zoom as usize];
         //--UPDATE ENDS HERE--//
@@ -162,34 +201,21 @@ fn main() {
                 let mut render_texture_handle = d.begin_texture_mode(&thread, current_rt);
                 render_texture_handle.clear_background(Color::RAYWHITE);
                 {
-                    let mut cam_handle = render_texture_handle.begin_mode2D(camera);
+                    let mut cam_handle = render_texture_handle.begin_mode2D(game_context.camera);
                     {
                         let mut shader_handle = cam_handle.begin_shader_mode(&mut shader);
 
-                        map.draw(
-                            &mut shader_handle,
-                            &camera,
-                            current_zoom.v_width(window_width),
-                            current_zoom.v_height(window_height),
-                            &texture,
-                        );
+                        map.draw(&mut shader_handle, &game_context);
 
                         entity_manager.draw(
                             &map.map_object_grid,
                             &mut shader_handle,
-                            &texture,
+                            &game_context.texture,
                         );
                         mouse_utils::draw_mouse(
                             &mut shader_handle,
-                            mouse_utils::mouse_world_coords(
-                                input_state.mouse_pos,
-                                &camera,
-                                window_width,
-                                window_height,
-                                current_zoom.v_width(window_width),
-                                current_zoom.v_height(window_height),
-                            ),
-                            &texture,
+                            mouse_utils::mouse_world_coords(&game_context),
+                            &game_context.texture,
                         );
                     } // end shader mode - nothing drawn will pass through shader beyond here
                 } // end camera mode - nothing drawn will be drawn in world space beyond here
@@ -202,11 +228,11 @@ fn main() {
                 -current_rt.texture.height as f32, // Negative height flips it right-side up
             );
 
-            let dest_rec = Rectangle::new(0.0, 0.0, window_width, window_height);
+            let dest_rec = Rectangle::new(0.0, 0.0, window_width as f32, window_height as f32);
             let origin = Vector2::new(0.0, 0.0);
 
             d.draw_texture_pro(current_rt, source_rec, dest_rec, origin, 0.0, Color::WHITE);
-            day_night_cycle.draw_dbg(&mut d);
+            game_context.day_night_cycle.draw_dbg(&mut d);
         }
         //--DRAWING ENDS HERE--//
     }
@@ -227,13 +253,14 @@ impl ZoomSizes {
         let current_index = self as usize;
 
         let add: isize = match up {
-            true => 1,
-            false => -1,
+            true => -1,
+            false => 1,
         };
 
         let mut idx = (current_index as isize + add) as usize;
 
-        if idx > 6 {
+        // if you go lower than 0, usize wraps back around, and would wrap back to the other side without this
+        if idx > usize::MAX - 1 {
             idx = 0
         }
 
@@ -253,27 +280,34 @@ impl ZoomSizes {
         }
     }
 
-    pub fn v_width(self, screen_width: f32) -> f32 {
-        return screen_width / (self as usize as f32 + 1.0);
+    pub fn v_width(self, screen_width: u32) -> u32 {
+        return screen_width / (self as u32 + 1);
     }
 
-    pub fn v_height(self, screen_height: f32) -> f32 {
-        return screen_height / (self as usize as f32 + 1.0);
+    pub fn v_height(self, screen_height: u32) -> u32 {
+        return screen_height / (self as u32 + 1);
     }
 
-    pub fn zoomf32(self) -> f32 {
+    pub fn zoom(self) -> u32 {
         let zoom = self as u32 + 1;
-        return zoom as f32;
+        return zoom;
     }
 }
 
-fn change_window_size(rl: &mut RaylibHandle, thread: &RaylibThread, rt_array: &mut [RenderTexture2D], window_width: &mut f32, window_height: &mut f32, new_width: f32, new_height: f32) {
+fn change_window_size(
+    rl: &mut RaylibHandle,
+    thread: &RaylibThread,
+    rt_array: &mut [RenderTexture2D],
+    window_width: &mut f32,
+    window_height: &mut f32,
+    new_width: f32,
+    new_height: f32,
+) {
     *window_width = new_width;
     *window_height = new_height;
     rl.set_window_size(*window_width as i32, *window_height as i32);
 
     set_render_textures(rl, thread, rt_array, *window_width, *window_height);
-
 }
 
 fn set_render_textures(

@@ -1,12 +1,17 @@
 use basic_raylib_core::graphics::sprite::Sprite;
-use rand::random;
+use rand::rngs::ThreadRng;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
 
-use crate::{entities::{object::Object::*, objects::tree::Tree}, systems::day_night_cycle::{self, DayNightCycle}, utils::draw_utils};
+use crate::{
+    entities::{
+        object::Object::*,
+        objects::{grass::Grass, tree::Tree},
+    }, systems::day_night_cycle::DayNightCycle, utils::draw_utils,
+};
 
 /// This houses data that all objects share, as to not repeat fields between objects
 pub struct ObjectData {
@@ -15,7 +20,7 @@ pub struct ObjectData {
     pub hover_rect: Rectangle,
     pub is_hovering: bool,
     pub shear_x: f32,
-    pub scale_y: f32
+    pub scale_y: f32,
 }
 
 impl ObjectData {
@@ -26,19 +31,18 @@ impl ObjectData {
         width: f32,
         height: f32,
     ) -> Self {
-
         let true_pos = pos + randomized_offset;
         let true_draw_pos = true_pos + draw_offset;
 
         let hover_rect = Rectangle::new(true_draw_pos.x, true_draw_pos.y, width, height);
-        
+
         return ObjectData {
             pos: true_pos,
             draw_pos: true_draw_pos,
             is_hovering: false,
             hover_rect,
             shear_x: 0.0,
-            scale_y: 0.0
+            scale_y: 0.0,
         };
     }
 }
@@ -46,12 +50,14 @@ impl ObjectData {
 pub enum Object {
     NoObject,
     TreeObj(Tree),
+    GrassObj(Grass),
 }
 
 impl Object {
     pub fn get_data(&self) -> &ObjectData {
         match self {
             TreeObj(tree) => &tree.data,
+            GrassObj(grass) => &grass.data,
             NoObject => panic!("why would you try to get data from a None Object?"),
         }
     }
@@ -59,19 +65,27 @@ impl Object {
     pub fn get_mut_data(&mut self) -> &mut ObjectData {
         match self {
             TreeObj(tree) => &mut tree.data,
+            GrassObj(grass) => &mut grass.data,
             NoObject => panic!("why would you try to get data from a None Object?"),
         }
     }
 
-    pub fn update(&mut self, dt: f32, day_night_cycle: &DayNightCycle) {
+    pub fn update(
+        &mut self,
+        dt: f32,
+        day_night_cycle: &DayNightCycle,
+        total_game_time: f32,
+        rng: &mut ThreadRng,
+    ) {
         let data = self.get_mut_data();
-        
+
         data.is_hovering = false;
         data.shear_x = day_night_cycle.current_shadow_shear;
         data.scale_y = day_night_cycle.current_shadow_scale_y;
 
         match self {
             TreeObj(tree) => tree.update(dt),
+            GrassObj(grass) => grass.update(dt, total_game_time, rng),
             NoObject => (),
         }
     }
@@ -81,31 +95,28 @@ impl Object {
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
-        match self {
-            TreeObj(tree) => {
-                tree.draw(d, texture);
-            }
-            NoObject => (),
-        }
+        let sprite = self.current_sprite();
+
+        sprite.draw(d, self.get_data().draw_pos, texture);
     }
 
     pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
-        match self {
-            TreeObj(tree) => {
-                tree.draw_hover(d, texture);
-            }
-            NoObject => (),
-        }
+        let sprite = self.current_sprite();
+        draw_utils::draw_outline(d, sprite, self.get_data().draw_pos, texture);
     }
 
-    pub fn draw_shadow(
-        &self,
-        d: &mut RaylibDrawHandle,
-        texture: &Texture2D,
-    ) {
+    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        let sprite = self.current_sprite();
+        let data = self.get_data();
+
+        draw_utils::draw_shadow(d, sprite, data.draw_pos, data.shear_x, data.scale_y, texture);
+    }
+
+    pub fn current_sprite(&self) -> &Sprite {
         match self {
-            TreeObj(tree) => tree.draw_shadow(d, texture),
-            NoObject => (),
+            NoObject => todo!(),
+            TreeObj(tree) => tree.sprite(),
+            GrassObj(grass) => grass.sprite(),
         }
     }
 }

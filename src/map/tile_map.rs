@@ -5,9 +5,7 @@ use rand::{RngExt, rngs::ThreadRng};
 use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
 
 use crate::{
-    TILE_SIZE,
-    entities::{object::Object, objects::tree::Tree},
-    map::{
+    GameContext, TILE_SIZE, entities::{object::Object, objects::tree::Tree}, map::{
         tile::{
             LakeSpriteData, RiverSpriteData,
             TileType::{self},
@@ -21,8 +19,7 @@ use crate::{
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
-    },
-    utils::{
+    }, utils::{
         directional_deltas::{CARDINAL_DELTAS, Direction},
         map_cord::MapCord,
     },
@@ -55,17 +52,14 @@ pub struct TileMap {
     lake_shore_corner_tile_anim_instance: SpriteAnimationInstance,
     default_tile_anim_instance: SpriteAnimationInstance,
     river_tile_anim_instance: SpriteAnimationInstance,
-    rng: ThreadRng,
 }
 
 impl TileMap {
-    pub fn generate_map(map_width: u16, map_height: u16) -> Self {
+    pub fn generate_map(map_width: u16, map_height: u16, rng: &mut ThreadRng) -> Self {
         let map_dimensions = MapDimensions {
             width: map_width,
             height: map_height,
         };
-
-        let mut rng = rand::rng();
 
         let total_map_length = map_dimensions.total_tiles();
 
@@ -77,14 +71,14 @@ impl TileMap {
         // ok this looks bad (it is) because the functions purpose is to actually create lakes
         // but it returns a vec of tiles to make forest lakes of which isnt used until way later.
         // ive acknowledged the poor choice. if someone wants to fix it, let me know what you think
-        let forest_lake_tiles = Self::create_lakes(&mut tile_grid, map_dimensions, &mut rng);
+        let forest_lake_tiles = Self::create_lakes(&mut tile_grid, map_dimensions, rng);
         println!("Lakes created!");
 
         let lake_sprite_data = Self::set_lake_shore_and_corner_sprites(&tile_grid, map_dimensions);
         println!("Lake sprites added!");
 
         let all_river_tiles =
-            Self::create_rivers(&mut tile_grid, &lake_sprite_data, map_dimensions, &mut rng);
+            Self::create_rivers(&mut tile_grid, &lake_sprite_data, map_dimensions, rng);
         println!("River generated!");
 
         let river_sprite_data =
@@ -96,14 +90,14 @@ impl TileMap {
             &mut object_grid,
             forest_lake_tiles,
             map_dimensions,
-            &mut rng,
+            rng,
         );
         println!("Made forest lakes!");
 
-        Self::create_forests(&tile_grid, &mut object_grid, map_dimensions, &mut rng);
+        Self::create_forests(&tile_grid, &mut object_grid, map_dimensions, rng);
         println!("Forests created!");
 
-        Self::create_standalone_trees(&tile_grid, &mut object_grid, map_dimensions, &mut rng);
+        Self::create_standalone_trees(&tile_grid, &mut object_grid, map_dimensions, rng);
         println!("Standalone trees created!");
         
         //CreateGrass() // maybe if a tile is a tree theres a chance to spawn a bunch of grass around it ... ?
@@ -119,7 +113,6 @@ impl TileMap {
             lake_shore_corner_tile_anim_instance: SpriteAnimationInstance::new(),
             default_tile_anim_instance: SpriteAnimationInstance::new(),
             river_tile_anim_instance: SpriteAnimationInstance::new(),
-            rng,
         };
     }
 
@@ -157,15 +150,12 @@ impl TileMap {
     pub fn draw(
         &self,
         d: &mut RaylibDrawHandle,
-        camera: &Camera2D,
-        screen_width: f32,
-        screen_height: f32,
-        texture: &Texture2D,
+        game_context: &GameContext
     ) {
-        let start_x = camera.target.x - (screen_width / camera.zoom) / 2.0;
-        let start_y = camera.target.y - (screen_height / camera.zoom) / 2.0;
-        let end_x = start_x + screen_width / camera.zoom;
-        let end_y = start_y + screen_height / camera.zoom;
+        let start_x = game_context.camera.target.x - game_context.v_width as f32 / 2.0;
+        let start_y = game_context.camera.target.y - game_context.v_height as f32 / 2.0;
+        let end_x = start_x + game_context.v_width as f32;
+        let end_y = start_y + game_context.v_height as f32;
 
         let start_tile_x = (start_x / TILE_SIZE) as i16 - 1;
         let start_tile_y = (start_y / TILE_SIZE) as i16;
@@ -183,17 +173,17 @@ impl TileMap {
                 );
 
                 if !self.is_tile_in_bounds(x, y) {
-                    OOB_SP.draw(d, pos, texture);
+                    OOB_SP.draw(d, pos, &game_context.texture);
                     continue;
                 }
 
                 let tile_type = self.get_tile_from_x_y(x as u16, y as u16);
 
                 match tile_type {
-                    TileType::Grass => GRASS_TILE.draw(d, pos, texture),
+                    TileType::Grass => GRASS_TILE.draw(d, pos, &game_context.texture),
                     TileType::Lake => {
                         // draw base
-                        LAKE_TILE_ANIM.draw(&self.default_tile_anim_instance, d, pos, texture);
+                        LAKE_TILE_ANIM.draw(&self.default_tile_anim_instance, d, pos, &game_context.texture);
 
                         if let Some(lake_data) = self.lake_sprite_data.get(&cord) {
                             if lake_data.shore_animation_index != 0 {
@@ -203,7 +193,7 @@ impl TileMap {
                                         &self.lake_shore_corner_tile_anim_instance,
                                         d,
                                         pos,
-                                        texture,
+                                        &game_context.texture,
                                     );
                             }
                             if lake_data.corner_animation_index != 0 {
@@ -213,7 +203,7 @@ impl TileMap {
                                         &self.lake_shore_corner_tile_anim_instance,
                                         d,
                                         pos,
-                                        texture,
+                                        &game_context.texture,
                                     );
                             }
                         }
@@ -236,7 +226,7 @@ impl TileMap {
                                     &self.river_tile_anim_instance,
                                     d,
                                     pos,
-                                    texture,
+                                    &game_context.texture,
                                     flp_h,
                                     flp_v,
                                 );
@@ -255,7 +245,7 @@ impl TileMap {
                                     &self.river_tile_anim_instance,
                                     d,
                                     pos,
-                                    texture,
+                                    &game_context.texture,
                                     flp_h,
                                     flp_v,
                                 );
@@ -273,7 +263,7 @@ impl TileMap {
                                     &self.river_tile_anim_instance,
                                     d,
                                     pos,
-                                    texture,
+                                    &game_context.texture,
                                     flp_h,
                                     flp_v,
                                 );
@@ -291,7 +281,7 @@ impl TileMap {
                                     &self.river_tile_anim_instance,
                                     d,
                                     pos,
-                                    texture,
+                                    &game_context.texture,
                                     flp_h,
                                     flp_v,
                                 );
@@ -309,7 +299,7 @@ impl TileMap {
                                     &self.river_tile_anim_instance,
                                     d,
                                     pos,
-                                    texture,
+                                    &game_context.texture,
                                     flp_h,
                                     flp_v,
                                 );

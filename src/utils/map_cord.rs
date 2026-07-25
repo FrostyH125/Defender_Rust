@@ -1,5 +1,9 @@
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
+use raylib::math::Vector2;
+
+use crate::TILE_SIZE;
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct MapCord {
     // i16 because then its easy to check when cords are out of bounds without doing weird stuff
@@ -10,6 +14,10 @@ pub struct MapCord {
 impl MapCord {
     pub const fn new(x: i16, y: i16) -> Self {
         MapCord { x, y }
+    }
+
+    pub fn map_pos(self) -> Vector2 {
+        return Vector2::new(self.x as f32 * TILE_SIZE, self.y as f32 * TILE_SIZE);
     }
 }
 
