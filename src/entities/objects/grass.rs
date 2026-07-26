@@ -15,7 +15,7 @@ use crate::{
 const SMALL_GRASS_HEIGHT: i32 = 8;
 const TALL_GRASS_HEIGHT: i32 = 16;
 const GRASS_WIDTH: i32 = 8;
-const GRASS_ANIM_SPEED: f32 = 0.2;
+const GRASS_ANIM_SPEED: f32 = 0.75;
 const MINIMUM_LEVEL_UP_TIME: f32 = 80.0;
 const MAXIMUM_LEVEL_UP_TIME: f32 = 120.0;
 
@@ -180,7 +180,11 @@ impl Grass {
                 + total_game_time,
             grass_level,
             grass_type,
-            anim_instance: SpriteAnimationInstance::new(),
+            anim_instance: SpriteAnimationInstance {
+                current_frame_time: rng.random_range(0.0..=GRASS_ANIM_SPEED),
+                current_frame_index: rng.random_range(0..WHEATY_GRASS_ANIMS[0].frames.len()) as u8,
+                finished_playing: false,
+            },
         };
 
         return Object::GrassObj(grass);
@@ -190,13 +194,18 @@ impl Grass {
         // all anims have exact same properties so its simply not necessary to distinguish them
         WHEATY_GRASS_ANIMS[0].update(&mut self.anim_instance, dt);
 
-        if self.grass_level < 2 {
-            // while loop, because if offscreen for extended period of time, may level up multiple times
-            while total_game_time > self.level_up_time {
-                self.level_up_time +=
-                    rng.random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME);
-                self.level_up();
+        // while loop, because if offscreen for extended period of time, may level up multiple times
+        while total_game_time > self.level_up_time {
+            if self.grass_level >= 2 {
+                // just to make sure. it shouldnt be anything else but if this code saves just one life itll be worth it
+                self.grass_level = 2;
+                
+                // now this code will never run again hahahaha
+                self.level_up_time = f32::MAX;
+                break;
             }
+            self.level_up_time += rng.random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME);
+            self.level_up();
         }
     }
 

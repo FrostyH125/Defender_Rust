@@ -1,11 +1,8 @@
 // need to add moon phases
 
-use basic_raylib_core::utils::math_utils::{self, smooth_lerp_min_max};
+use basic_raylib_core::utils::math_utils::lerp_min_max;
 use raylib::{
-    RaylibHandle,
-    color::Color,
-    drawing::{RaylibDraw, RaylibDrawHandle},
-    ffi::KeyboardKey,
+    RaylibHandle, color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, ffi::KeyboardKey, math::lerp,
 };
 
 use crate::systems::day_night_cycle::MoonPhase::{FirstQuarter, FullMoon, LastQuarter, NewMoon, WaningCrescent, WaningGibbous, WaxingCrescent, WaxingGibbous};
@@ -163,17 +160,17 @@ impl DayNightCycle {
 
     fn update_shadow_values(&mut self) {
         const MAX_SHEAR: f32 = -10.0;
-        const MIN_SCALE_Y: f32 = 0.05;
+        const MIN_SCALE_Y: f32 = 0.00;
         const MAX_SCALE_Y: f32 = 0.6;
 
         let (shear, scale) = match self.current_time {
             0.0..=90.0 => (
-                smooth_lerp_min_max(-MAX_SHEAR, 0.0, self.current_time, 0.0, 90.0),
-                smooth_lerp_min_max(MIN_SCALE_Y, MAX_SCALE_Y, self.current_time, 0.0, 90.0),
+                lerp_min_max(-MAX_SHEAR, 0.0, self.current_time, 0.0, 90.0),
+                lerp_min_max(MIN_SCALE_Y, MAX_SCALE_Y, self.current_time, 0.0, 90.0),
             ),
             90.0..=180.0 => (
-                smooth_lerp_min_max(0.0, MAX_SHEAR, self.current_time, 90.0, 180.0),
-                smooth_lerp_min_max(MAX_SCALE_Y, MIN_SCALE_Y, self.current_time, 90.0, 180.0),
+                lerp_min_max(0.0, MAX_SHEAR, self.current_time, 90.0, 180.0),
+                lerp_min_max(MAX_SCALE_Y, MIN_SCALE_Y, self.current_time, 90.0, 180.0),
             ),
             180.0..=360.0 => {
                 let current_night = &NIGHTS[self.current_night];
@@ -193,19 +190,17 @@ impl DayNightCycle {
         const MAX_RED: f32 = 0.2;
         let current_night_brightness_modifier = NIGHTS[self.current_night].brightness_modifier;
 
-        
-
         let (blue, red, light) = match self.current_time {
             0.0..=35.0 => (
-                smooth_lerp_min_max(MAX_BLUE, 0.0, self.current_time, 0.0, 30.0),
-                smooth_lerp_min_max(MAX_RED, 0.0, self.current_time, 0.0, 30.0),
-                smooth_lerp_min_max(current_night_brightness_modifier, 0.0, self.current_time, 0.0, 30.0),
+                lerp_min_max(MAX_BLUE, 0.0, self.current_time, 0.0, 30.0),
+                lerp_min_max(MAX_RED, 0.0, self.current_time, 0.0, 30.0),
+                lerp_min_max(current_night_brightness_modifier, 0.0, self.current_time, 0.0, 30.0),
             ),
             30.0..=150.0 => (0.0, 0.0, 0.0),
             145.0..=180.0 => (
-                smooth_lerp_min_max(0.0, MAX_BLUE, self.current_time, 150.0, 180.0),
-                smooth_lerp_min_max(0.0, MAX_RED, self.current_time, 150.0, 180.0),
-                smooth_lerp_min_max(0.0, current_night_brightness_modifier, self.current_time, 150.0, 180.0),
+                lerp_min_max(0.0, MAX_BLUE, self.current_time, 150.0, 180.0),
+                lerp_min_max(0.0, MAX_RED, self.current_time, 150.0, 180.0),
+                lerp_min_max(0.0, current_night_brightness_modifier, self.current_time, 150.0, 180.0),
             ),
             180.0..=360.0 => {
                 let current_night = &NIGHTS[self.current_night];
@@ -214,7 +209,6 @@ impl DayNightCycle {
             },
             _ => (0.0, 0.0, 0.0),
         };
-
         self.blue_tint = blue;
         self.red_tint = red;
         self.brightness_modifier = light;

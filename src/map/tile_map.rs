@@ -5,7 +5,12 @@ use rand::{RngExt, rngs::ThreadRng};
 use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{object::Object, objects::tree::Tree}, map::{
+    GameContext, TILE_SIZE,
+    entities::{
+        object::Object,
+        objects::{grass::Grass, tree::Tree},
+    },
+    map::{
         tile::{
             LakeSpriteData, RiverSpriteData,
             TileType::{self},
@@ -19,7 +24,8 @@ use crate::{
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
-    }, utils::{
+    },
+    utils::{
         directional_deltas::{CARDINAL_DELTAS, Direction},
         map_cord::MapCord,
     },
@@ -71,7 +77,8 @@ impl TileMap {
         // ok this looks bad (it is) because the functions purpose is to actually create lakes
         // but it returns a vec of tiles to make forest lakes of which isnt used until way later.
         // ive acknowledged the poor choice. if someone wants to fix it, let me know what you think
-        let forest_lake_tiles = Self::create_lakes(&mut tile_grid, map_dimensions, rng);
+        let (forest_lake_tiles, grass_lake_tiles) =
+            Self::create_lakes(&mut tile_grid, map_dimensions, rng);
         println!("Lakes created!");
 
         let lake_sprite_data = Self::set_lake_shore_and_corner_sprites(&tile_grid, map_dimensions);
@@ -85,7 +92,7 @@ impl TileMap {
             Self::set_river_tile_animations(&all_river_tiles, &tile_grid, map_dimensions);
         println!("River sprites added!");
 
-        Self::create_forest_around_lake(
+        Self::spawn_forests_around_lakes(
             &tile_grid,
             &mut object_grid,
             forest_lake_tiles,
@@ -94,14 +101,17 @@ impl TileMap {
         );
         println!("Made forest lakes!");
 
-        Self::create_forests(&tile_grid, &mut object_grid, map_dimensions, rng);
+        Self::spawn_standalone_forests(&tile_grid, &mut object_grid, map_dimensions, rng);
         println!("Forests created!");
 
-        Self::create_standalone_trees(&tile_grid, &mut object_grid, map_dimensions, rng);
+        Self::spawn_standalone_trees(&tile_grid, &mut object_grid, map_dimensions, rng);
         println!("Standalone trees created!");
-        
-        //CreateGrass() // maybe if a tile is a tree theres a chance to spawn a bunch of grass around it ... ?
-        //SpawnGrassAroundLakes();
+
+        Self::spawn_standalone_grass(&tile_grid, &mut object_grid, map_dimensions, rng);
+        println!("Standalone grass created!");
+
+        Self::spawn_grass_around_lakes(&tile_grid, &mut object_grid, grass_lake_tiles, map_dimensions, rng);
+        //SpawnGrassAroundSomeTrees();
         //SpawnGrassAroundRivers(); // i remember the og code had some cracked af math for this one, just use that
         //SetGrassTileGrowMultiplier();
         return TileMap {
@@ -147,11 +157,7 @@ impl TileMap {
         // spawn grass randomly over time
     }
 
-    pub fn draw(
-        &self,
-        d: &mut RaylibDrawHandle,
-        game_context: &GameContext
-    ) {
+    pub fn draw(&self, d: &mut RaylibDrawHandle, game_context: &GameContext) {
         let start_x = game_context.camera.target.x - game_context.v_width as f32 / 2.0;
         let start_y = game_context.camera.target.y - game_context.v_height as f32 / 2.0;
         let end_x = start_x + game_context.v_width as f32;
@@ -183,7 +189,12 @@ impl TileMap {
                     TileType::Grass => GRASS_TILE.draw(d, pos, &game_context.texture),
                     TileType::Lake => {
                         // draw base
-                        LAKE_TILE_ANIM.draw(&self.default_tile_anim_instance, d, pos, &game_context.texture);
+                        LAKE_TILE_ANIM.draw(
+                            &self.default_tile_anim_instance,
+                            d,
+                            pos,
+                            &game_context.texture,
+                        );
 
                         if let Some(lake_data) = self.lake_sprite_data.get(&cord) {
                             if lake_data.shore_animation_index != 0 {
@@ -315,15 +326,17 @@ impl TileMap {
         tile_grid: &mut MapTileGrid,
         map_dimensions: MapDimensions,
         rng: &mut ThreadRng,
-    ) -> Vec<MapCord> {
+    ) -> (Vec<MapCord>, Vec<MapCord>) {
         let map_len = tile_grid.len() as f32;
         let variance_bound = map_len * LAKE_CHANCE / 5.0;
         let final_variance = rng.random_range(-variance_bound..=variance_bound);
         let num_of_cycles = (map_len * LAKE_CHANCE + final_variance) as i32;
         let mut tree_lake_tiles: Vec<MapCord> = Vec::new();
+        let mut grass_lake_tiles: Vec<MapCord> = Vec::new();
 
         for _ in 0..num_of_cycles {
-            let is_forest_lake = rng.random_bool(0.03);
+            let is_surrounded_by_trees = rng.random_bool(0.03);
+            let is_surrounded_by_grass = rng.random_bool(0.65);
 
             // yes width and height are swapped. i sat down with a notebook and pencil
             // to figure that one out, apparently it wasn't obvious that was the right way
@@ -365,7 +378,7 @@ impl TileMap {
 
                 tile_grid[tile_index] = TileType::Lake;
 
-                if is_forest_lake {
+                if is_surrounded_by_trees {
                     lake_tiles.push(current);
                 }
 
@@ -385,12 +398,19 @@ impl TileMap {
                 }
             }
 
-            if is_forest_lake {
-                tree_lake_tiles.append(&mut lake_tiles);
+            if is_surrounded_by_trees {
+                let mut lake_copy = lake_tiles.clone();
+
+                tree_lake_tiles.append(&mut lake_copy);
+            }
+
+            if is_surrounded_by_grass {
+                // could mimic the tree one but it would be an unneccesary copy
+                grass_lake_tiles.append(&mut lake_tiles);
             }
         }
 
-        return tree_lake_tiles;
+        return (tree_lake_tiles, grass_lake_tiles);
     }
 
     fn set_lake_shore_and_corner_sprites(
@@ -891,7 +911,7 @@ impl TileMap {
     }
 
     // helpers for world building specifically
-    fn create_forest_around_lake(
+    fn spawn_forests_around_lakes(
         tile_grid: &MapTileGrid,
         object_grid: &mut MapObjectGrid,
         lake_tiles: Vec<MapCord>,
@@ -930,7 +950,7 @@ impl TileMap {
         }
     }
 
-    fn create_forests(
+    fn spawn_standalone_forests(
         tile_grid: &MapTileGrid,
         object_grid: &mut MapObjectGrid,
         map_dimensions: MapDimensions,
@@ -986,7 +1006,6 @@ impl TileMap {
                     if let Object::NoObject = object_grid[idx] {
                         object_grid[idx] = Tree::new(try_tree_tile, rng);
                     }
-
                 }
 
                 // move it one tile to the left or right
@@ -1034,13 +1053,14 @@ impl TileMap {
         }
     }
 
-    fn create_standalone_trees(
+    fn spawn_standalone_trees(
         tile_grid: &MapTileGrid,
         object_grid: &mut MapObjectGrid,
         map_dimensions: MapDimensions,
         rng: &mut ThreadRng,
     ) {
-        let num_of_trees = (map_dimensions.total_tiles() as f32 * rng.random_range(0.001..=0.002)) as i32;
+        let num_of_trees =
+            (map_dimensions.total_tiles() as f32 * rng.random_range(0.001..=0.002)) as i32;
 
         for _ in 0..=num_of_trees {
             loop {
@@ -1050,7 +1070,9 @@ impl TileMap {
                 let try_tile = MapCord::new(rand_x as i16, rand_y as i16);
 
                 // keep trying until you find a grass tile
-                if Self::get_tile_at_cord_no_self(tile_grid, map_dimensions, try_tile) != TileType::Grass {
+                if Self::get_tile_at_cord_no_self(tile_grid, map_dimensions, try_tile)
+                    != TileType::Grass
+                {
                     continue;
                 }
 
@@ -1062,6 +1084,49 @@ impl TileMap {
                 }
             }
         }
+    }
+
+    fn spawn_standalone_grass(
+        tile_grid: &MapTileGrid,
+        object_grid: &mut MapObjectGrid,
+        map_dimensions: MapDimensions,
+        rng: &mut ThreadRng,
+    ) {
+        let num_of_grass =
+            (map_dimensions.total_tiles() as f32 * rng.random_range(0.02..=0.04)) as i32;
+
+        for _ in 0..=num_of_grass {
+            loop {
+                let rand_x = rng.random_range(0..map_dimensions.width);
+                let rand_y = rng.random_range(0..map_dimensions.height);
+
+                let try_tile = MapCord::new(rand_x as i16, rand_y as i16);
+
+                // keep trying until you find a grass tile
+                if Self::get_tile_at_cord_no_self(tile_grid, map_dimensions, try_tile)
+                    != TileType::Grass
+                {
+                    continue;
+                }
+
+                let idx = Self::cords_to_index(map_dimensions, try_tile);
+
+                if let Object::NoObject = object_grid[idx] {
+                    object_grid[idx] = Grass::new(try_tile, rng, 0.0);
+                    break;
+                }
+            }
+        }
+    }
+
+    fn spawn_grass_around_lakes(
+        tile_grid: &MapTileGrid,
+        object_grid: &mut MapObjectGrid,
+        lake_tiles: Vec<MapCord>,
+        map_dimensions: MapDimensions,
+        rng: &mut ThreadRng,
+    ) {
+        
     }
 
     pub fn get_tile_from_x_y(&self, x: u16, y: u16) -> TileType {
