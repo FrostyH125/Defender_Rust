@@ -24,7 +24,7 @@ void main()
 
     // is shadow
     if (fragColor.b == 0.0) {
-        finalColor = vec4(0.6, 0.2, 0.6, tex.a * 0.5);
+        finalColor = vec4(0.5, 0.1, 0.5, tex.a * 0.4);
         return;
     }
 

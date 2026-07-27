@@ -12,11 +12,7 @@ use raylib::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, OneX, ThreeX, TwoX},
-    entities::entity_manager::EntityManager,
-    map::tile_map::TileMap,
-    systems::day_night_cycle::DayNightCycle,
-    utils::mouse_utils,
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::entity_manager::EntityManager, map::tile_map::TileMap, systems::day_night_cycle::DayNightCycle, utils::mouse_utils,
 };
 
 pub mod entities;
@@ -25,20 +21,9 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
-//  add grass
 //  add new tree variants
-pub const TILE_SIZE: f32 = 8.0;
 
-// object_grid: &mut MapObjectGrid,
-// dt: f32,
-// total_game_time: f32,
-// window_width: f32,
-// window_height: f32,
-// zoom: f32,
-// camera: &Camera2D,
-// input_state: &InputState,
-// day_night_cycle: &DayNightCycle,
-// rng: &mut ThreadRng
+pub const TILE_SIZE: f32 = 8.0;
 
 pub struct GameContext {
     total_game_time: f32,
@@ -54,12 +39,18 @@ pub struct GameContext {
 }
 
 fn main() {
-    let mut window_width = 1920;
-    let mut window_height = 1080;
+    // what the game is pretending the game is running at,
+    // to be honest, ideally this will never change unless aspect ratio changes
+    let mut window_width_target = 1920;
+    let mut window_height_target = 1080;
+
+    // what the game will stretch the render target to, to fill the screen
+    let actual_window_width = 2560;
+    let actual_window_height = 1440;
 
     let mut current_zoom = ZoomSizes::FiveX;
-    let v_width = current_zoom.v_width(window_width);
-    let v_height = current_zoom.v_height(window_height);
+    let v_width = current_zoom.v_width(window_width_target);
+    let v_height = current_zoom.v_height(window_height_target);
 
     let mut camera = Camera2D {
         offset: Vector2 {
@@ -84,36 +75,36 @@ fn main() {
     let mut day_night_cycle = DayNightCycle::new();
 
     let (mut rl, thread) = raylib::init()
-        .size(window_width as i32, window_height as i32)
+        .size(actual_window_width as i32, actual_window_height as i32)
         .title("Rust Raylib Starter")
         .build();
 
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
-    let mut shader = rl.load_shader(&thread, None, Some("outline.frag"));
+    let mut shader = rl.load_shader(&thread, None, Some("base_shader.frag"));
     let red_tint_loc = shader.get_shader_location("red_tint");
     let blue_tint_loc = shader.get_shader_location("blue_tint");
     let brightness_modifier_loc = shader.get_shader_location("brightness_modifier");
 
     let mut render_textures: [RenderTexture2D; 5] = [
-        rl.load_render_texture(&thread, window_width as u32, window_height as u32)
+        rl.load_render_texture(&thread, window_width_target as u32 / 2, window_height_target as u32 / 2)
             .unwrap(),
-        rl.load_render_texture(&thread, window_width as u32 / 2, window_height as u32 / 2)
+        rl.load_render_texture(&thread, window_width_target as u32 / 3, window_height_target as u32 / 3)
             .unwrap(),
-        rl.load_render_texture(&thread, window_width as u32 / 3, window_height as u32 / 3)
+        rl.load_render_texture(&thread, window_width_target as u32 / 4, window_height_target as u32 / 4)
             .unwrap(),
-        rl.load_render_texture(&thread, window_width as u32 / 4, window_height as u32 / 4)
+        rl.load_render_texture(&thread, window_width_target as u32 / 5, window_height_target as u32 / 5)
             .unwrap(),
-        rl.load_render_texture(&thread, window_width as u32 / 5, window_height as u32 / 5)
+        rl.load_render_texture(&thread, window_width_target as u32 / 6, window_height_target as u32 / 6)
             .unwrap(),
     ];
 
-    rl.set_target_fps(60);
+    //rl.set_target_fps(60);
     rl.disable_cursor();
 
     let mut game_context = GameContext {
         total_game_time: 0.0,
-        window_width,
-        window_height,
+        window_width: window_width_target,
+        window_height: window_height_target,
         v_width,
         v_height,
         camera,
@@ -124,6 +115,11 @@ fn main() {
     };
 
     while !rl.window_should_close() {
+
+        let fps = rl.get_fps();
+
+        println!("{fps}");
+        
         let dt = rl.get_frame_time();
 
         game_context.total_game_time += dt;
@@ -159,14 +155,14 @@ fn main() {
 
         if game_context.input_state.middle_currently_held {
             camera_pos.x -=
-                game_context.input_state.delta.x / (window_width as f32 / game_context.v_width as f32);
+                game_context.input_state.delta.x / (window_width_target as f32 / game_context.v_width as f32);
             camera_pos.y -=
-                game_context.input_state.delta.y / (window_height as f32 / game_context.v_height as f32);
+                game_context.input_state.delta.y / (window_height_target as f32 / game_context.v_height as f32);
         }
 
         // keep cam offset synced no MATTER WHAT THIS WAS PISSING ME OFF FOR A WHILE
-        game_context.camera.offset.x = current_zoom.v_width(window_width) as f32 / 2.0;
-        game_context.camera.offset.y = current_zoom.v_height(window_height) as f32 / 2.0;
+        game_context.camera.offset.x = current_zoom.v_width(window_width_target) as f32 / 2.0;
+        game_context.camera.offset.y = current_zoom.v_height(window_height_target) as f32 / 2.0;
 
         // remove any floating points from camera pos
 
@@ -228,7 +224,7 @@ fn main() {
                 -current_rt.texture.height as f32, // Negative height flips it right-side up
             );
 
-            let dest_rec = Rectangle::new(0.0, 0.0, window_width as f32, window_height as f32);
+            let dest_rec = Rectangle::new(0.0, 0.0, actual_window_width as f32, actual_window_height as f32);
             let origin = Vector2::new(0.0, 0.0);
 
             d.draw_texture_pro(current_rt, source_rec, dest_rec, origin, 0.0, Color::WHITE);
@@ -241,11 +237,11 @@ fn main() {
 #[repr(usize)]
 #[derive(Clone, Copy)]
 enum ZoomSizes {
-    OneX,
     TwoX,
     ThreeX,
     FourX,
     FiveX,
+    SixX,
 }
 
 impl ZoomSizes {
@@ -268,28 +264,28 @@ impl ZoomSizes {
     }
 
     pub fn get_zoom_from_index(idx: usize) -> Self {
-        let comp = idx.clamp(0, 4);
+        let comp = idx.clamp(0, 5);
 
         match comp {
-            0 => OneX,
-            1 => TwoX,
-            2 => ThreeX,
-            3 => FourX,
-            4 => FiveX,
-            5.. => FiveX,
+            0 => TwoX,
+            1 => ThreeX,
+            2 => FourX,
+            3 => FiveX,
+            4 => SixX,
+            5.. => SixX,
         }
     }
 
     pub fn v_width(self, screen_width: u32) -> u32 {
-        return screen_width / (self as u32 + 1);
+        return screen_width / (self as u32 + 2);
     }
 
     pub fn v_height(self, screen_height: u32) -> u32 {
-        return screen_height / (self as u32 + 1);
+        return screen_height / (self as u32 + 2);
     }
 
     pub fn zoom(self) -> u32 {
-        let zoom = self as u32 + 1;
+        let zoom = self as u32 + 2;
         return zoom;
     }
 }
@@ -324,7 +320,7 @@ fn set_render_textures(
 
     for i in 0..rt_count {
         rt_array[i] = rl
-            .load_render_texture(thread, w_u32 / (i as u32 + 1), h_u32 / (i as u32 + 1))
+            .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))
             .unwrap();
     }
 }

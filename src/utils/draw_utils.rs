@@ -8,9 +8,8 @@ use raylib::{
 
 use crate::utils::directional_deltas::CARDINAL_DELTAS;
 
-/// scale_y is 0..=1.0, meaning how far the sprite is scaled down, 0 being not at all
-/// 1.0 being all the way to the base
-/// 1.0..=2.0 for scale_y will put the shadow in front of the sprite
+/// scale_y is -1.0..=1.0, meaning how far the sprite is scaled down, 0 being not at all
+/// 1.0 exact dimensions of base sprite, -1.0 being exact dimensions of base sprite, flipped upside down, mirrored over x axis
 pub fn draw_shadow(
     d: &mut RaylibDrawHandle,
     sprite: &Sprite,

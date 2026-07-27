@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use rand::{RngExt, random_bool, rngs::ThreadRng};
 
-use crate::{entities::{object::Object, objects::{grass::Grass, tree::Tree}}, map::{tile::{LakeSpriteData, RiverSpriteData, TileType}, tile_map::{MapDimensions, MapObjectGrid, MapTileGrid}, tile_map_animation_data::{FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType}}, utils::{directional_deltas::{CARDINAL_DELTAS, Direction}, map_cord::MapCord, map_utils}};
+use crate::{entities::{object::Object, objects::{grass::Grass, tree::Tree}}, map::{tile::{LakeSpriteData, RiverSpriteData, TileType}, tile_map::{MapDimensions, MapObjectGrid, MapTileGrid}, tile_map_animation_data::{FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType}}, utils::{directional_deltas::{CARDINAL_DELTAS, Direction}, map_cord::MapCord, map_utils::{self, is_tile_in_bounds}}};
 
 pub fn create_lakes(
     tile_grid: &mut MapTileGrid,
@@ -285,6 +285,33 @@ pub fn create_rivers(
 
                 if ok_shore_masks.contains(&lake_sh) {
                     // end river here, but add shore tile to river for inlet/outlet
+                     
+                    // check to see if lake tiles are all around it, because if so, scrap it
+                    // the problem is that it can have 0 neighbors and thats undesirable
+                    let mut counter = 0; 
+                    
+                    for dir in CARDINAL_DELTAS {
+
+                        let t = dir + current_tile;
+
+                        if !is_tile_in_bounds(map_dimensions, t) {
+                            // please delete this river its cursed as it is.
+                            counter = 4;
+                            break;
+                        }
+                        
+                        if let TileType::Lake = map_utils::get_tile_at_cord(map, map_dimensions, t) {
+                            counter += 1;
+                        }
+                    }
+
+                    if counter >= 3 {
+                        // end it here, river has no neighbors, its going to crash the neighbor check
+                        // 3 because i lowkenuinely want to avoid rivers inside of lakes if possible
+                        // i know it kind of looks cool in a way but its not the result im looking for
+                        break;
+                    }
+                    
                     current_river.insert(check_tile, direction);
                     add_river(&mut current_river, &mut all_rivers, map, map_dimensions);
                     break;
