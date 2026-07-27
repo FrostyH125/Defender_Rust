@@ -1,10 +1,7 @@
 use raylib::{drawing::RaylibDrawHandle, texture::Texture2D};
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::object::Object,
-    map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
-    utils::{map_cord::MapCord, mouse_utils},
+    GameContext, TILE_SIZE, entities::object::Object, map::{tile_map::{MapDimensions, MapObjectGrid}}, utils::{map_cord::MapCord, map_utils, mouse_utils},
 };
 
 pub struct EntityManager {
@@ -51,11 +48,11 @@ impl EntityManager {
             for x in (self.start_tile_x..=self.end_tile_x).rev() {
                 let cord = MapCord::new(x, y);
 
-                if !TileMap::is_tile_in_bounds_no_ref(self.map_dimensions, cord) {
+                if !map_utils::is_tile_in_bounds(self.map_dimensions, cord) {
                     continue;
                 }
 
-                let index = TileMap::cords_to_index(self.map_dimensions, cord);
+                let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
                 if let Object::NoObject = object_grid[index] {
                     continue;
@@ -88,11 +85,11 @@ impl EntityManager {
             for x in self.start_tile_x..=self.end_tile_x {
                 let cord = MapCord::new(x, y);
 
-                if !TileMap::is_tile_in_bounds_no_ref(self.map_dimensions, cord) {
+                if !map_utils::is_tile_in_bounds(self.map_dimensions, cord) {
                     continue;
                 }
 
-                let index = TileMap::cords_to_index(self.map_dimensions, cord);
+                let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
                 if let Object::NoObject = object_grid[index] {
                     continue;
@@ -103,11 +100,11 @@ impl EntityManager {
             for x in self.start_tile_x..=self.end_tile_x {
                 let cord = MapCord::new(x, y);
 
-                if !TileMap::is_tile_in_bounds_no_ref(self.map_dimensions, cord) {
+                if !map_utils::is_tile_in_bounds(self.map_dimensions, cord) {
                     continue;
                 }
 
-                let index = TileMap::cords_to_index(self.map_dimensions, cord);
+                let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
                 if let Object::NoObject = object_grid[index] {
                     continue;

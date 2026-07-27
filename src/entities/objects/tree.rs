@@ -1,11 +1,11 @@
 use basic_raylib_core::graphics::sprite::Sprite;
 use rand::rngs::ThreadRng;
-use raylib::{drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
+use raylib::math::Vector2;
 
 use crate::{
     TILE_SIZE,
     entities::object::{Object, ObjectData},
-    utils::{draw_utils, map_cord::MapCord, vector2_utils},
+    utils::{map_cord::MapCord, vector2_utils},
 };
 
 static TREE_SPRITE: Sprite = Sprite::new(144, 24, 8, 16);

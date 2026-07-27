@@ -2,14 +2,14 @@ use basic_raylib_core::graphics::{
     animation_data::AnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
 };
 use rand::{RngExt, rngs::ThreadRng};
-use raylib::{drawing::RaylibDrawHandle, math::Vector2, rgui::RaylibDrawGui, texture::Texture2D};
+use raylib::math::Vector2;
 
 use crate::{
     entities::{
         object::{Object, ObjectData},
         objects::grass::GrassType::Wheaty,
     },
-    utils::{draw_utils, map_cord::MapCord, vector2_utils},
+    utils::{map_cord::MapCord, vector2_utils},
 };
 
 const SMALL_GRASS_HEIGHT: i32 = 8;
