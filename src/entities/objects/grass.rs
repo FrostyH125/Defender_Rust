@@ -209,6 +209,17 @@ impl Grass {
         }
     }
 
+    pub fn level_up(&mut self) {
+        self.grass_level += 1;
+        self.grass_level = self.grass_level.clamp(0, 2);
+
+        if self.grass_level == 2 {
+            // this only happens once since the level up cant be called once you reach 2
+            // this just adjusts for the increased height of the tall grass
+            self.data.draw_pos += Vector2::new(0.0, -8.0);
+        }
+    }
+    
     pub fn sprite(&self) -> &Sprite {
         return match self.grass_type {
             Wheaty => {
@@ -230,14 +241,4 @@ impl Grass {
         };
     }
 
-    pub fn level_up(&mut self) {
-        self.grass_level += 1;
-        self.grass_level = self.grass_level.clamp(0, 2);
-
-        if self.grass_level == 2 {
-            // this only happens once since the level up cant be called once you reach 2
-            // this just adjusts for the increased height of the tall grass
-            self.data.draw_pos += Vector2::new(0.0, -8.0);
-        }
-    }
 }

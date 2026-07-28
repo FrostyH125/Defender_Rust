@@ -97,30 +97,39 @@ pub struct DayNightCycle {
     pub red_tint: f32,
     pub blue_tint: f32,
     pub brightness_modifier: f32,
+    night_has_changed: bool
 }
 
 impl DayNightCycle {
     pub fn new() -> Self {
         return DayNightCycle {
             current_night: 0,
-            current_time: 0.0,
+            current_time: 35.0,
             current_shadow_shear: 0.0,
             current_shadow_scale_y: 0.0,
             red_tint: 0.0,
             blue_tint: 0.0,
             brightness_modifier: 0.0,
+            night_has_changed: false
         };
     }
 
     pub fn update(&mut self, dt: f32, rl: &mut RaylibHandle) {
-        self.current_time += dt * 4.0;
+        self.current_time += dt * 2.0;
         if self.current_time > 360.0 {
             self.current_time -= 360.0;
+            self.night_has_changed = false;
         }
 
         if rl.is_key_pressed(KeyboardKey::KEY_C) {
             self.current_night += 1;
             self.current_night %= 8;
+        }
+
+        if !self.night_has_changed && self.current_time > 90.0 {
+            self.current_night += 1;
+            self.current_night %= 8;
+            self.night_has_changed = true
         }
 
         self.update_shadow_values();

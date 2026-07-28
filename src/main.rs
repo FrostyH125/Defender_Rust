@@ -22,6 +22,7 @@ pub mod utils;
 
 // any of these can be done in any order:
 //  add new tree variants
+//  characters
 
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -98,7 +99,7 @@ fn main() {
             .unwrap(),
     ];
 
-    //rl.set_target_fps(60);
+    rl.set_target_fps(60);
     rl.disable_cursor();
 
     let mut game_context = GameContext {
@@ -115,11 +116,6 @@ fn main() {
     };
 
     while !rl.window_should_close() {
-
-        let fps = rl.get_fps();
-
-        println!("{fps}");
-        
         let dt = rl.get_frame_time();
 
         game_context.total_game_time += dt;

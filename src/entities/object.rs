@@ -18,9 +18,9 @@ pub struct ObjectData {
     pub pos: Vector2,
     pub draw_pos: Vector2,
     pub hover_rect: Rectangle,
+    shadow_shear_x: f32,
+    shadow_scale_y: f32,
     pub is_hovering: bool,
-    pub shear_x: f32,
-    pub scale_y: f32,
 }
 
 impl ObjectData {
@@ -32,17 +32,17 @@ impl ObjectData {
         height: f32,
     ) -> Self {
         let true_pos = pos + randomized_offset;
-        let true_draw_pos = true_pos + draw_offset;
+        let draw_pos = true_pos + draw_offset;
 
-        let hover_rect = Rectangle::new(true_draw_pos.x, true_draw_pos.y, width, height);
+        let hover_rect = Rectangle::new(draw_pos.x, draw_pos.y, width, height);
 
         return ObjectData {
             pos: true_pos,
-            draw_pos: true_draw_pos,
-            is_hovering: false,
+            draw_pos,
             hover_rect,
-            shear_x: 0.0,
-            scale_y: 0.0,
+            shadow_shear_x: 0.0,
+            shadow_scale_y: 0.0,
+            is_hovering: false,
         };
     }
 }
@@ -80,8 +80,8 @@ impl Object {
         let data = self.get_mut_data();
 
         data.is_hovering = false;
-        data.shear_x = day_night_cycle.current_shadow_shear;
-        data.scale_y = day_night_cycle.current_shadow_scale_y;
+        data.shadow_shear_x = day_night_cycle.current_shadow_shear;
+        data.shadow_scale_y = day_night_cycle.current_shadow_scale_y;
 
         match self {
             TreeObj(tree) => tree.update(dt),
@@ -109,7 +109,7 @@ impl Object {
         let sprite = self.current_sprite();
         let data = self.get_data();
 
-        draw_utils::draw_shadow(d, sprite, data.draw_pos, data.shear_x, data.scale_y, texture);
+        draw_utils::draw_shadow(d, sprite, data.draw_pos, data.shadow_shear_x, data.shadow_scale_y, texture);
     }
 
     pub fn current_sprite(&self) -> &Sprite {
