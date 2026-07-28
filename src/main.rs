@@ -21,8 +21,18 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
-//  add new tree variants
-//  characters
+//      add new tree variants
+//      pre-requisites for first gatherer-tree interaction implementation:
+//          character::move_to(pos) -> requires a_star()
+//          cell system for map cells
+//          action buttons
+//          character_object selecting mode switching
+//          character hover
+//          character select list
+//          object select list
+ 
+// unrelated:
+//  when a in/outlet is being drawn, draw the corners on that tile still if there exists some
 
 pub const TILE_SIZE: f32 = 8.0;
 

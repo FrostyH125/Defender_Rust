@@ -26,7 +26,6 @@ use crate::{
 
 pub type MapTileGrid = Vec<TileType>;
 pub type MapObjectGrid = Vec<Object>;
-// type MapObjectData = Vec<Object>;
 
 #[derive(Clone, Copy)]
 pub struct MapDimensions {
