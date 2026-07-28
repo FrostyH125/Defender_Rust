@@ -56,8 +56,8 @@ impl EntityManager {
         dt: f32,
     ) {
         let mut found_hovering: bool = false;
-        let v_width = (game_context.window_width / zoom) as i16;
-        let v_height = (game_context.window_height / zoom) as i16;
+        let v_width = (game_context.logical_window_width / zoom) as i16;
+        let v_height = (game_context.logical_window_height / zoom) as i16;
 
         let start_x = game_context.camera.target.x as i16 - v_width / 2;
         let start_y = game_context.camera.target.y as i16 - v_height / 2;

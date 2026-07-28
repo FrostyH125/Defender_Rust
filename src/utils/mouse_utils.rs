@@ -12,8 +12,8 @@ pub fn mouse_world_coords(
     // mouse_pos * 320 / 1920 = mouse_pos * 1 / 6 = mouse_pos / 6
     // this accounts for the render target zooms exclusively
     let mouse_screen_pos_scaled_with_render_target = Vector2 {
-        x: game_context.input_state.mouse_pos.x * game_context.v_width as f32 / game_context.window_width as f32,
-        y: game_context.input_state.mouse_pos.y * game_context.v_height as f32 / game_context.window_height as f32,
+        x: game_context.input_state.mouse_pos.x * game_context.v_width as f32 / game_context.logical_window_width as f32,
+        y: game_context.input_state.mouse_pos.y * game_context.v_height as f32 / game_context.logical_window_height as f32,
     };
 
     // parens account for aligning the pos with the offset of the camera

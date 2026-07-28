@@ -40,7 +40,7 @@ impl MapDimensions {
 }
 
 pub struct TileMap {
-    map_tile_grid: MapTileGrid,
+    pub map_tile_grid: MapTileGrid,
     pub map_object_grid: MapObjectGrid,
     pub map_dimensions: MapDimensions,
     lake_sprite_data: HashMap<MapCord, LakeSpriteData>,

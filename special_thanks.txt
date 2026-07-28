@@ -13,5 +13,6 @@ Belphegor
 Quaspen
 _Lupin_III_
 Grak
-Samwhale
+Samwhale (pathfinding enum consolidation)
 Aqua
+aristurtle (a_star algo)

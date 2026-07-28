@@ -1,4 +1,4 @@
-use basic_raylib_core::system::input_handler::InputState;
+use basic_raylib_core::{graphics::sprite::Sprite, system::input_handler::InputState};
 use rand::rngs::ThreadRng;
 use raylib::{
     RaylibHandle, RaylibThread,
@@ -12,13 +12,17 @@ use raylib::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::day_night_cycle::DayNightCycle, utils::mouse_utils,
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::day_night_cycle::DayNightCycle, utils::{
+        map_cord::MapCord, mouse_utils, pathfinding::{self, PathFinder, PathResult},
+    },
 };
 
 pub mod entities;
 pub mod map;
 pub mod systems;
 pub mod utils;
+
+static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 
 // any of these can be done in any order:
 //      add new tree variants
@@ -30,7 +34,7 @@ pub mod utils;
 //          character hover
 //          character select list
 //          object select list
- 
+
 // unrelated:
 //  when a in/outlet is being drawn, draw the corners on that tile still if there exists some
 
@@ -38,8 +42,8 @@ pub const TILE_SIZE: f32 = 8.0;
 
 pub struct GameContext {
     total_game_time: f32,
-    window_width: u32,
-    window_height: u32,
+    logical_window_width: u32,
+    logical_window_height: u32,
     v_width: u32,
     v_height: u32,
     camera: Camera2D,
@@ -47,6 +51,7 @@ pub struct GameContext {
     input_state: InputState,
     rng: ThreadRng,
     texture: Texture2D,
+    path_finder: PathFinder,
 }
 
 fn main() {
@@ -90,6 +95,8 @@ fn main() {
         .title("Rust Raylib Starter")
         .build();
 
+    let path_finder = PathFinder::new();
+
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
     let mut shader = rl.load_shader(&thread, None, Some("base_shader.frag"));
     let red_tint_loc = shader.get_shader_location("red_tint");
@@ -97,16 +104,36 @@ fn main() {
     let brightness_modifier_loc = shader.get_shader_location("brightness_modifier");
 
     let mut render_textures: [RenderTexture2D; 5] = [
-        rl.load_render_texture(&thread, window_width_target as u32 / 2, window_height_target as u32 / 2)
-            .unwrap(),
-        rl.load_render_texture(&thread, window_width_target as u32 / 3, window_height_target as u32 / 3)
-            .unwrap(),
-        rl.load_render_texture(&thread, window_width_target as u32 / 4, window_height_target as u32 / 4)
-            .unwrap(),
-        rl.load_render_texture(&thread, window_width_target as u32 / 5, window_height_target as u32 / 5)
-            .unwrap(),
-        rl.load_render_texture(&thread, window_width_target as u32 / 6, window_height_target as u32 / 6)
-            .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 2,
+            window_height_target as u32 / 2,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 3,
+            window_height_target as u32 / 3,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 4,
+            window_height_target as u32 / 4,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 5,
+            window_height_target as u32 / 5,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 6,
+            window_height_target as u32 / 6,
+        )
+        .unwrap(),
     ];
 
     rl.set_target_fps(60);
@@ -114,8 +141,8 @@ fn main() {
 
     let mut game_context = GameContext {
         total_game_time: 0.0,
-        window_width: window_width_target,
-        window_height: window_height_target,
+        logical_window_width: window_width_target,
+        logical_window_height: window_height_target,
         v_width,
         v_height,
         camera,
@@ -123,17 +150,17 @@ fn main() {
         input_state,
         rng,
         texture,
+        path_finder,
     };
     //
     // DEBUG START
     //
 
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
-    
-    // 
+
+    //
     // DEBUG END
-    //  
-    
+    //
 
     while !rl.window_should_close() {
         let dt = rl.get_frame_time();
@@ -146,8 +173,8 @@ fn main() {
         if game_context.input_state.middle_roll.abs() >= 1.0 {
             let up = game_context.input_state.middle_roll < 0.0;
             current_zoom = current_zoom.change_res(up);
-            game_context.v_width = current_zoom.v_width(game_context.window_width);
-            game_context.v_height = current_zoom.v_height(game_context.window_height);
+            game_context.v_width = current_zoom.v_width(game_context.logical_window_width);
+            game_context.v_height = current_zoom.v_height(game_context.logical_window_height);
         }
 
         if rl.is_key_pressed(KeyboardKey::KEY_Z) {
@@ -170,10 +197,10 @@ fn main() {
         }
 
         if game_context.input_state.middle_currently_held {
-            camera_pos.x -=
-                game_context.input_state.delta.x / (window_width_target as f32 / game_context.v_width as f32);
-            camera_pos.y -=
-                game_context.input_state.delta.y / (window_height_target as f32 / game_context.v_height as f32);
+            camera_pos.x -= game_context.input_state.delta.x
+                / (window_width_target as f32 / game_context.v_width as f32);
+            camera_pos.y -= game_context.input_state.delta.y
+                / (window_height_target as f32 / game_context.v_height as f32);
         }
 
         // keep cam offset synced no MATTER WHAT THIS WAS PISSING ME OFF FOR A WHILE
@@ -229,6 +256,23 @@ fn main() {
                             mouse_utils::mouse_world_coords(&game_context),
                             &game_context.texture,
                         );
+
+                        let mouse_cord = mouse_utils::mouse_world_coords(&game_context);
+
+                        if let PathResult::Success { path } = game_context
+                            .path_finder
+                            .a_star(
+                                MapCord::new(0, 0),
+                                MapCord::new(mouse_cord.x as i16 / 8, mouse_cord.y as i16 / 8),
+                                &map.map_tile_grid,
+                                10_000,
+                                map.map_dimensions,
+                            )
+                        {
+                            for p in path {
+                                PATH_SPRITE.draw(&mut shader_handle, Vector2::new(p.x as f32 * 8.0, p.y as f32 * 8.0), &game_context.texture);
+                            }
+                        }
                     } // end shader mode - nothing drawn will pass through shader beyond here
                 } // end camera mode - nothing drawn will be drawn in world space beyond here
             } // end rt mode - nothing drawn will be drawn on the render texture beyond here
@@ -240,7 +284,12 @@ fn main() {
                 -current_rt.texture.height as f32, // Negative height flips it right-side up
             );
 
-            let dest_rec = Rectangle::new(0.0, 0.0, actual_window_width as f32, actual_window_height as f32);
+            let dest_rec = Rectangle::new(
+                0.0,
+                0.0,
+                actual_window_width as f32,
+                actual_window_height as f32,
+            );
             let origin = Vector2::new(0.0, 0.0);
 
             d.draw_texture_pro(current_rt, source_rec, dest_rec, origin, 0.0, Color::WHITE);
