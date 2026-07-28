@@ -1,10 +1,7 @@
 use raylib::{drawing::RaylibDrawHandle, texture::Texture2D};
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::{character::Character, object::Object},
-    map::tile_map::{self, MapDimensions, MapObjectGrid},
-    utils::{map_cord::MapCord, map_utils, mouse_utils},
+    GameContext, TILE_SIZE, entities::{character::Character, object::Object}, map::tile_map::{self, MapDimensions, MapObjectGrid, TileMap}, utils::{map_cord::MapCord, map_utils, mouse_utils},
 };
 
 /// houses the character itself as well as the appropriate render index
@@ -50,7 +47,7 @@ impl EntityManager {
 
     pub fn update(
         &mut self,
-        object_grid: &mut MapObjectGrid,
+        map: &mut TileMap,
         game_context: &mut GameContext,
         zoom: u32,
         dt: f32,
@@ -70,7 +67,7 @@ impl EntityManager {
         self.end_tile_y = end_y / TILE_SIZE as i16 + 2;
 
         for character in &mut self.characters {
-            character.character.update(dt);
+            character.character.update(game_context, map, dt);
             character.render_index = character.character.get_render_tile_index(self.map_dimensions);
         }
 
@@ -87,11 +84,11 @@ impl EntityManager {
 
                 let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
-                if let Object::NoObject = object_grid[index] {
+                if let Object::NoObject = map.map_object_grid[index] {
                     continue;
                 }
 
-                object_grid[index].update(
+                map.map_object_grid[index].update(
                     dt,
                     &game_context.day_night_cycle,
                     game_context.total_game_time,
@@ -99,11 +96,11 @@ impl EntityManager {
                 );
 
                 if !found_hovering {
-                    if object_grid[index]
+                    if map.map_object_grid[index]
                         .is_point_intersecting(mouse_utils::mouse_world_coords(&game_context))
                     {
                         found_hovering = true;
-                        object_grid[index].get_mut_data().is_hovering = true;
+                        map.map_object_grid[index].get_mut_data().is_hovering = true;
                     }
                 }
             }

@@ -1,7 +1,7 @@
 use basic_raylib_core::graphics::sprite::Sprite;
 use raylib::math::Vector2;
 
-use crate::entities::character::{Character, CharacterData};
+use crate::{GameContext, entities::character::{Character, CharacterData, CharacterMovementResult}, map::tile_map::TileMap, utils::mouse_utils};
 
 pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
 
@@ -12,14 +12,16 @@ pub struct Gatherer {
 impl Gatherer {
     pub fn new(pos: Vector2) -> Character {
         let gatherer = Gatherer {
-            data: CharacterData::new(pos, Vector2::zero(), 8.0, 8.0),
+            data: CharacterData::new(pos, Vector2::zero(), 8.0, 8.0, 30.0),
         };
 
         return Character::GathererChar(gatherer);
     }
 
-    pub fn update(&mut self, dt: f32) {
-        self.data.pos += Vector2::new(8.0, 8.0) * dt;
+    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap, dt: f32) {
+        if let CharacterMovementResult::Success = self.data.move_to(mouse_utils::mouse_world_coords(game_context), dt, game_context, map) {
+            println!("I made it!");
+        }
     }
 
     pub fn sprite(&self) -> &Sprite {

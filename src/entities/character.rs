@@ -6,35 +6,133 @@ use raylib::{
     texture::Texture2D,
 };
 
-use crate::{TILE_SIZE, entities::characters::gatherer::Gatherer, map::tile_map::MapDimensions, systems::day_night_cycle::DayNightCycle, utils::{draw_utils, map_cord::MapCord, map_utils}};
+use crate::{
+    GameContext, TILE_SIZE,
+    entities::characters::gatherer::Gatherer,
+    map::tile_map::{MapDimensions, TileMap},
+    systems::day_night_cycle::DayNightCycle,
+    utils::{
+        draw_utils,
+        map_cord::MapCord,
+        map_utils,
+        pathfinding::PathResult::{self, NoPath},
+        vector2_utils,
+    },
+};
 
+pub enum CharacterMovementResult {
+    Success,
+    NotArrivedYet,
+    NoRoute,
+    TooLong,
+}
 
 pub struct CharacterData {
     pub pos: Vector2,
     draw_offset: Vector2,
+    target_pos: Option<Vector2>,
+    path: PathResult,
     width: f32,
     height: f32,
     shadow_shear_x: f32,
     shadow_scale_y: f32,
+    move_speed: f32,
     pub is_hovering: bool,
+    pub sprite_flip: bool,
 }
 
 impl CharacterData {
-    pub fn new(pos: Vector2, draw_offset: Vector2, width: f32, height: f32) -> CharacterData {
+    pub fn new(pos: Vector2, draw_offset: Vector2, width: f32, height: f32, move_speed: f32) -> CharacterData {
         return CharacterData {
             pos,
             draw_offset,
+            target_pos: None,
+            path: NoPath,
             width,
             height,
+            move_speed,
             shadow_shear_x: 0.0,
             shadow_scale_y: 0.0,
             is_hovering: false,
+            sprite_flip: false
+        };
+    }
+
+    pub fn move_to(
+        &mut self,
+        target: Vector2,
+        dt: f32,
+        game_context: &mut GameContext,
+        map: &TileMap,
+    ) -> CharacterMovementResult {
+
+        // compare current target to new target
+        if self.target_pos != Some(target) {
+            self.target_pos = Some(target);
+            self.path = game_context.path_finder.a_star(
+                vector2_utils::v2_to_cord(self.pos),
+                vector2_utils::v2_to_cord(target),
+                map,
+                10000,
+            );
+            if let PathResult::Success { path } = &mut self.path {
+                path.push_back(target);
+            }
         }
+
+        if let PathResult::TooLong = self.path {
+            println!("Route is too long for character");
+            return CharacterMovementResult::TooLong;
+        }
+
+        if let PathResult::NoRoute = self.path {
+            println!("There is no viable route for character");
+            return CharacterMovementResult::NoRoute;
+        }
+
+        if let PathResult::Success { path } = &mut self.path {
+            if path.is_empty() {
+                return CharacterMovementResult::Success;
+            }
+            
+            let mut next = &path[0];
+
+            // get the next tile
+            if self.pos.distance_to(*next) <= 1.0 {
+                if path.len() > 1 {
+                    path.pop_front();
+                    next = &path[0];
+                } else if path.len() == 1 {
+                    // if theres only one left and youre running this code,
+                    // this means youve made it to the only tile left, which is the target
+                    self.pos = target;
+                    self.path = NoPath;
+                    self.target_pos = None;
+                    return CharacterMovementResult::Success;
+                }
+            }
+
+            let mut delta = *next - self.pos;
+
+            if delta.y.abs() > 1.0 || delta.x.abs() > 1.0 {
+                delta.normalize();
+            }
+
+            self.pos += delta * self.move_speed * dt;
+
+            if delta.x < 0.0 {
+                self.sprite_flip = true;
+            } else {
+                self.sprite_flip = false;
+            }
+        }
+
+        return CharacterMovementResult::NotArrivedYet;
     }
 }
 
 pub enum Character {
-    GathererChar(Gatherer)
+    GathererChar(Gatherer),
 }
 
 impl Character {
@@ -50,14 +148,14 @@ impl Character {
         }
     }
 
-    pub fn update(&mut self, dt: f32) {
+    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap, dt: f32) {
         match self {
-            Character::GathererChar(gatherer) => gatherer.update(dt),
+            Character::GathererChar(gatherer) => gatherer.update(game_context, map, dt),
         }
     }
 
     pub fn is_point_intersecting(&self, p: Vector2) -> bool {
-        return self.get_hover_rect().check_collision_point_rec(p)
+        return self.get_hover_rect().check_collision_point_rec(p);
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
@@ -74,7 +172,14 @@ impl Character {
         let sprite = self.current_sprite();
         let data = self.get_data();
 
-        draw_utils::draw_shadow(d, sprite, self.get_draw_pos(), data.shadow_shear_x, data.shadow_scale_y, texture);
+        draw_utils::draw_shadow(
+            d,
+            sprite,
+            self.get_draw_pos(),
+            data.shadow_shear_x,
+            data.shadow_scale_y,
+            texture,
+        );
     }
 
     pub fn current_sprite(&self) -> &Sprite {
@@ -96,8 +201,11 @@ impl Character {
 
     pub fn get_tile_index(&self, map_dimensions: MapDimensions) -> usize {
         let pos = self.get_data().pos;
-        let cord = MapCord::new(pos.x as i16 / TILE_SIZE as i16, pos.y as i16 / TILE_SIZE as i16);
-        return map_utils::cords_to_index(map_dimensions, cord)
+        let cord = MapCord::new(
+            pos.x as i16 / TILE_SIZE as i16,
+            pos.y as i16 / TILE_SIZE as i16,
+        );
+        return map_utils::cords_to_index(map_dimensions, cord);
     }
 
     /// characters are rendered one tile later than their actual pos tile.

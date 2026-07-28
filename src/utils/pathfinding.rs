@@ -1,15 +1,13 @@
 use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap, HashSet},
-    f32::consts::SQRT_2,
+    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet, VecDeque}, f32::consts::SQRT_2,
 };
+
+use raylib::math::Vector2;
 
 use crate::{
     map::{
-        tile::TileType,
-        tile_map::{MapDimensions, MapTileGrid},
-    },
-    utils::{directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils},
+        tile::TileType, tile_map::{MapDimensions, MapTileGrid, TileMap},
+    }, utils::{directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils, vector2_utils},
 };
 
 struct Node {
@@ -41,7 +39,8 @@ impl PartialEq for Node {
 impl Eq for Node {}
 
 pub enum PathResult {
-    Success { path: Vec<MapCord> },
+    NoPath,
+    Success { path: VecDeque<Vector2> },
     TooLong,
     NoRoute,
 }
@@ -64,9 +63,8 @@ impl PathFinder {
         &mut self,
         start: MapCord,
         goal: MapCord,
-        grid: &MapTileGrid,
+        tile_map: &TileMap,
         max_check_tiles: usize,
-        map_dimensions: MapDimensions,
     ) -> PathResult {
         self.open.clear();
         self.closed.clear();
@@ -101,11 +99,11 @@ impl PathFinder {
             for i in 0..ORTHOGONAL_DELTAS.len() {
                 let check_tile = current.cord + ORTHOGONAL_DELTAS[i];
 
-                if !map_utils::is_tile_in_bounds(map_dimensions, check_tile) {
+                if !map_utils::is_tile_in_bounds(tile_map.map_dimensions, check_tile) {
                     continue;
                 }
 
-                if map_utils::get_tile_at_cord(&grid, map_dimensions, check_tile) != TileType::Grass
+                if map_utils::get_tile_at_cord(&tile_map.map_tile_grid, tile_map.map_dimensions, check_tile) != TileType::Grass
                 {
                     continue;
                 }
@@ -158,16 +156,14 @@ fn reconstruct_path(
     came_from: &HashMap<MapCord, MapCord>,
     start: MapCord,
     goal: MapCord,
-) -> Vec<MapCord> {
-    let mut path: Vec<MapCord> = Vec::new();
+) -> VecDeque<Vector2> {
+    let mut path: VecDeque<Vector2> = VecDeque::new();
     let mut current = goal;
 
     while current != start {
-        path.push(current);
+        path.push_front(vector2_utils::cord_to_v2(current));
         current = came_from[&current];
     }
-
-    path.push(start);
-    path.reverse();
+    
     return path;
 }

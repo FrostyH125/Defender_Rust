@@ -215,7 +215,7 @@ fn main() {
         //--UPDATE BEGINS HERE--//
         map.update(dt);
         entity_manager.update(
-            &mut map.map_object_grid,
+            &mut map,
             &mut game_context,
             current_zoom.zoom(),
             dt,
@@ -264,9 +264,8 @@ fn main() {
                             .a_star(
                                 MapCord::new(0, 0),
                                 MapCord::new(mouse_cord.x as i16 / 8, mouse_cord.y as i16 / 8),
-                                &map.map_tile_grid,
+                                &map,
                                 10_000,
-                                map.map_dimensions,
                             )
                         {
                             for p in path {
