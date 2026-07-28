@@ -268,8 +268,8 @@ fn main() {
                                 10_000,
                             )
                         {
-                            for p in path {
-                                PATH_SPRITE.draw(&mut shader_handle, Vector2::new(p.x as f32 * 8.0, p.y as f32 * 8.0), &game_context.texture);
+                            for pos in path {
+                                PATH_SPRITE.draw(&mut shader_handle, pos, &game_context.texture);
                             }
                         }
                     } // end shader mode - nothing drawn will pass through shader beyond here

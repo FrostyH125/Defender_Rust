@@ -1,13 +1,17 @@
 use std::{
-    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet, VecDeque}, f32::consts::SQRT_2,
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
+    f32::consts::SQRT_2,
 };
 
 use raylib::math::Vector2;
 
 use crate::{
     map::{
-        tile::TileType, tile_map::{MapDimensions, MapTileGrid, TileMap},
-    }, utils::{directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils, vector2_utils},
+        tile::TileType,
+        tile_map::{MapDimensions, MapTileGrid, TileMap},
+    },
+    utils::{directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils, vector2_utils},
 };
 
 struct Node {
@@ -96,15 +100,23 @@ impl PathFinder {
                 };
             }
 
+            let mut skips = 0;
+
             for i in 0..ORTHOGONAL_DELTAS.len() {
                 let check_tile = current.cord + ORTHOGONAL_DELTAS[i];
 
                 if !map_utils::is_tile_in_bounds(tile_map.map_dimensions, check_tile) {
+                    skips += 1;
                     continue;
                 }
 
-                if map_utils::get_tile_at_cord(&tile_map.map_tile_grid, tile_map.map_dimensions, check_tile) != TileType::Grass
+                if map_utils::get_tile_at_cord(
+                    &tile_map.map_tile_grid,
+                    tile_map.map_dimensions,
+                    check_tile,
+                ) != TileType::Grass
                 {
+                    skips += 1;
                     continue;
                 }
 
@@ -140,8 +152,14 @@ impl PathFinder {
                     return PathResult::TooLong;
                 }
             }
+
+            // this means whatever tile is being checked was entirely surrounded by tiles that cannot be traversed. 
+            // its resonable to assume this path simply cannot exist
+            if skips == 7 {
+                return PathResult::NoRoute;
+            }
         }
-        return PathResult::NoRoute
+        return PathResult::NoRoute;
     }
 }
 
@@ -164,6 +182,6 @@ fn reconstruct_path(
         path.push_front(vector2_utils::cord_to_v2(current));
         current = came_from[&current];
     }
-    
+
     return path;
 }
