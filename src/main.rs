@@ -12,7 +12,7 @@ use raylib::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::entity_manager::EntityManager, map::tile_map::TileMap, systems::day_night_cycle::DayNightCycle, utils::mouse_utils,
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::day_night_cycle::DayNightCycle, utils::mouse_utils,
 };
 
 pub mod entities;
@@ -114,6 +114,16 @@ fn main() {
         rng,
         texture,
     };
+    //
+    // DEBUG START
+    //
+
+    entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
+    
+    // 
+    // DEBUG END
+    //  
+    
 
     while !rl.window_should_close() {
         let dt = rl.get_frame_time();
