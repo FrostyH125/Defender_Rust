@@ -13,7 +13,7 @@ use crate::{
         tile_map::{MapDimensions, TileMap},
     },
     utils::{
-        directional_deltas::{ORTHOGONAL_DELTAS},
+        directional_deltas::ORTHOGONAL_DELTAS,
         map_cord::MapCord,
         map_utils::{self, cords_to_index, get_tile_at_cord, is_tile_in_bounds},
         vector2_utils,
@@ -57,7 +57,6 @@ pub enum PathResult {
 
 /// generation: the current generation being used for data comparisons
 /// open: the min-heap sorting the nodes by f value, as to get the cheapest first
-/// closed: a vector of generation u32 values to determine if a tile has been closed using a simple '==' comparison with the current generation, indexed by tile index
 /// parents: a vector of mapcords, indexed by tile index, returning the map cord that this tile considers the previous one for itself
 /// g_score: a vector of g_score values indexed by tile index
 /// g_score_generation: used to determine whether or not a g_score value is applicable to the current search or not using '==', indexed by tile index
@@ -66,9 +65,15 @@ pub struct PathFinder {
 
     open: BinaryHeap<Node>,
 
-    closed: Vec<u32>,
     parents: Vec<Option<MapCord>>,
 
+    // if you didnt know, g_score is basically just how many tiles it took to get to this tile
+    // each tile in this algorithm costs 1.0g to traverse and the distance algo calulates
+    // the h (heuristic) value (which is basically just a lowball estimate on how far you
+    // have to travel to get to the goal) which gets added to the g value for the final
+    // f value per node. the nodes are sorted by f value in the min heap (smallest first)
+    // in order to continuously pop the cheapest tile, check if the tile is the goal,
+    // check if the g value is a genuine improvement or not, and add its neighbors when applicable to the min heap
     g_score: Vec<f32>,
     g_score_generation: Vec<u32>,
 }
@@ -83,15 +88,13 @@ impl PathFinder {
 
             parents: vec![None; num_of_tiles],
 
-            closed: vec![0; num_of_tiles],
-
             g_score: vec![f32::INFINITY; num_of_tiles],
             g_score_generation: vec![0; num_of_tiles],
         }
     }
 
     /// a, dare i say, optimized a* algorithm
-    /// one caveat, this algorithm will just happen to a return a 
+    /// one caveat, this algorithm will just happen to a return a
     /// PathResult::NoRoute if the goal is technically within
     /// the max distance but the path youll have to travel is
     /// further than the max distance to get there, such as in having to
@@ -107,8 +110,6 @@ impl PathFinder {
         tile_map: &TileMap,
         max_radius_for_path: f32,
     ) -> PathResult {
-
-
         // base case handling
         if goal.dist_to(start) >= max_radius_for_path {
             println!("current pathfinding goal too far away");
@@ -142,7 +143,6 @@ impl PathFinder {
         // handle overflow on generation
         if self.generation == u32::MAX {
             self.generation = 0;
-            self.closed.fill(0);
             self.g_score_generation.fill(0);
             self.parents.fill(None);
         }
@@ -152,10 +152,10 @@ impl PathFinder {
         // This avoids clearing/filling several large collections each run
         self.generation += 1;
         self.open.clear();
-        
+
         let start_index = cords_to_index(tile_map.map_dimensions, start);
 
-        // set g 
+        // set g
         let start_g = 0.0;
         self.g_score[start_index] = start_g;
         self.g_score_generation[start_index] = self.generation;
@@ -176,9 +176,8 @@ impl PathFinder {
             f: start_f,
             g: start_g,
         });
-        
-        while let Some(current) = self.open.pop() {
 
+        while let Some(current) = self.open.pop() {
             let current_index = cords_to_index(tile_map.map_dimensions, current.cord);
 
             // current g value for the current tile is higher cost than whats already there,
@@ -187,19 +186,6 @@ impl PathFinder {
                 continue;
             }
 
-            // tile has already been closed, do not evaluate the tile again
-            if self.closed[current_index] == self.generation {
-                continue;
-            }
-
-            // this is now the cheapest path to this tile
-            // if there had been a cheaper path, that node would have been popped
-            // from the min-heap first (because the open set is a min-heap
-            // ordered by f), so this tile can be closed so its not expanded again
-            // if two paths are going toward the same goal, the one closest to the
-            // goal will 100% be explored first, if your heuristic is correctly
-            // underestimating distance
-            self.closed[current_index] = self.generation;
             self.parents[current_index] = Some(current.parent);
 
             // goal found, go home
@@ -211,7 +197,6 @@ impl PathFinder {
 
             // check all neighbors in 8 directions, this is where tiles get added to open if applicable
             for i in 0..ORTHOGONAL_DELTAS.len() {
-                
                 let check_tile = current.cord + ORTHOGONAL_DELTAS[i];
 
                 // tile is too far away, don't add it
@@ -234,15 +219,10 @@ impl PathFinder {
 
                 let check_index = cords_to_index(tile_map.map_dimensions, check_tile);
 
-                // has already been closed, don't add it
-                if self.closed[check_index] == self.generation {
-                    continue;
-                }
-
                 // see what the g_score would be if you went with this tile
                 let tentative_g = current.g + 1.0;
 
-                // if a g score already exists for this tile, use that for the comparison, otherwise, 
+                // if a g score already exists for this tile, use that for the comparison, otherwise,
                 // let this win because g_score hasnt been assigned for this tile yet
                 let existing_g = if self.g_score_generation[check_index] == self.generation {
                     self.g_score[check_index]
@@ -251,13 +231,16 @@ impl PathFinder {
                 };
 
                 // if the g thats already there (or isnt there) is greater than the g_score thats tentatively being tried
+                // originally i had a closed array as well, but i realized eventually that it wasnt necessary, and id
+                // rather save the memory usage (4b * total tiles) and just do slightly more computations for neighbor checking
+                // originally it would continue early right before the tentative_g calculation if the tile was marked closed
+                // already. this comparison legitimately guarantees that only improved path tiles are added
                 if existing_g > tentative_g {
-
                     // set the g_score for this tile to tentative_g, because a lower score means its a cheaper cost
                     self.g_score[check_index] = tentative_g;
                     self.g_score_generation[check_index] = self.generation;
 
-                    // calculate the final f value so this tile can be sorted appropriately for 
+                    // calculate the final f value so this tile can be sorted appropriately for
                     // efficient check
                     let f = tentative_g + octile_dist(check_tile, goal);
 
@@ -272,7 +255,7 @@ impl PathFinder {
             }
         }
 
-        // if you run out of open, that means that all available tiles within the 
+        // if you run out of open, that means that all available tiles within the
         // constraints were explored, and the goal was never found
         return PathResult::NoRoute;
     }

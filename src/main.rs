@@ -36,6 +36,8 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 
 // unrelated:
 //  when a in/outlet is being drawn, draw the corners on that tile still if there exists some
+//  BUGFIX: the river sprite algo sometimes encounters rivers with 4 neighbors, either make it 
+//      never happen or make it redo river generation or something if it happens
 
 pub const TILE_SIZE: f32 = 8.0;
 
