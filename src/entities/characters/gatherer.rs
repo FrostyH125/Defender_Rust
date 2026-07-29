@@ -19,9 +19,7 @@ impl Gatherer {
     }
 
     pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap, dt: f32) {
-        if let CharacterMovementResult::Success = self.data.move_to(mouse_utils::mouse_world_coords(game_context), dt, game_context, map) {
-            println!("I made it!");
-        }
+
     }
 
     pub fn sprite(&self) -> &Sprite {

@@ -73,7 +73,7 @@ impl CharacterData {
                 vector2_utils::v2_to_cord(self.pos),
                 vector2_utils::v2_to_cord(target),
                 map,
-                10000,
+                100.0,
             );
             if let PathResult::Success { path } = &mut self.path {
                 path.push_back(target);

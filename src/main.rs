@@ -27,7 +27,6 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 // any of these can be done in any order:
 //      add new tree variants
 //      pre-requisites for first gatherer-tree interaction implementation:
-//          character::move_to(pos) -> requires a_star()
 //          cell system for map cells
 //          action buttons
 //          character_object selecting mode switching
@@ -68,7 +67,7 @@ fn main() {
     let v_width = current_zoom.v_width(window_width_target);
     let v_height = current_zoom.v_height(window_height_target);
 
-    let mut camera = Camera2D {
+    let camera = Camera2D {
         offset: Vector2 {
             x: v_width as f32 / 2.0,
             y: v_height as f32 / 2.0,
@@ -83,19 +82,22 @@ fn main() {
     let mut rng = rand::rng();
 
     let mut camera_pos = camera.target;
-    let mut input_state = InputState::new();
+    let input_state = InputState::new();
 
-    let mut map = TileMap::generate_map(500, 500, &mut rng);
+    let map_width = 1000;
+    let map_height = 1000;
+
+    let mut map = TileMap::generate_map(map_width, map_height, &mut rng);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
 
-    let mut day_night_cycle = DayNightCycle::new();
+    let day_night_cycle = DayNightCycle::new();
 
     let (mut rl, thread) = raylib::init()
         .size(actual_window_width as i32, actual_window_height as i32)
         .title("Rust Raylib Starter")
         .build();
 
-    let path_finder = PathFinder::new();
+    let path_finder = PathFinder::new(map_width, map_height);
 
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
     let mut shader = rl.load_shader(&thread, None, Some("base_shader.frag"));
@@ -265,7 +267,7 @@ fn main() {
                                 MapCord::new(0, 0),
                                 MapCord::new(mouse_cord.x as i16 / 8, mouse_cord.y as i16 / 8),
                                 &map,
-                                10_000,
+                                150.0,
                             )
                         {
                             for pos in path {
