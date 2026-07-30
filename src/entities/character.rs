@@ -7,16 +7,8 @@ use raylib::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::characters::gatherer::Gatherer,
-    map::tile_map::{MapDimensions, TileMap},
-    systems::day_night_cycle::DayNightCycle,
-    utils::{
-        draw_utils,
-        map_cord::MapCord,
-        map_utils,
-        pathfinding::PathResult::{self, NoPath},
-        vector2_utils,
+    GameContext, TILE_SIZE, entities::{characters::gatherer::Gatherer, object::Object}, map::tile_map::{MapDimensions, TileMap}, systems::day_night_cycle::DayNightCycle, utils::{
+        camera_utils, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath}, vector2_utils,
     },
 };
 
@@ -148,10 +140,14 @@ impl Character {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap, dt: f32) {
+    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap) {
         match self {
-            Character::GathererChar(gatherer) => gatherer.update(game_context, map, dt),
+            Character::GathererChar(gatherer) => gatherer.update(game_context, map),
         }
+
+        let data = self.get_mut_data();
+        data.shadow_scale_y = game_context.day_night_cycle.current_shadow_scale;
+        data.shadow_shear_x = game_context.day_night_cycle.current_shadow_shear;
     }
 
     pub fn is_point_intersecting(&self, p: Vector2) -> bool {
@@ -215,5 +211,15 @@ impl Character {
     pub fn get_render_tile_index(&self, map_dimensions: MapDimensions) -> usize {
         let idx = self.get_tile_index(map_dimensions);
         return idx + 1;
+    }
+
+    pub fn update_obj_if_out_of_update_range(object: &mut Object, game_context: &mut GameContext, dt: f32) {
+        let object_pos = object.get_data().pos;
+
+        if !camera_utils::is_in_update_area(object_pos, game_context) {
+            return;
+        }
+
+        object.update(game_context);
     }
 }

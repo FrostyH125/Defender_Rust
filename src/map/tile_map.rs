@@ -1,27 +1,22 @@
-use std::collections::HashMap;
+use std::{cell, collections::HashMap, range::RangeToInclusive, thread::yield_now};
 
 use basic_raylib_core::graphics::{sprite::Sprite, sprite_animation::SpriteAnimationInstance};
 use rand::rngs::ThreadRng;
-use raylib::{drawing::RaylibDrawHandle, math::Vector2};
+use raylib::{color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, math::{Rectangle, Vector2}};
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::object::Object,
-    map::{
-        map_gen_functions,
-        tile::{
+    GameContext, TILE_SIZE, entities::object::Object, map::{
+        map_cell::{CELL_SIZE, MapCell}, map_gen_functions, tile::{
             LakeSpriteData, RiverSpriteData,
             TileType::{self},
-        },
-        tile_map_animation_data::{
+        }, tile_map_animation_data::{
             GRASS_TILE, INLET_ANIMS, LAKE_TILE_ANIM, LAKE_TILE_CORNER_ANIMATION_REFERENCE,
             LAKE_TILE_SHORE_ANIMATION_REFERENCE, OUTLETS_ANIMS, REGULAR_TILE_FRAME_DURATION,
             RIVER_TILE_CORNER_ANIMS, RIVER_TILE_STRAIGHT_ANIMS, RIVER_TILE_T_SECTION_ANIMS,
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
-    },
-    utils::map_cord::MapCord,
+    }, utils::{map_cord::MapCord, map_utils::cords_to_index, mouse_utils, vector2_utils},
 };
 
 pub type MapTileGrid = Vec<TileType>;
@@ -42,6 +37,7 @@ impl MapDimensions {
 pub struct TileMap {
     pub map_tile_grid: MapTileGrid,
     pub map_object_grid: MapObjectGrid,
+    pub map_cell_grid: Vec<MapCell>,
     pub map_dimensions: MapDimensions,
     lake_sprite_data: HashMap<MapCord, LakeSpriteData>,
     river_sprite_data: HashMap<MapCord, RiverSpriteData>,
@@ -56,6 +52,8 @@ impl TileMap {
             width: map_width,
             height: map_height,
         };
+
+        let mut map_cell_grid = map_gen_functions::generate_cell_grid(map_dimensions);
 
         let total_map_length = map_dimensions.total_tiles();
 
@@ -95,6 +93,7 @@ impl TileMap {
             &mut object_grid,
             forest_lake_tiles,
             map_dimensions,
+            &mut map_cell_grid,
             rng,
         );
         println!("Made forest lakes!");
@@ -103,6 +102,7 @@ impl TileMap {
             &tile_grid,
             &mut object_grid,
             map_dimensions,
+            &mut map_cell_grid,
             rng,
         );
         println!("Forests created!");
@@ -111,6 +111,7 @@ impl TileMap {
             &tile_grid,
             &mut object_grid,
             map_dimensions,
+            &mut map_cell_grid,
             rng,
         );
         println!("Standalone trees created!");
@@ -119,6 +120,7 @@ impl TileMap {
             &tile_grid,
             &mut object_grid,
             map_dimensions,
+            &mut map_cell_grid,
             rng,
         );
         println!("Standalone grass created!");
@@ -128,6 +130,7 @@ impl TileMap {
             &mut object_grid,
             grass_lake_tiles,
             map_dimensions,
+            &mut map_cell_grid,
             rng,
         );
         println!("Made grass around lakes!");
@@ -137,15 +140,17 @@ impl TileMap {
             &mut object_grid,
             &river_sprite_data,
             map_dimensions,
+            &mut map_cell_grid,
             rng,
         );
         println!("Made grass around rivers!");
-        
+
         //SpawnGrassAroundSomeTrees();
         //SetGrassTileGrowMultiplier();
         return TileMap {
             map_tile_grid: tile_grid,
             map_object_grid: object_grid,
+            map_cell_grid,
             map_dimensions,
             lake_sprite_data,
             river_sprite_data: river_sprite_data,
@@ -187,30 +192,30 @@ impl TileMap {
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, game_context: &GameContext) {
-        let start_x = game_context.camera.target.x - game_context.v_width as f32 / 2.0;
-        let start_y = game_context.camera.target.y - game_context.v_height as f32 / 2.0;
-        let end_x = start_x + game_context.v_width as f32;
-        let end_y = start_y + game_context.v_height as f32;
+        let start = game_context.camera.target - game_context.camera.offset;
+        let end = start + Vector2::new(game_context.v_width as f32, game_context.v_height as f32);
 
-        let start_tile_x = (start_x / TILE_SIZE) as i16 - 1;
-        let start_tile_y = (start_y / TILE_SIZE) as i16;
-        let end_tile_x = (end_x / TILE_SIZE) as i16 + 2;
-        let end_tile_y = (end_y / TILE_SIZE) as i16 + 2;
+        let start_tile_x = (start.x / TILE_SIZE) as i16 - 1;
+        let start_tile_y = (start.y / TILE_SIZE) as i16;
+        let end_tile_x = (end.x / TILE_SIZE) as i16 + 2;
+        let end_tile_y = (end.y / TILE_SIZE) as i16 + 2;
 
         static OOB_SP: Sprite = Sprite::new(96, 128, 8, 8);
 
         for y in start_tile_y..=end_tile_y {
             for x in start_tile_x..=end_tile_x {
-                let cord = MapCord::new(x, y);
+                
                 let pos = Vector2::new(
                     (x as f32 * TILE_SIZE).floor(),
                     (y as f32 * TILE_SIZE).floor(),
                 );
-
+                
                 if !self.is_tile_in_bounds(x, y) {
                     OOB_SP.draw(d, pos, &game_context.texture);
                     continue;
                 }
+
+                let cord = MapCord::new(x, y);
 
                 let tile_type = self.get_tile_from_x_y(x as u16, y as u16);
 
@@ -349,6 +354,29 @@ impl TileMap {
                 }
             }
         }
+
+        self.dbg_cells(d);
+
+    }
+
+    fn dbg_cells(&self, d: &mut RaylibDrawHandle<'_>) {
+        for i in 0..self.map_cell_grid.len() {
+
+            let cells_wide = self.map_dimensions.width / CELL_SIZE;
+            let cell_y = i as u16 / cells_wide;
+            let cell_x = i as u16 % cells_wide;
+
+            let pos = Vector2::new((cell_x * CELL_SIZE) as f32 * TILE_SIZE, (cell_y * CELL_SIZE) as f32 * TILE_SIZE);
+            let rect = Rectangle::new(pos.x, pos.y, CELL_SIZE as f32 * TILE_SIZE, CELL_SIZE as f32 * TILE_SIZE);
+    
+            d.draw_rectangle_lines_ex(rect, 3.0, Color::WHITE);
+            d.draw_text(&format!("{}", i), pos.x as i32 + 5, pos.y as i32 + 5, 10, Color::WHITE);
+
+
+            // REMOVE &MUT SELF
+            let cell = self.get_cell_at_cord(vector2_utils::v2_to_cord(pos));
+            d.draw_text(&format!("{}", cell.unwrap().objects_in_cell.len()), pos.x as i32 + 5, pos.y as i32 + 20, 10, Color::BLACK);
+        }
     }
 
     pub fn get_tile_from_x_y(&self, x: u16, y: u16) -> TileType {
@@ -360,5 +388,45 @@ impl TileMap {
         let x_in_bounds = x >= 0 && x < self.map_dimensions.width as i16;
         let y_in_bounds = y >= 0 && y < self.map_dimensions.height as i16;
         return x_in_bounds && y_in_bounds;
+    }
+
+    pub fn is_cord_in_bounds(&self, cord: MapCord) -> bool {
+        let x_in_bounds = cord.x >= 0 && cord.x < self.map_dimensions.width as i16;
+        let y_in_bounds = cord.y >= 0 && cord.y < self.map_dimensions.height as i16;
+        return x_in_bounds && y_in_bounds;
+    }
+
+    /// returns an optional mutable reference to the cell at the cord, if oob, returns None
+    pub fn get_mut_cell_at_cord(&mut self, cord: MapCord) -> Option<&mut MapCell> {
+
+        if !self.is_cord_in_bounds(cord) {
+            return None;
+        }
+        
+        let cell_x = cord.x as u16 / CELL_SIZE;
+        let cell_y = cord.y as u16 / CELL_SIZE;
+        let num_of_cells_wide = self.map_dimensions.width / CELL_SIZE;
+
+        return Some(&mut self.map_cell_grid[(cell_y * num_of_cells_wide + cell_x) as usize]);
+    }
+
+    pub fn get_cell_at_cord(&self, cord: MapCord) -> Option<&MapCell> {
+        if !self.is_cord_in_bounds(cord) {
+            return None;
+        }
+        
+        let cell_x = cord.x as u16 / CELL_SIZE;
+        let cell_y = cord.y as u16 / CELL_SIZE;
+        let num_of_cells_wide = self.map_dimensions.width / CELL_SIZE;
+
+        return Some(&self.map_cell_grid[(cell_y * num_of_cells_wide + cell_x) as usize]);
+    }
+
+    /// adds the objects index (where it is on the map) to the cell's array of indices
+    pub fn add_obj_to_cell(&mut self, cord_of_obj: MapCord) {
+        let m_d = self.map_dimensions;
+        let map_cell = self.get_mut_cell_at_cord(cord_of_obj).unwrap();
+        let idx = cords_to_index(m_d, cord_of_obj);
+        map_cell.add_obj(idx);
     }
 }

@@ -5,6 +5,7 @@ use raylib::math::Vector2;
 use crate::{
     TILE_SIZE,
     entities::object::{Object, ObjectData},
+    map::{map_cell::MapCell, tile_map::MapDimensions},
     utils::{map_cord::MapCord, vector2_utils},
 };
 
@@ -15,12 +16,19 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(cord: MapCord, rng: &mut ThreadRng) -> Object {
+    pub fn new(
+        cord: MapCord,
+        rng: &mut ThreadRng,
+        map_dimensions: MapDimensions,
+        cells: &mut Vec<MapCell>,
+    ) -> Object {
         let tree = Tree {
             data: ObjectData::new(
                 cord.map_pos(),
                 Vector2::new(0.0, -TILE_SIZE),
                 vector2_utils::random_offset_by_one(rng),
+                cells,
+                map_dimensions,
                 8.0,
                 16.0,
             ),

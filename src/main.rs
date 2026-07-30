@@ -53,6 +53,8 @@ pub struct GameContext {
     rng: ThreadRng,
     texture: Texture2D,
     path_finder: PathFinder,
+    update_rect: Rectangle,
+    dt: f32
 }
 
 fn main() {
@@ -86,8 +88,8 @@ fn main() {
     let mut camera_pos = camera.target;
     let input_state = InputState::new();
 
-    let map_width = 1000;
-    let map_height = 1000;
+    let map_width = 500;
+    let map_height = 500;
 
     let mut map = TileMap::generate_map(map_width, map_height, &mut rng);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
@@ -155,6 +157,8 @@ fn main() {
         rng,
         texture,
         path_finder,
+        update_rect: Rectangle::default(),
+        dt: 0.0
     };
     //
     // DEBUG START
@@ -167,9 +171,9 @@ fn main() {
     //
 
     while !rl.window_should_close() {
-        let dt = rl.get_frame_time();
+        game_context.dt = rl.get_frame_time();
 
-        game_context.total_game_time += dt;
+        game_context.total_game_time += game_context.dt;
 
         // update input first
         game_context.input_state.update(&mut rl, camera.zoom);
@@ -188,16 +192,16 @@ fn main() {
         }
 
         if rl.is_key_down(KeyboardKey::KEY_D) {
-            camera_pos.x += game_context.v_width as f32 * dt;
+            camera_pos.x += game_context.v_width as f32 * game_context.dt;
         }
         if rl.is_key_down(KeyboardKey::KEY_A) {
-            camera_pos.x -= game_context.v_width as f32 * dt;
+            camera_pos.x -= game_context.v_width as f32 * game_context.dt;
         }
         if rl.is_key_down(KeyboardKey::KEY_W) {
-            camera_pos.y -= game_context.v_width as f32 * dt;
+            camera_pos.y -= game_context.v_width as f32 * game_context.dt;
         }
         if rl.is_key_down(KeyboardKey::KEY_S) {
-            camera_pos.y += game_context.v_width as f32 * dt;
+            camera_pos.y += game_context.v_width as f32 * game_context.dt;
         }
 
         if game_context.input_state.middle_currently_held {
@@ -217,15 +221,14 @@ fn main() {
         game_context.camera.target.y = camera_pos.y.round();
 
         //--UPDATE BEGINS HERE--//
-        map.update(dt);
+        map.update(game_context.dt);
         entity_manager.update(
             &mut map,
             &mut game_context,
             current_zoom.zoom(),
-            dt,
         );
 
-        game_context.day_night_cycle.update(dt, &mut rl);
+        game_context.day_night_cycle.update(game_context.dt, &mut rl);
 
         shader.set_shader_value(red_tint_loc, game_context.day_night_cycle.red_tint);
         shader.set_shader_value(blue_tint_loc, game_context.day_night_cycle.blue_tint);

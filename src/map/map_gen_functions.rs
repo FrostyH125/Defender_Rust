@@ -1,17 +1,50 @@
-use std::collections::{HashMap, VecDeque};
+use std::{cell, collections::{HashMap, VecDeque}};
 
 use rand::{RngExt, random_bool, rngs::ThreadRng};
 
-use crate::{entities::{object::Object, objects::{grass::Grass, tree::Tree}}, map::{tile::{LakeSpriteData, RiverSpriteData, TileType}, tile_map::{MapDimensions, MapObjectGrid, MapTileGrid}, tile_map_animation_data::{FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType}}, utils::{directional_deltas::{CARDINAL_DELTAS, Direction}, map_cord::MapCord, map_utils::{self, is_tile_in_bounds}}};
+use crate::{
+    entities::{
+        object::Object,
+        objects::{grass::Grass, tree::Tree},
+    },
+    map::{
+        self,
+        map_cell::{CELL_SIZE, MapCell},
+        tile::{LakeSpriteData, RiverSpriteData, TileType},
+        tile_map::{MapDimensions, MapObjectGrid, MapTileGrid},
+        tile_map_animation_data::{
+            FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType,
+        },
+    },
+    utils::{
+        directional_deltas::{CARDINAL_DELTAS, Direction},
+        map_cord::MapCord,
+        map_utils::{self, is_tile_in_bounds},
+    },
+};
+
+pub fn generate_cell_grid(map_dimensions: MapDimensions) -> Vec<MapCell> {
+    let mut map_cells: Vec<MapCell> = Vec::new();
+
+    let num_of_cells_wide = map_dimensions.width / CELL_SIZE;
+    let num_of_cells_tall = map_dimensions.height / CELL_SIZE;
+
+    for _ in 0..num_of_cells_tall {
+        for _ in 0..num_of_cells_wide {
+            map_cells.push(MapCell::new());
+        }
+    }
+
+    return map_cells;
+}
 
 pub fn create_lakes(
     tile_grid: &mut MapTileGrid,
     map_dimensions: MapDimensions,
     rng: &mut ThreadRng,
 ) -> (Vec<MapCord>, Vec<MapCord>) {
-
     const LAKE_CHANCE: f32 = 0.001;
-    
+
     let map_len = tile_grid.len() as f32;
     let variance_bound = map_len * LAKE_CHANCE / 5.0;
     let final_variance = rng.random_range(-variance_bound..=variance_bound);
@@ -28,8 +61,7 @@ pub fn create_lakes(
         // but it makes sense since a = w * h, so w = a / h and h = a / w (excuse my dumbness)
         let start_x =
             rng.random_range(0..(tile_grid.len() / map_dimensions.height as usize)) as i16;
-        let start_y =
-            rng.random_range(0..(tile_grid.len() / map_dimensions.width as usize)) as i16;
+        let start_y = rng.random_range(0..(tile_grid.len() / map_dimensions.width as usize)) as i16;
 
         // will only reach this size as long as the queue doesnt run out of tiles
         let target_lake_size = rng.random_range(60..=100);
@@ -273,7 +305,9 @@ pub fn create_rivers(
                     break;
                 }
 
-                if map_utils::get_tile_at_cord(map, map_dimensions, check_tile_two) == TileType::River {
+                if map_utils::get_tile_at_cord(map, map_dimensions, check_tile_two)
+                    == TileType::River
+                {
                     // i dont want a cross section piece
                     break;
                 }
@@ -285,13 +319,12 @@ pub fn create_rivers(
 
                 if ok_shore_masks.contains(&lake_sh) {
                     // end river here, but add shore tile to river for inlet/outlet
-                     
+
                     // check to see if lake tiles are all around it, because if so, scrap it
                     // the problem is that it can have 0 neighbors and thats undesirable
-                    let mut counter = 0; 
-                    
-                    for dir in CARDINAL_DELTAS {
+                    let mut counter = 0;
 
+                    for dir in CARDINAL_DELTAS {
                         let t = dir + current_tile;
 
                         if !is_tile_in_bounds(map_dimensions, t) {
@@ -299,8 +332,9 @@ pub fn create_rivers(
                             counter = 4;
                             break;
                         }
-                        
-                        if let TileType::Lake = map_utils::get_tile_at_cord(map, map_dimensions, t) {
+
+                        if let TileType::Lake = map_utils::get_tile_at_cord(map, map_dimensions, t)
+                        {
                             counter += 1;
                         }
                     }
@@ -311,7 +345,7 @@ pub fn create_rivers(
                         // i know it kind of looks cool in a way but its not the result im looking for
                         break;
                     }
-                    
+
                     current_river.insert(check_tile, direction);
                     add_river(&mut current_river, &mut all_rivers, map, map_dimensions);
                     break;
@@ -330,12 +364,20 @@ pub fn create_rivers(
             let tile_to_right = current_tile + dir_right;
 
             let left_type = match map_utils::is_tile_in_bounds(map_dimensions, tile_to_left) {
-                true => Some(map_utils::get_tile_at_cord(map, map_dimensions, tile_to_left)),
+                true => Some(map_utils::get_tile_at_cord(
+                    map,
+                    map_dimensions,
+                    tile_to_left,
+                )),
                 false => None,
             };
 
             let right_type = match map_utils::is_tile_in_bounds(map_dimensions, tile_to_right) {
-                true => Some(map_utils::get_tile_at_cord(map, map_dimensions, tile_to_right)),
+                true => Some(map_utils::get_tile_at_cord(
+                    map,
+                    map_dimensions,
+                    tile_to_right,
+                )),
                 false => None,
             };
 
@@ -410,12 +452,13 @@ pub fn set_river_tile_animations(
                     continue;
                 }
 
-                let river_type =
-                    if map_utils::get_tile_at_cord(map, map_dimensions, check_tile) == TileType::Lake {
-                        RiverType::Inlet
-                    } else {
-                        RiverType::Outlet
-                    };
+                let river_type = if map_utils::get_tile_at_cord(map, map_dimensions, check_tile)
+                    == TileType::Lake
+                {
+                    RiverType::Inlet
+                } else {
+                    RiverType::Outlet
+                };
 
                 let index = if let RiverType::Inlet = river_type {
                     (*dir as u8 + 2) % 4
@@ -439,7 +482,9 @@ pub fn set_river_tile_animations(
                         continue;
                     }
 
-                    if map_utils::get_tile_at_cord(map, map_dimensions, first_tile) != TileType::River {
+                    if map_utils::get_tile_at_cord(map, map_dimensions, first_tile)
+                        != TileType::River
+                    {
                         continue;
                     }
                     // river found! now, determine whether its a straight or a corner (both have 2 neighbors)
@@ -516,7 +561,9 @@ pub fn set_river_tile_animations(
                         continue;
                     }
 
-                    if map_utils::get_tile_at_cord(map, map_dimensions, first_tile) != TileType::River {
+                    if map_utils::get_tile_at_cord(map, map_dimensions, first_tile)
+                        != TileType::River
+                    {
                         continue;
                     }
 
@@ -532,7 +579,8 @@ pub fn set_river_tile_animations(
                             continue;
                         }
 
-                        if map_utils::get_tile_at_cord(map, map_dimensions, second_tile) != TileType::River
+                        if map_utils::get_tile_at_cord(map, map_dimensions, second_tile)
+                            != TileType::River
                         {
                             continue;
                         }
@@ -597,6 +645,7 @@ pub fn spawn_forests_around_lakes(
     object_grid: &mut MapObjectGrid,
     lake_tiles: Vec<MapCord>,
     map_dimensions: MapDimensions,
+    map_cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     for lake_tile in lake_tiles {
@@ -624,7 +673,7 @@ pub fn spawn_forests_around_lakes(
                 let index = map_utils::cords_to_index(map_dimensions, tree_target_tile);
 
                 if let Object::NoObject = object_grid[index] {
-                    object_grid[index] = Tree::new(tree_target_tile, rng)
+                    object_grid[index] = Tree::new(tree_target_tile, rng, map_dimensions, map_cells);
                 }
             }
         }
@@ -635,6 +684,7 @@ pub fn spawn_standalone_forests(
     tile_grid: &MapTileGrid,
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
+    map_cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     let total_tiles = map_dimensions.total_tiles();
@@ -676,7 +726,8 @@ pub fn spawn_standalone_forests(
                 if !map_utils::is_tile_in_bounds(map_dimensions, try_tree_tile) {
                     continue;
                 }
-                if map_utils::get_tile_at_cord(tile_grid, map_dimensions, try_tree_tile) != TileType::Grass
+                if map_utils::get_tile_at_cord(tile_grid, map_dimensions, try_tree_tile)
+                    != TileType::Grass
                 {
                     continue;
                 }
@@ -684,7 +735,7 @@ pub fn spawn_standalone_forests(
                 let idx = map_utils::cords_to_index(map_dimensions, try_tree_tile);
 
                 if let Object::NoObject = object_grid[idx] {
-                    object_grid[idx] = Tree::new(try_tree_tile, rng);
+                    object_grid[idx] = Tree::new(try_tree_tile, rng, map_dimensions, map_cells);
                 }
             }
 
@@ -737,6 +788,7 @@ pub fn spawn_standalone_trees(
     tile_grid: &MapTileGrid,
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
+    map_cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     let num_of_trees =
@@ -757,7 +809,7 @@ pub fn spawn_standalone_trees(
             let idx = map_utils::cords_to_index(map_dimensions, try_tile);
 
             if let Object::NoObject = object_grid[idx] {
-                object_grid[idx] = Tree::new(try_tile, rng);
+                object_grid[idx] = Tree::new(try_tile, rng, map_dimensions, map_cells);
                 break;
             }
         }
@@ -768,10 +820,10 @@ pub fn spawn_standalone_grass(
     tile_grid: &MapTileGrid,
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
+    cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
-    let num_of_grass =
-        (map_dimensions.total_tiles() as f32 * rng.random_range(0.02..=0.04)) as i32;
+    let num_of_grass = (map_dimensions.total_tiles() as f32 * rng.random_range(0.02..=0.04)) as i32;
 
     for _ in 0..=num_of_grass {
         loop {
@@ -788,7 +840,7 @@ pub fn spawn_standalone_grass(
             let idx = map_utils::cords_to_index(map_dimensions, try_tile);
 
             if let Object::NoObject = object_grid[idx] {
-                object_grid[idx] = Grass::new(try_tile, rng, 0.0);
+                object_grid[idx] = Grass::new(try_tile, rng, 0.0, map_dimensions, cells);
                 break;
             }
         }
@@ -800,6 +852,7 @@ pub fn spawn_grass_around_lakes(
     object_grid: &mut MapObjectGrid,
     lake_tiles: Vec<MapCord>,
     map_dimensions: MapDimensions,
+    cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     for lake_tile in lake_tiles {
@@ -820,14 +873,16 @@ pub fn spawn_grass_around_lakes(
                     continue;
                 }
 
-                if map_utils::get_tile_at_cord(tile_grid, map_dimensions, check_tile) != TileType::Grass {
+                if map_utils::get_tile_at_cord(tile_grid, map_dimensions, check_tile)
+                    != TileType::Grass
+                {
                     continue;
                 }
 
                 let idx = map_utils::cords_to_index(map_dimensions, check_tile);
 
                 if let Object::NoObject = object_grid[idx] {
-                    object_grid[idx] = Grass::new(check_tile, rng, 0.0);
+                    object_grid[idx] = Grass::new(check_tile, rng, 0.0, map_dimensions, cells);
                 }
             }
         }
@@ -839,6 +894,7 @@ pub fn spawn_grass_around_rivers(
     object_grid: &mut MapObjectGrid,
     river_tiles: &HashMap<MapCord, RiverSpriteData>,
     map_dimensions: MapDimensions,
+    cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     for (cord, _) in river_tiles {
@@ -846,25 +902,26 @@ pub fn spawn_grass_around_rivers(
 
         for dir in CARDINAL_DELTAS {
             for range_out in 1..=range {
-
                 if !rng.random_bool(0.25) {
                     continue;
                 }
-                
+
                 let check_tile = dir * range_out + *cord;
 
                 if !map_utils::is_tile_in_bounds(map_dimensions, check_tile) {
                     continue;
                 }
 
-                if map_utils::get_tile_at_cord(tile_grid, map_dimensions, check_tile) != TileType::Grass {
+                if map_utils::get_tile_at_cord(tile_grid, map_dimensions, check_tile)
+                    != TileType::Grass
+                {
                     continue;
                 }
 
                 let idx = map_utils::cords_to_index(map_dimensions, check_tile);
 
                 if let Object::NoObject = object_grid[idx] {
-                    object_grid[idx] = Grass::new(check_tile, rng, 0.0);
+                    object_grid[idx] = Grass::new(check_tile, rng, 0.0, map_dimensions, cells);
                 }
             }
         }

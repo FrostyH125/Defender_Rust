@@ -93,7 +93,7 @@ pub struct DayNightCycle {
     pub current_night: usize,
     pub current_time: f32,
     pub current_shadow_shear: f32,
-    pub current_shadow_scale_y: f32,
+    pub current_shadow_scale: f32,
     pub red_tint: f32,
     pub blue_tint: f32,
     pub brightness_modifier: f32,
@@ -106,7 +106,7 @@ impl DayNightCycle {
             current_night: 0,
             current_time: 35.0,
             current_shadow_shear: 0.0,
-            current_shadow_scale_y: 0.0,
+            current_shadow_scale: 0.0,
             red_tint: 0.0,
             blue_tint: 0.0,
             brightness_modifier: 0.0,
@@ -152,7 +152,7 @@ impl DayNightCycle {
             Color::BLACK,
         );
         d.draw_text(
-            &format!("current scale_y: {}", self.current_shadow_scale_y),
+            &format!("current scale_y: {}", self.current_shadow_scale),
             5,
             80,
             30,
@@ -189,7 +189,7 @@ impl DayNightCycle {
             _ => (0.0, 0.0),
         };
 
-        self.current_shadow_scale_y = scale;
+        self.current_shadow_scale = scale;
         self.current_shadow_shear = shear;
     }
 

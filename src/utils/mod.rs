@@ -6,3 +6,4 @@ pub mod vector2_utils;
 pub mod mouse_utils;
 pub mod map_utils;
 pub mod pathfinding;
+pub mod camera_utils;

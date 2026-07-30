@@ -18,7 +18,7 @@ impl Gatherer {
         return Character::GathererChar(gatherer);
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap, dt: f32) {
+    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap) {
 
     }
 

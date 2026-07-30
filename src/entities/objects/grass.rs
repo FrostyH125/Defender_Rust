@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use basic_raylib_core::graphics::{
     animation_data::AnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
 };
@@ -5,11 +7,10 @@ use rand::{RngExt, rngs::ThreadRng};
 use raylib::math::Vector2;
 
 use crate::{
-    entities::{
+    GameContext, entities::{
         object::{Object, ObjectData},
         objects::grass::GrassType::Wheaty,
-    },
-    utils::{map_cord::MapCord, vector2_utils},
+    }, map::{map_cell::MapCell, tile_map::MapDimensions}, utils::{map_cord::MapCord, vector2_utils},
 };
 
 const SMALL_GRASS_HEIGHT: i32 = 8;
@@ -156,7 +157,7 @@ pub struct Grass {
 }
 
 impl Grass {
-    pub fn new(cord: MapCord, rng: &mut ThreadRng, total_game_time: f32) -> Object {
+    pub fn new(cord: MapCord, rng: &mut ThreadRng, total_game_time: f32, map_dimensions: MapDimensions, cells: &mut Vec<MapCell>) -> Object {
         let grass_level = rng.random_range(0..=2);
         let grass_type = GrassType::random_type(rng);
 
@@ -170,6 +171,8 @@ impl Grass {
             cord.map_pos(),
             Vector2::new(0.0, offset_y),
             vector2_utils::random_offset_by_one(rng),
+            cells,
+            map_dimensions,
             GRASS_WIDTH as f32,
             height as f32,
         );
@@ -190,12 +193,12 @@ impl Grass {
         return Object::GrassObj(grass);
     }
 
-    pub fn update(&mut self, dt: f32, total_game_time: f32, rng: &mut ThreadRng) {
+    pub fn update(&mut self, game_context: &mut GameContext) {
         // all anims have exact same properties so its simply not necessary to distinguish them
-        WHEATY_GRASS_ANIMS[0].update(&mut self.anim_instance, dt);
+        WHEATY_GRASS_ANIMS[0].update(&mut self.anim_instance, game_context.dt);
 
         // while loop, because if offscreen for extended period of time, may level up multiple times
-        while total_game_time > self.level_up_time {
+        while game_context.total_game_time > self.level_up_time {
             if self.grass_level >= 2 {
                 // just to make sure. it shouldnt be anything else but if this code saves just one life itll be worth it
                 self.grass_level = 2;
@@ -204,7 +207,7 @@ impl Grass {
                 self.level_up_time = f32::MAX;
                 break;
             }
-            self.level_up_time += rng.random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME);
+            self.level_up_time += game_context.rng.random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME);
             self.level_up();
         }
     }
