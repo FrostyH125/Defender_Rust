@@ -27,11 +27,12 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 // any of these can be done in any order:
 //      add new tree variants
 //      pre-requisites for first gatherer-tree interaction implementation:
-//          character hover
-//          selector struct
-//          character_object selecting mode switching
-//              add condition to having outline on objs/chars based on select mode
 //          new shader thing for selected sprites
+//          if is hovering and input click, selector.add_char/obj()
+//          Object::draw_selected()
+//          Character::draw_selected()
+//          draw_utils::draw_selected()
+//          if char/obj.is_selected { char/obj.draw_selected() }
 //          action buttons
 //      gatherer-tree interaction implementation
 

@@ -66,6 +66,15 @@ impl EntityManager {
         selector: &mut EntitySelectingManager,
         zoom: u32,
     ) {
+
+
+        if game_context.input_state.left_clicked_once {
+            match selector.selecting_mode {
+                SelectingMode::Objects => selector.deselect_objs(),
+                SelectingMode::Characters => selector.deselect_chars(),
+            }
+        }
+        
         let v_width = (game_context.logical_window_width / zoom) as f32;
         let v_height = (game_context.logical_window_height / zoom) as f32;
 
