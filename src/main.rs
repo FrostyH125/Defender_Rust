@@ -27,12 +27,12 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 // any of these can be done in any order:
 //      add new tree variants
 //      pre-requisites for first gatherer-tree interaction implementation:
-//          cell system for map cells
-//          action buttons
-//          character_object selecting mode switching
 //          character hover
-//          character select list
-//          object select list
+//          selector struct
+//          character_object selecting mode switching
+//          new shader thing for selected sprites
+//          action buttons
+//      gatherer-tree interaction implementation
 
 // unrelated:
 //  when a in/outlet is being drawn, draw the corners on that tile still if there exists some
