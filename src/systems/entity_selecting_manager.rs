@@ -1,13 +1,13 @@
-use basic_raylib_core::system::input_handler::InputState;
 use raylib::{
-    RaylibHandle, RaylibThread,
+    RaylibHandle,
     color::Color,
     drawing::{RaylibDraw, RaylibDrawHandle},
     ffi::KeyboardKey,
 };
 
 use crate::{
-    entities::{entity_manager::CharacterEntry, object::Object}, map::tile_map::{MapDimensions, MapObjectGrid}, utils::{entity_utils::get_char_by_index, map_utils::cords_to_index, vector2_utils::v2_to_cord},
+    entities::{entity_manager::CharacterEntry, object::Object},
+    map::tile_map::MapObjectGrid,
 };
 
 #[derive(Debug)]
@@ -65,12 +65,9 @@ impl EntitySelectingManager {
         self.deselect_objs();
         let data = object.get_mut_data();
         data.is_selected = true;
-        // the index was already readily available at call site, 
-        // otherwise i might calculate it on the fly
         self.selected_objects.push(idx);
     }
 
-    /// deselects all characters and then selects the character with the same id
     pub fn select_single_char(&mut self, character_entry: &mut CharacterEntry) {
         self.deselect_chars();
 
@@ -78,16 +75,12 @@ impl EntitySelectingManager {
         self.selected_characters.push(character_entry.unique_id);
     }
 
-    pub fn select_multiple_chars(
-        &mut self,
-        character_entries: &mut Vec<CharacterEntry>,
-        indexes: Vec<usize>,
-    ) {
+    pub fn select_multiple_chars(&mut self, hover_characters: Vec<&mut CharacterEntry>) {
         self.deselect_chars();
-        for idx in indexes {
-            let char = get_char_by_index(character_entries, idx);
-            char.character.get_mut_data().is_selected = true;
-            self.selected_characters.push(idx);
+
+        for ch in hover_characters {
+            ch.character.get_mut_data().is_selected = true;
+            self.selected_characters.push(ch.unique_id);
         }
     }
 

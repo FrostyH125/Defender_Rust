@@ -1,14 +1,21 @@
-use basic_raylib_core::system::input_handler;
+
 use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{
-        character::{Character, CharacterMovementResult}, object::{self, Object},
-    }, map::tile_map::{self, MapDimensions, MapObjectGrid, TileMap}, systems::{
+    GameContext, TILE_SIZE,
+    entities::{
+        character::Character,
+        object::{Object},
+    },
+    map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
+    systems::{
         entity_selecting_manager::{EntitySelectingManager, SelectingMode},
         select_rect::SelectRect,
-    }, utils::{
-        entity_utils::get_char_by_index, map_cord::MapCord, map_utils, mouse_utils::{self, mouse_world_coords},
+    },
+    utils::{
+        map_cord::MapCord,
+        map_utils,
+        mouse_utils::{mouse_world_coords},
     },
 };
 
@@ -18,12 +25,6 @@ use crate::{
 pub const UPDATE_MARGIN: f32 = 4.0;
 pub const DRAW_SHADOW_EXTRA_MARGIN: f32 = 2.0;
 
-/// houses the character itself as well as the appropriate render index
-/// honestly, I know that render_index could be a field inside of CharacterData,
-/// however, since the entity manager is the only thing reading it and manipulating it,
-/// I decided to abstract it. This struct + one method for getting the render_index on a character
-/// are the only things that will ever have to worry about it. If you're reading this,
-/// feek free to let me know what you think about this design choice
 pub struct CharacterEntry {
     pub character: Character,
     pub unique_id: usize,
@@ -80,46 +81,15 @@ impl EntityManager {
             }
         }
 
-        let v_width = (game_context.logical_window_width / zoom) as f32;
-        let v_height = (game_context.logical_window_height / zoom) as f32;
+        self.update_update_rect(game_context, zoom);
 
-        // add margins to the update area
-        let start_x = (game_context.camera.target.x - v_width / 2.0) - TILE_SIZE * UPDATE_MARGIN;
-        let start_y = (game_context.camera.target.y - v_height / 2.0) - TILE_SIZE * UPDATE_MARGIN;
-
-        // add a 1 block margin on the right and 2.0 to bottom as well
-        // the reason for the 2.0 is because, unlike the x axis, some objects
-        // actually contain a y offset that separates their logical pos and their
-        // visible pos. so, if the object (which max atm is going to be 2.0 x 2.0 tiles large)
-        // is 2 tiles tall, containing this offset, such as the tree, which logically should be drawn
-        // at an offset so the base of it is at the bottom of the logical tile its on, instead of the one
-        // below it, then if i only added 1 to the bottom instead of 2, the logical pos and the visible
-        // rect would move out of update area and camera view respectively on the exact same frame.
-        let end_x = start_x + v_width + TILE_SIZE * (UPDATE_MARGIN + 1.0);
-        let end_y = start_y + v_height + TILE_SIZE * (UPDATE_MARGIN + 2.0);
-
-        self.start_tile_x = (start_x / TILE_SIZE) as i16;
-        self.start_tile_y = (start_y / TILE_SIZE) as i16;
-        self.end_tile_x = (end_x / TILE_SIZE) as i16;
-        self.end_tile_y = (end_y / TILE_SIZE) as i16;
-
-        // update with the actual tiles being updated, not just the actual rectangle being used for those values
-        game_context.update_rect = Rectangle::new(
-            self.start_tile_x as f32 * TILE_SIZE,
-            self.start_tile_y as f32 * TILE_SIZE,
-            (self.end_tile_x - self.start_tile_x) as f32 * TILE_SIZE,
-            (self.end_tile_y - self.start_tile_y) as f32 * TILE_SIZE,
-        );
-
-        // used for single target selections when no select rect
         let mut hover_char: Option<&mut CharacterEntry> = None;
+        let mut hover_chars: Vec<&mut CharacterEntry> = Vec::new();
 
-        // used for when the select rect is dragging
-        let mut hover_chars: Vec<usize> = Vec::new();
-        
         for character in &mut self.characters {
-            
-            character.character.update(game_context, map, selector.is_deselecting_chars);
+            character
+                .character
+                .update(game_context, map, selector.is_deselecting_chars);
 
             character.render_index = character
                 .character
@@ -136,7 +106,7 @@ impl EntityManager {
                             .check_collision_recs(&select_rect.rectangle)
                         {
                             character.character.get_mut_data().is_hovering = true;
-                            hover_chars.push(character.unique_id);
+                            hover_chars.push(character);
                         }
                     }
                     // if the select rect is not currently active, then just go as usual with the normal single slot
@@ -149,16 +119,6 @@ impl EntityManager {
                             hover_char = Some(character);
                         }
                     }
-                }
-            }
-        }
-        
-        if let SelectingMode::Characters = selector.selecting_mode {
-            if let Some(ch) = hover_char {
-                ch.character.get_mut_data().is_hovering = true;
-
-                if game_context.input_state.left_clicked_once {
-                    selector.select_single_char(ch);
                 }
             }
         }
@@ -188,16 +148,19 @@ impl EntityManager {
                     match select_rect.select_range_active {
                         // put all objects in drag rect into the rectangle
                         true => {
-                            if select_rect.rectangle.check_collision_recs(&obj.get_data().hover_rect) {
+                            if select_rect
+                                .rectangle
+                                .check_collision_recs(&obj.get_data().hover_rect)
+                            {
                                 obj.get_mut_data().is_hovering = true;
                                 hover_objs.push(index);
                             }
-                        },
+                        }
                         // carry on as normal if not dragging
                         false => {
-                            if obj.is_point_intersecting(
-                                mouse_utils::mouse_world_coords(&game_context),
-                            ) {
+                            if obj.is_point_intersecting(mouse_world_coords(
+                                &game_context,
+                            )) {
                                 hover_obj = Some(index);
                             }
                         }
@@ -206,26 +169,34 @@ impl EntityManager {
             }
         }
 
-        if let SelectingMode::Objects = selector.selecting_mode {
-            if let Some(idx) = hover_obj {
-                let obj = &mut map.map_object_grid[idx];
-                
-                obj.get_mut_data().is_hovering = true;
+        match selector.selecting_mode {
+            SelectingMode::Objects => {
+                if select_rect.is_selecting_this_frame {
+                    selector.select_multiple_objs(&mut map.map_object_grid, hover_objs);
+                } else {
+                    if let Some(idx) = hover_obj {
+                        let obj = &mut map.map_object_grid[idx];
 
-                if game_context.input_state.left_clicked_once {
-                    selector.select_single_obj(obj, idx);
+                        obj.get_mut_data().is_hovering = true;
+
+                        if game_context.input_state.left_clicked_once {
+                            selector.select_single_obj(obj, idx);
+                        }
+                    }
                 }
             }
-        }
+            SelectingMode::Characters => {
+                if select_rect.is_selecting_this_frame {
+                    selector.select_multiple_chars(hover_chars);
+                } else {
+                    if let Some(ch) = hover_char {
+                        ch.character.get_mut_data().is_hovering = true;
 
-        if select_rect.is_selecting_this_frame {
-            match selector.selecting_mode {
-                SelectingMode::Objects => {
-                    selector.select_multiple_objs(&mut map.map_object_grid, hover_objs);
-                },
-                SelectingMode::Characters => {
-                    selector.select_multiple_chars(&mut self.characters, hover_chars);
-                },
+                        if game_context.input_state.left_clicked_once {
+                            selector.select_single_char(ch);
+                        }
+                    }
+                }
             }
         }
 
@@ -343,5 +314,40 @@ impl EntityManager {
 
             last_row_final_char_index = current_char_list_index;
         }
+    }
+
+    fn update_update_rect(&mut self, game_context: &mut GameContext, zoom: u32) {
+        let v_width = (game_context.logical_window_width / zoom) as f32;
+        let v_height = (game_context.logical_window_height / zoom) as f32;
+
+        // add margins to the update area
+        let start_x = (game_context.camera.target.x - v_width / 2.0) - TILE_SIZE * UPDATE_MARGIN;
+        let start_y = (game_context.camera.target.y - v_height / 2.0) - TILE_SIZE * UPDATE_MARGIN;
+
+        // add a 1 block margin on the right and 2.0 to bottom as well
+        // the reason for the 2.0 is because, unlike the x axis, some objects
+        // actually contain a y offset that separates their logical pos and their
+        // visible pos. so, if the object (which max atm is going to be 2.0 x 2.0 tiles large)
+        // is 2 tiles tall, containing this offset, such as the tree, which logically should be drawn
+        // at an offset so the base of it is at the bottom of the logical tile its on, instead of the one
+        // below it, then if i only added 1 to the bottom instead of 2, the logical pos and the visible
+        // rect would move out of update area and camera view respectively on the exact same frame.
+        let end_x = start_x + v_width + TILE_SIZE * (UPDATE_MARGIN + 1.0);
+        let end_y = start_y + v_height + TILE_SIZE * (UPDATE_MARGIN + 2.0);
+
+        self.start_tile_x = (start_x / TILE_SIZE) as i16;
+        self.start_tile_y = (start_y / TILE_SIZE) as i16;
+        self.end_tile_x = (end_x / TILE_SIZE) as i16;
+        self.end_tile_y = (end_y / TILE_SIZE) as i16;
+
+        let new_update_rect = Rectangle::new(
+            self.start_tile_x as f32 * TILE_SIZE,
+            self.start_tile_y as f32 * TILE_SIZE,
+            (self.end_tile_x - self.start_tile_x) as f32 * TILE_SIZE,
+            (self.end_tile_y - self.start_tile_y) as f32 * TILE_SIZE,
+        );
+
+        // update with the actual tiles being updated, not just the actual rectangle being used for those values
+        game_context.update_rect = new_update_rect;
     }
 }
