@@ -30,6 +30,7 @@ pub struct ObjectData {
     shadow_shear_x: f32,
     shadow_scale_y: f32,
     pub is_hovering: bool,
+    pub is_selected: bool,
     state: ObjectState
 }
 
@@ -60,6 +61,7 @@ impl ObjectData {
             shadow_shear_x: 0.0,
             shadow_scale_y: 0.0,
             is_hovering: false,
+            is_selected: false,
             state: ObjectState::Idle
         };
     }

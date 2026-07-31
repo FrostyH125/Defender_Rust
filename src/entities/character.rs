@@ -31,6 +31,7 @@ pub struct CharacterData {
     move_speed: f32,
     pub is_hovering: bool,
     pub sprite_flip: bool,
+    pub is_selected: bool,
 }
 
 impl CharacterData {
@@ -46,7 +47,8 @@ impl CharacterData {
             shadow_shear_x: 0.0,
             shadow_scale_y: 0.0,
             is_hovering: false,
-            sprite_flip: false
+            sprite_flip: false,
+            is_selected: false,
         };
     }
 
@@ -146,6 +148,7 @@ impl Character {
         }
 
         let data = self.get_mut_data();
+        data.is_hovering = false;
         data.shadow_scale_y = game_context.day_night_cycle.current_shadow_scale;
         data.shadow_shear_x = game_context.day_night_cycle.current_shadow_shear;
     }

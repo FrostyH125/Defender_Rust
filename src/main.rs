@@ -12,7 +12,7 @@ use raylib::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::day_night_cycle::DayNightCycle, utils::{
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager}, utils::{
         map_cord::MapCord, mouse_utils, pathfinding::{self, PathFinder, PathResult},
     },
 };
@@ -30,6 +30,7 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 //          character hover
 //          selector struct
 //          character_object selecting mode switching
+//              add condition to having outline on objs/chars based on select mode
 //          new shader thing for selected sprites
 //          action buttons
 //      gatherer-tree interaction implementation
@@ -87,6 +88,7 @@ fn main() {
 
     let mut camera_pos = camera.target;
     let input_state = InputState::new();
+    let mut entity_selecting_manager = EntitySelectingManager::new();
 
     let map_width = 500;
     let map_height = 500;
@@ -220,11 +222,14 @@ fn main() {
         game_context.camera.target.x = camera_pos.x.round();
         game_context.camera.target.y = camera_pos.y.round();
 
+        entity_selecting_manager.update(&mut rl);
+
         //--UPDATE BEGINS HERE--//
         map.update(game_context.dt);
         entity_manager.update(
             &mut map,
             &mut game_context,
+            &mut entity_selecting_manager,
             current_zoom.zoom(),
         );
 
@@ -300,6 +305,7 @@ fn main() {
 
             d.draw_texture_pro(current_rt, source_rec, dest_rec, origin, 0.0, Color::WHITE);
             game_context.day_night_cycle.draw_dbg(&mut d);
+            entity_selecting_manager.draw(&mut d);
         }
         //--DRAWING ENDS HERE--//
     }
