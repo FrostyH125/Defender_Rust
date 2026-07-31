@@ -1,9 +1,7 @@
 use basic_raylib_core::graphics::sprite::Sprite;
 use rand::rngs::ThreadRng;
 use raylib::{
-    drawing::RaylibDrawHandle,
-    math::{Rectangle, Vector2},
-    texture::Texture2D,
+    audio::RaylibAudio, drawing::RaylibDrawHandle, math::{Rectangle, Vector2}, texture::{RaylibRenderTexture2D, Texture2D},
 };
 
 use crate::{
@@ -165,6 +163,11 @@ impl Character {
     pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         draw_utils::draw_outline(d, sprite, self.get_draw_pos(), texture);
+    }
+
+    pub fn draw_selected(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        let sprite = self.current_sprite();
+        draw_utils::draw_selected(d, sprite, self.get_draw_pos(), texture);
     }
 
     pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {

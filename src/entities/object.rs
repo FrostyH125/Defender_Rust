@@ -3,16 +3,26 @@ use std::collections::HashSet;
 use basic_raylib_core::graphics::sprite::Sprite;
 use rand::rngs::ThreadRng;
 use raylib::{
-    drawing::RaylibDrawHandle,
+    drawing::{RaylibDraw, RaylibDrawHandle},
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
 
 use crate::{
-    GameContext, entities::{
+    GameContext,
+    entities::{
         object::Object::*,
         objects::{grass::Grass, tree::Tree},
-    }, map::{map_cell::MapCell, tile_map::{MapDimensions, TileMap}}, systems::day_night_cycle::DayNightCycle, utils::{camera_utils, draw_utils, map_cord::MapCord, map_utils::get_cell_at_cord, vector2_utils::v2_to_cord},
+    },
+    map::{
+        map_cell::MapCell,
+        tile_map::{MapDimensions, TileMap},
+    },
+    systems::day_night_cycle::DayNightCycle,
+    utils::{
+        camera_utils, draw_utils, map_cord::MapCord, map_utils::get_cell_at_cord,
+        vector2_utils::v2_to_cord,
+    },
 };
 
 #[derive(PartialEq, Eq)]
@@ -31,7 +41,7 @@ pub struct ObjectData {
     shadow_scale_y: f32,
     pub is_hovering: bool,
     pub is_selected: bool,
-    state: ObjectState
+    state: ObjectState,
 }
 
 impl ObjectData {
@@ -62,7 +72,7 @@ impl ObjectData {
             shadow_scale_y: 0.0,
             is_hovering: false,
             is_selected: false,
-            state: ObjectState::Idle
+            state: ObjectState::Idle,
         };
     }
 }
@@ -90,12 +100,7 @@ impl Object {
         }
     }
 
-    pub fn update(
-        &mut self,
-        game_context: &mut GameContext
-        
-    ) {
-
+    pub fn update(&mut self, game_context: &mut GameContext) {
         match self {
             TreeObj(tree) => tree.update(game_context.dt),
             GrassObj(grass) => grass.update(game_context),
@@ -103,28 +108,26 @@ impl Object {
             NoObject => return,
         }
 
-        
-        
         let data = self.get_mut_data();
-        
+
         match data.state {
-        ObjectState::Idle => {
-            data.is_hovering = false;
-            data.shadow_shear_x = game_context.day_night_cycle.current_shadow_shear;
-            data.shadow_scale_y = game_context.day_night_cycle.current_shadow_scale;
-        },
+            ObjectState::Idle => {
+                data.is_hovering = false;
+                data.shadow_shear_x = game_context.day_night_cycle.current_shadow_shear;
+                data.shadow_scale_y = game_context.day_night_cycle.current_shadow_scale;
+            }
             ObjectState::Breaking => {
                 // only remove if out of camera view, otherwise, carry to completion
                 if !camera_utils::is_in_camera_view(&data.hover_rect, game_context) {
                     *self = Self::NoObject
                 }
-            },
+            }
             ObjectState::WaitingForDeletion => {
                 // remove no matter what, this object is ready to go
                 // can be removed on same frame as set for deletion, so, no
                 // worry about going out of bounds in this state (which would be a 1 frame window otherwise)
                 *self = Self::NoObject
-            },
+            }
         }
     }
 
@@ -143,11 +146,23 @@ impl Object {
         draw_utils::draw_outline(d, sprite, self.get_data().draw_pos, texture);
     }
 
+    pub fn draw_selected(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        let sprite = self.current_sprite();
+        draw_utils::draw_selected(d, sprite, self.get_data().draw_pos, texture);
+    }
+
     pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         let data = self.get_data();
 
-        draw_utils::draw_shadow(d, sprite, data.draw_pos, data.shadow_shear_x, data.shadow_scale_y, texture);
+        draw_utils::draw_shadow(
+            d,
+            sprite,
+            data.draw_pos,
+            data.shadow_shear_x,
+            data.shadow_scale_y,
+            texture,
+        );
     }
 
     pub fn current_sprite(&self) -> &Sprite {

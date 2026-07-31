@@ -1,8 +1,12 @@
+use basic_raylib_core::system::input_handler;
 use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
 
 use crate::{
     GameContext, TILE_SIZE,
-    entities::{character::Character, object::Object},
+    entities::{
+        character::Character,
+        object::{self, Object},
+    },
     map::tile_map::{self, MapDimensions, MapObjectGrid, TileMap},
     systems::entity_selecting_manager::{EntitySelectingManager, SelectingMode},
     utils::{
@@ -24,12 +28,14 @@ pub const DRAW_SHADOW_EXTRA_MARGIN: f32 = 2.0;
 /// I decided to abstract it. This struct + one method for getting the render_index on a character
 /// are the only things that will ever have to worry about it. If you're reading this,
 /// feek free to let me know what you think about this design choice
-struct CharacterEntry {
-    character: Character,
+pub struct CharacterEntry {
+    pub character: Character,
+    pub unique_id: usize,
     render_index: usize,
 }
 
 pub struct EntityManager {
+    next_character_id: usize,
     characters: Vec<CharacterEntry>,
     map_dimensions: MapDimensions,
     start_tile_x: i16,
@@ -41,6 +47,7 @@ pub struct EntityManager {
 impl EntityManager {
     pub fn new(map_dimensions: MapDimensions) -> Self {
         return EntityManager {
+            next_character_id: 0,
             characters: Vec::with_capacity(200),
             map_dimensions,
             start_tile_x: 0,
@@ -56,7 +63,10 @@ impl EntityManager {
         self.characters.push(CharacterEntry {
             character,
             render_index,
+            unique_id: self.next_character_id,
         });
+
+        self.next_character_id += 1;
     }
 
     pub fn update(
@@ -66,15 +76,13 @@ impl EntityManager {
         selector: &mut EntitySelectingManager,
         zoom: u32,
     ) {
-
-
         if game_context.input_state.left_clicked_once {
             match selector.selecting_mode {
-                SelectingMode::Objects => selector.deselect_objs(),
-                SelectingMode::Characters => selector.deselect_chars(),
+                SelectingMode::Objects => selector.deselect_objs(&mut map.map_object_grid),
+                SelectingMode::Characters => selector.deselect_chars(&mut self.characters),
             }
         }
-        
+
         let v_width = (game_context.logical_window_width / zoom) as f32;
         let v_height = (game_context.logical_window_height / zoom) as f32;
 
@@ -106,7 +114,7 @@ impl EntityManager {
             (self.end_tile_y - self.start_tile_y) as f32 * TILE_SIZE,
         );
 
-        let mut hover_char: Option<&mut Character> = None;
+        let mut hover_char: Option<usize> = None;
 
         for character in &mut self.characters {
             character.character.update(game_context, map);
@@ -120,13 +128,20 @@ impl EntityManager {
                 .get_hover_rect()
                 .check_collision_point_rec(mouse_world_coords(game_context))
             {
-                hover_char = Some(&mut character.character);
+                hover_char = Some(character.unique_id);
             }
         }
 
         if let SelectingMode::Characters = selector.selecting_mode {
-            if let Some(c) = hover_char {
-                c.get_mut_data().is_hovering = true;
+            if let Some(char_idx) = hover_char {
+                self.get_char_by_index(char_idx)
+                    .character
+                    .get_mut_data()
+                    .is_hovering = true;
+
+                if game_context.input_state.left_clicked_once {
+                    selector.select_single_char(&mut self.characters, char_idx);
+                }
             }
         }
 
@@ -140,7 +155,7 @@ impl EntityManager {
                     continue;
                 }
 
-                let index = map_utils::cords_to_index(self.map_dimensions, cord);   
+                let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
                 map.map_object_grid[index].update(game_context);
 
@@ -155,10 +170,14 @@ impl EntityManager {
                 }
             }
         }
-        
+
         if let SelectingMode::Objects = selector.selecting_mode {
             if let Some(idx) = hover_obj_index {
                 map.map_object_grid[idx].get_mut_data().is_hovering = true;
+
+                if game_context.input_state.left_clicked_once {
+                    selector.select_single_obj(&mut map.map_object_grid, idx);
+                }
             }
         }
 
@@ -232,9 +251,17 @@ impl EntityManager {
                 match object_grid[current_tile_index] {
                     Object::NoObject => (),
                     _ => {
-                        object_grid[current_tile_index].draw(d, texture);
-                        if object_grid[current_tile_index].get_data().is_hovering {
-                            object_grid[current_tile_index].draw_hover(d, texture);
+                        let object = &object_grid[current_tile_index];
+                        let object_data = object.get_data();
+
+                        object.draw(d, texture);
+
+                        if object_data.is_hovering {
+                            object.draw_hover(d, texture);
+                        }
+
+                        if object_data.is_selected {
+                            object.draw_selected(d, texture);
                         }
                     }
                 }
@@ -248,18 +275,17 @@ impl EntityManager {
                     }
 
                     if next_char_tile_index == current_tile_index {
-                        self.characters[current_char_list_index]
-                            .character
-                            .draw(d, texture);
+                        let character = &self.characters[current_char_list_index].character;
+                        let character_data = character.get_data();
 
-                        if self.characters[current_char_list_index]
-                            .character
-                            .get_data()
-                            .is_hovering
-                        {
-                            self.characters[current_char_list_index]
-                                .character
-                                .draw_hover(d, texture);
+                        character.draw(d, texture);
+
+                        if character_data.is_hovering {
+                            character.draw_hover(d, texture);
+                        }
+
+                        if character_data.is_selected {
+                            character.draw_selected(d, texture);
                         }
                     }
 
@@ -269,5 +295,9 @@ impl EntityManager {
 
             last_row_final_char_index = current_char_list_index;
         }
+    }
+
+    pub fn get_char_by_index(&mut self, idx: usize) -> &mut CharacterEntry {
+        return self.characters.iter_mut().find(|c| c.unique_id == idx).unwrap();
     }
 }

@@ -27,8 +27,6 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 // any of these can be done in any order:
 //      add new tree variants
 //      pre-requisites for first gatherer-tree interaction implementation:
-//          new shader thing for selected sprites
-//          if is hovering and input click, selector.add_char/obj()
 //          Object::draw_selected()
 //          Character::draw_selected()
 //          draw_utils::draw_selected()

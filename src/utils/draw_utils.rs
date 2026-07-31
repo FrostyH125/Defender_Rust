@@ -83,3 +83,7 @@ pub fn draw_outline(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vector2, tex
 
     sprite.draw(d, pos, texture);
 }
+
+pub fn draw_selected(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vector2, texture: &Texture2D) {
+    sprite.draw_col(d, pos, texture, Color::new(255, 0, 255, 255));
+}
