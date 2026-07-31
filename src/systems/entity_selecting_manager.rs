@@ -7,8 +7,7 @@ use raylib::{
 };
 
 use crate::{
-    entities::entity_manager::CharacterEntry,
-    map::tile_map::MapObjectGrid,
+    entities::entity_manager::CharacterEntry, map::tile_map::MapObjectGrid, utils::entity_utils::get_char_by_index,
 };
 
 #[derive(Debug)]
@@ -73,6 +72,26 @@ impl EntitySelectingManager {
         
         character.get_mut_data().is_selected = true;
         self.selected_characters.push(id);
+    }
+
+    pub fn select_multiple_chars(&mut self, character_entries: &mut Vec<CharacterEntry>, indexes: Vec<usize>) {
+        self.deselect_chars(character_entries);
+
+        for idx in indexes {
+            let char = get_char_by_index(character_entries, idx);
+            char.character.get_mut_data().is_selected = true;
+            self.selected_characters.push(idx);
+        }
+    }
+
+    pub fn select_multiple_objs(&mut self, object_grid: &mut MapObjectGrid, indexes: Vec<usize>) {
+        self.deselect_objs(object_grid);
+        
+        for idx in indexes {
+            let obj = &mut object_grid[idx];
+            obj.get_mut_data().is_selected = true;
+            self.selected_objects.push(idx);
+        }
     }
 
     pub fn deselect_objs(&mut self, object_grid: &mut MapObjectGrid) {

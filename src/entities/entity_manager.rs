@@ -2,17 +2,14 @@ use basic_raylib_core::system::input_handler;
 use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::{
+    GameContext, TILE_SIZE, entities::{
         character::Character,
         object::{self, Object},
-    },
-    map::tile_map::{self, MapDimensions, MapObjectGrid, TileMap},
-    systems::entity_selecting_manager::{EntitySelectingManager, SelectingMode},
-    utils::{
-        map_cord::MapCord,
-        map_utils,
-        mouse_utils::{self, mouse_world_coords},
+    }, map::tile_map::{self, MapDimensions, MapObjectGrid, TileMap}, systems::{
+        entity_selecting_manager::{EntitySelectingManager, SelectingMode},
+        select_rect::SelectRect,
+    }, utils::{
+        entity_utils::get_char_by_index, map_cord::MapCord, map_utils, mouse_utils::{self, mouse_world_coords},
     },
 };
 
@@ -74,6 +71,7 @@ impl EntityManager {
         map: &mut TileMap,
         game_context: &mut GameContext,
         selector: &mut EntitySelectingManager,
+        select_rect: &SelectRect,
         zoom: u32,
     ) {
         if game_context.input_state.left_clicked_once {
@@ -114,7 +112,11 @@ impl EntityManager {
             (self.end_tile_y - self.start_tile_y) as f32 * TILE_SIZE,
         );
 
+        // used for single target selections when no select rect
         let mut hover_char: Option<usize> = None;
+
+        // used for when the select rect is dragging
+        let mut hover_chars: Vec<usize> = Vec::new();
 
         for character in &mut self.characters {
             character.character.update(game_context, map);
@@ -123,18 +125,37 @@ impl EntityManager {
                 .character
                 .get_render_tile_index(self.map_dimensions);
 
-            if character
-                .character
-                .get_hover_rect()
-                .check_collision_point_rec(mouse_world_coords(game_context))
-            {
-                hover_char = Some(character.unique_id);
+            // only do this shit if the selecting mode is proper, otherwise theres no point
+            if let SelectingMode::Characters = selector.selecting_mode {
+                match select_rect.select_range_active {
+                    // count each character inside of the rectangle if its dragging, they should all be drawing with hover
+                    true => {
+                        if character
+                            .character
+                            .get_hover_rect()
+                            .check_collision_recs(&select_rect.rectangle)
+                        {
+                            character.character.get_mut_data().is_hovering = true;
+                            hover_chars.push(character.unique_id);
+                        }
+                    }
+                    // if the select rect is not currently active, then just go as usual with the normal single slot
+                    false => {
+                        if character
+                            .character
+                            .get_hover_rect()
+                            .check_collision_point_rec(mouse_world_coords(game_context))
+                        {
+                            hover_char = Some(character.unique_id);
+                        }
+                    }
+                }
             }
         }
-
+        
         if let SelectingMode::Characters = selector.selecting_mode {
             if let Some(char_idx) = hover_char {
-                self.get_char_by_index(char_idx)
+                get_char_by_index(&mut self.characters, char_idx)
                     .character
                     .get_mut_data()
                     .is_hovering = true;
@@ -145,7 +166,8 @@ impl EntityManager {
             }
         }
 
-        let mut hover_obj_index: Option<usize> = None;
+        let mut hover_obj: Option<usize> = None;
+        let mut hover_objs: Vec<usize> = Vec::new();
 
         for y in self.start_tile_y..=self.end_tile_y {
             for x in self.start_tile_x..=self.end_tile_x {
@@ -157,27 +179,56 @@ impl EntityManager {
 
                 let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
-                map.map_object_grid[index].update(game_context);
+                let obj = &mut map.map_object_grid[index];
 
-                if let Object::NoObject = map.map_object_grid[index] {
+                obj.update(game_context);
+
+                if let Object::NoObject = obj {
                     continue;
                 }
 
-                if map.map_object_grid[index]
-                    .is_point_intersecting(mouse_utils::mouse_world_coords(&game_context))
-                {
-                    hover_obj_index = Some(index);
+                if let SelectingMode::Objects = selector.selecting_mode {
+                    match select_rect.select_range_active {
+                        // put all objects in drag rect into the rectangle
+                        true => {
+                            if select_rect.rectangle.check_collision_recs(&obj.get_data().hover_rect) {
+                                obj.get_mut_data().is_hovering = true;
+                                hover_objs.push(index);
+                            }
+                        },
+                        // carry on as normal if not dragging
+                        false => {
+                            if map.map_object_grid[index].is_point_intersecting(
+                                mouse_utils::mouse_world_coords(&game_context),
+                            ) {
+                                hover_obj = Some(index);
+                            }
+                        }
+                    }
                 }
             }
         }
 
+        //println!("hover_objs: {}", hover_objs.len());
+
         if let SelectingMode::Objects = selector.selecting_mode {
-            if let Some(idx) = hover_obj_index {
+            if let Some(idx) = hover_obj {
                 map.map_object_grid[idx].get_mut_data().is_hovering = true;
 
                 if game_context.input_state.left_clicked_once {
                     selector.select_single_obj(&mut map.map_object_grid, idx);
                 }
+            }
+        }
+
+        if select_rect.is_selecting_this_frame {
+            match selector.selecting_mode {
+                SelectingMode::Objects => {
+                    selector.select_multiple_objs(&mut map.map_object_grid, hover_objs);
+                },
+                SelectingMode::Characters => {
+                    selector.select_multiple_chars(&mut self.characters, hover_chars);
+                },
             }
         }
 
@@ -295,9 +346,5 @@ impl EntityManager {
 
             last_row_final_char_index = current_char_list_index;
         }
-    }
-
-    pub fn get_char_by_index(&mut self, idx: usize) -> &mut CharacterEntry {
-        return self.characters.iter_mut().find(|c| c.unique_id == idx).unwrap();
     }
 }

@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "basic-raylib-core"
 version = "0.1.0"
-source = "git+https://github.com/FrostyH125/basic-raylib-core#0181b83785d4e52d154d037673675b07ac282303"
+source = "git+https://github.com/FrostyH125/basic-raylib-core#0fd5600b796fbc79c00849f1cf5d22771f6946ec"
 dependencies = [
  "rand",
  "raylib",
@@ -84,9 +84,9 @@ dependencies = [
 
 [[package]]
 name = "clang-sys"
-version = "1.8.1"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b023947811758c97c59bf9d1c188fd619ad4718dcaa767947df1cadb14f39f4"
+checksum = "157a8ba7b480713b56f4c09fd13fc3e0a22a5dfab8097ba61cbc5feef950788a"
 dependencies = [
  "glob",
  "libc",

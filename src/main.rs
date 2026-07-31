@@ -12,7 +12,7 @@ use raylib::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager}, utils::{
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect}, utils::{
         map_cord::MapCord, mouse_utils, pathfinding::{self, PathFinder, PathResult},
     },
 };
@@ -27,11 +27,12 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 // any of these can be done in any order:
 //      add new tree variants
 //      pre-requisites for first gatherer-tree interaction implementation:
-//          Object::draw_selected()
-//          Character::draw_selected()
-//          draw_utils::draw_selected()
-//          if char/obj.is_selected { char/obj.draw_selected() }
 //          action buttons
+//              really, the only things are:
+//                  spawning the buttons (matching on the types in the two lists passed each time you successfully select something)
+//                  making the buttons do stuff (using the select_manager lists (which show every selected entity) and coming through them, 
+//                  matching on enum types for the button just pressed, and for example, making each tree to is_being_chopped, and each gatherer to state::chopping)
+// 
 //      gatherer-tree interaction implementation
 
 // unrelated:
@@ -83,6 +84,9 @@ fn main() {
         rotation: 0.0,
         zoom: 1.0,
     };
+
+    let mut select_rect = SelectRect::new();
+    
     let mut rng = rand::rng();
 
     let mut camera_pos = camera.target;
@@ -159,7 +163,7 @@ fn main() {
         texture,
         path_finder,
         update_rect: Rectangle::default(),
-        dt: 0.0
+        dt: 0.0,
     };
     //
     // DEBUG START
@@ -178,6 +182,7 @@ fn main() {
 
         // update input first
         game_context.input_state.update(&mut rl, camera.zoom);
+        select_rect.update(&game_context);
 
         if game_context.input_state.middle_roll.abs() >= 1.0 {
             let up = game_context.input_state.middle_roll < 0.0;
@@ -229,6 +234,7 @@ fn main() {
             &mut map,
             &mut game_context,
             &mut entity_selecting_manager,
+            &select_rect,
             current_zoom.zoom(),
         );
 
@@ -252,10 +258,13 @@ fn main() {
                 render_texture_handle.clear_background(Color::RAYWHITE);
                 {
                     let mut cam_handle = render_texture_handle.begin_mode2D(game_context.camera);
+                    
                     {
                         let mut shader_handle = cam_handle.begin_shader_mode(&mut shader);
 
                         map.draw(&mut shader_handle, &game_context);
+                        
+                        select_rect.draw(&mut shader_handle);
 
                         entity_manager.draw(
                             &map.map_object_grid,
@@ -267,22 +276,6 @@ fn main() {
                             mouse_utils::mouse_world_coords(&game_context),
                             &game_context.texture,
                         );
-
-                        let mouse_cord = mouse_utils::mouse_world_coords(&game_context);
-
-                        if let PathResult::Success { path } = game_context
-                            .path_finder
-                            .a_star(
-                                MapCord::new(0, 0),
-                                MapCord::new(mouse_cord.x as i16 / 8, mouse_cord.y as i16 / 8),
-                                &map,
-                                150.0,
-                            )
-                        {
-                            for pos in path {
-                                PATH_SPRITE.draw(&mut shader_handle, pos, &game_context.texture);
-                            }
-                        }
                     } // end shader mode - nothing drawn will pass through shader beyond here
                 } // end camera mode - nothing drawn will be drawn in world space beyond here
             } // end rt mode - nothing drawn will be drawn on the render texture beyond here

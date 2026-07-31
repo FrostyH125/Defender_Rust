@@ -7,3 +7,4 @@ pub mod mouse_utils;
 pub mod map_utils;
 pub mod pathfinding;
 pub mod camera_utils;
+pub mod entity_utils;
