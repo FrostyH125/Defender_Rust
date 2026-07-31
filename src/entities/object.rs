@@ -100,7 +100,9 @@ impl Object {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext) {
+    pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool) {
+
+        
         match self {
             TreeObj(tree) => tree.update(game_context.dt),
             GrassObj(grass) => grass.update(game_context),
@@ -110,6 +112,10 @@ impl Object {
 
         let data = self.get_mut_data();
 
+        if should_deselect {
+            data.is_selected = false;
+        }
+        
         match data.state {
             ObjectState::Idle => {
                 data.is_hovering = false;

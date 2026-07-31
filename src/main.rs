@@ -30,7 +30,7 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 //          action buttons
 //              really, the only things are:
 //                  spawning the buttons (matching on the types in the two lists passed each time you successfully select something)
-//                  making the buttons do stuff (using the select_manager lists (which show every selected entity) and coming through them, 
+//                  making the buttons do stuff (using the select_manager lists (which show every selected entity) and combing through them, 
 //                  matching on enum types for the button just pressed, and for example, making each tree to is_being_chopped, and each gatherer to state::chopping)
 // 
 //      gatherer-tree interaction implementation

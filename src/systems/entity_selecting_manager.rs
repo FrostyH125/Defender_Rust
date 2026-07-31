@@ -7,7 +7,7 @@ use raylib::{
 };
 
 use crate::{
-    entities::entity_manager::CharacterEntry, map::tile_map::MapObjectGrid, utils::entity_utils::get_char_by_index,
+    entities::{entity_manager::CharacterEntry, object::Object}, map::tile_map::{MapDimensions, MapObjectGrid}, utils::{entity_utils::get_char_by_index, map_utils::cords_to_index, vector2_utils::v2_to_cord},
 };
 
 #[derive(Debug)]
@@ -17,13 +17,14 @@ pub enum SelectingMode {
 }
 
 pub struct EntitySelectingManager {
-    /// unfortunately maintaining single source of truth for something like this is just very difficult
-    /// i will have to keep in mind that anything added to this list will need to have is_selected = to true
-    /// thankfully i can manage this invariant with the methods on this struct. so i should never have to actually
-    /// do it myself
+    // these store map id's and character unique ids respectively
+    // if it weren't for needing the character id's and object id's for the action buttons being able
+    // to know which characters should be checked, i probably wouldnt need these lists at all.
     selected_objects: Vec<usize>,
     selected_characters: Vec<usize>,
     pub selecting_mode: SelectingMode,
+    pub is_deselecting_chars: bool,
+    pub is_deselecting_objs: bool,
 }
 
 impl EntitySelectingManager {
@@ -32,10 +33,15 @@ impl EntitySelectingManager {
             selected_objects: Vec::new(),
             selected_characters: Vec::new(),
             selecting_mode: SelectingMode::Objects,
+            is_deselecting_chars: false,
+            is_deselecting_objs: false,
         };
     }
 
     pub fn update(&mut self, rl: &mut RaylibHandle) {
+        self.is_deselecting_chars = false;
+        self.is_deselecting_objs = false;
+
         if rl.is_key_pressed(KeyboardKey::KEY_ONE) {
             self.selecting_mode = SelectingMode::Objects;
         }
@@ -55,28 +61,29 @@ impl EntitySelectingManager {
         );
     }
 
-    pub fn select_single_obj(&mut self, object_grid: &mut MapObjectGrid, idx: usize) {
-        self.deselect_objs(object_grid);
-
-        let obj = &mut object_grid[idx];
-        
-        obj.get_mut_data().is_selected = true;
+    pub fn select_single_obj(&mut self, object: &mut Object, idx: usize) {
+        self.deselect_objs();
+        let data = object.get_mut_data();
+        data.is_selected = true;
+        // the index was already readily available at call site, 
+        // otherwise i might calculate it on the fly
         self.selected_objects.push(idx);
     }
 
     /// deselects all characters and then selects the character with the same id
-    pub fn select_single_char(&mut self, character_entries: &mut Vec<CharacterEntry>, id: usize) {
-        self.deselect_chars(character_entries);
+    pub fn select_single_char(&mut self, character_entry: &mut CharacterEntry) {
+        self.deselect_chars();
 
-        let character = &mut character_entries.iter_mut().find(|c| c.unique_id == id).unwrap().character;
-        
-        character.get_mut_data().is_selected = true;
-        self.selected_characters.push(id);
+        character_entry.character.get_mut_data().is_selected = true;
+        self.selected_characters.push(character_entry.unique_id);
     }
 
-    pub fn select_multiple_chars(&mut self, character_entries: &mut Vec<CharacterEntry>, indexes: Vec<usize>) {
-        self.deselect_chars(character_entries);
-
+    pub fn select_multiple_chars(
+        &mut self,
+        character_entries: &mut Vec<CharacterEntry>,
+        indexes: Vec<usize>,
+    ) {
+        self.deselect_chars();
         for idx in indexes {
             let char = get_char_by_index(character_entries, idx);
             char.character.get_mut_data().is_selected = true;
@@ -85,8 +92,7 @@ impl EntitySelectingManager {
     }
 
     pub fn select_multiple_objs(&mut self, object_grid: &mut MapObjectGrid, indexes: Vec<usize>) {
-        self.deselect_objs(object_grid);
-        
+        self.deselect_objs();
         for idx in indexes {
             let obj = &mut object_grid[idx];
             obj.get_mut_data().is_selected = true;
@@ -94,22 +100,13 @@ impl EntitySelectingManager {
         }
     }
 
-    pub fn deselect_objs(&mut self, object_grid: &mut MapObjectGrid) {
-        for idx in self.selected_objects.drain(..) {
-            object_grid[idx].get_mut_data().is_selected = false;
-        }
+    pub fn deselect_objs(&mut self) {
+        self.is_deselecting_objs = true;
+        self.selected_objects.clear();
     }
 
-    pub fn deselect_chars(&mut self, character_entries: &mut Vec<CharacterEntry>) {
-        // im so sorry
-        for id in self.selected_characters.drain(..) {
-            character_entries
-                .iter_mut()
-                .find(|c| c.unique_id == id)
-                .unwrap()
-                .character
-                .get_mut_data()
-                .is_selected = false;
-        }
+    pub fn deselect_chars(&mut self) {
+        self.is_deselecting_chars = true;
+        self.selected_characters.clear()
     }
 }

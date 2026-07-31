@@ -140,7 +140,12 @@ impl Character {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap) {
+    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap, should_deselect: bool) {
+
+        if should_deselect {
+            self.get_mut_data().is_selected = false;
+        }
+        
         match self {
             Character::GathererChar(gatherer) => gatherer.update(game_context, map),
         }
@@ -226,6 +231,6 @@ impl Character {
             return;
         }
 
-        object.update(game_context);
+        object.update(game_context, false);
     }
 }

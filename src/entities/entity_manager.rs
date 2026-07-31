@@ -3,8 +3,7 @@ use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
 
 use crate::{
     GameContext, TILE_SIZE, entities::{
-        character::Character,
-        object::{self, Object},
+        character::{Character, CharacterMovementResult}, object::{self, Object},
     }, map::tile_map::{self, MapDimensions, MapObjectGrid, TileMap}, systems::{
         entity_selecting_manager::{EntitySelectingManager, SelectingMode},
         select_rect::SelectRect,
@@ -76,8 +75,8 @@ impl EntityManager {
     ) {
         if game_context.input_state.left_clicked_once {
             match selector.selecting_mode {
-                SelectingMode::Objects => selector.deselect_objs(&mut map.map_object_grid),
-                SelectingMode::Characters => selector.deselect_chars(&mut self.characters),
+                SelectingMode::Objects => selector.deselect_objs(),
+                SelectingMode::Characters => selector.deselect_chars(),
             }
         }
 
@@ -113,13 +112,14 @@ impl EntityManager {
         );
 
         // used for single target selections when no select rect
-        let mut hover_char: Option<usize> = None;
+        let mut hover_char: Option<&mut CharacterEntry> = None;
 
         // used for when the select rect is dragging
         let mut hover_chars: Vec<usize> = Vec::new();
-
+        
         for character in &mut self.characters {
-            character.character.update(game_context, map);
+            
+            character.character.update(game_context, map, selector.is_deselecting_chars);
 
             character.render_index = character
                 .character
@@ -146,7 +146,7 @@ impl EntityManager {
                             .get_hover_rect()
                             .check_collision_point_rec(mouse_world_coords(game_context))
                         {
-                            hover_char = Some(character.unique_id);
+                            hover_char = Some(character);
                         }
                     }
                 }
@@ -154,14 +154,11 @@ impl EntityManager {
         }
         
         if let SelectingMode::Characters = selector.selecting_mode {
-            if let Some(char_idx) = hover_char {
-                get_char_by_index(&mut self.characters, char_idx)
-                    .character
-                    .get_mut_data()
-                    .is_hovering = true;
+            if let Some(ch) = hover_char {
+                ch.character.get_mut_data().is_hovering = true;
 
                 if game_context.input_state.left_clicked_once {
-                    selector.select_single_char(&mut self.characters, char_idx);
+                    selector.select_single_char(ch);
                 }
             }
         }
@@ -181,7 +178,7 @@ impl EntityManager {
 
                 let obj = &mut map.map_object_grid[index];
 
-                obj.update(game_context);
+                obj.update(game_context, selector.is_deselecting_objs);
 
                 if let Object::NoObject = obj {
                     continue;
@@ -198,7 +195,7 @@ impl EntityManager {
                         },
                         // carry on as normal if not dragging
                         false => {
-                            if map.map_object_grid[index].is_point_intersecting(
+                            if obj.is_point_intersecting(
                                 mouse_utils::mouse_world_coords(&game_context),
                             ) {
                                 hover_obj = Some(index);
@@ -209,14 +206,14 @@ impl EntityManager {
             }
         }
 
-        //println!("hover_objs: {}", hover_objs.len());
-
         if let SelectingMode::Objects = selector.selecting_mode {
             if let Some(idx) = hover_obj {
-                map.map_object_grid[idx].get_mut_data().is_hovering = true;
+                let obj = &mut map.map_object_grid[idx];
+                
+                obj.get_mut_data().is_hovering = true;
 
                 if game_context.input_state.left_clicked_once {
-                    selector.select_single_obj(&mut map.map_object_grid, idx);
+                    selector.select_single_obj(obj, idx);
                 }
             }
         }
