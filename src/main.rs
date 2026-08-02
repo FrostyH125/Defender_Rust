@@ -28,10 +28,21 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 //      add new tree variants
 //      pre-requisites for first gatherer-tree interaction implementation:
 //          action buttons
-//              really, the only things are:
-//                  spawning the buttons (matching on the types in the two lists passed each time you successfully select something)
-//                  making the buttons do stuff (using the select_manager lists (which show every selected entity) and combing through them, 
-//                  matching on enum types for the button just pressed, and for example, making each tree to is_being_chopped, and each gatherer to state::chopping)
+//              next ->
+//                  add the algorithm that spawns each button with certain margins and positions to ABM::trigger_match()
+//                  add particle stuff to AB::spawn_particles() and AB::pop_particles()
+//                  test that the action buttons spawn and set properly
+//                  add gatherer and tree interaction ->
+//                      gatherer.state = LookingForTree
+//                      tree.is_marked_for_chopping = true
+//                      Gatherer::look_for_tree() -> bool // if false, gatherer is no longer gathering and goes back to idle
+//                      // if true, gatherer.state = MovingToTree
+//                      // then, gatherer.state = ChoppingTree
+//                      // then back to LookingForTree
+//                      Gatherer::hit_tree() // notably before update
+//                      Object::update() -> + if obj.health < 0 {self.state = Falling}
+//                      Tree::TakeHit()
+//                      
 // 
 //      gatherer-tree interaction implementation
 
