@@ -354,9 +354,6 @@ impl TileMap {
                 }
             }
         }
-
-        self.dbg_cells(d);
-
     }
 
     fn dbg_cells(&self, d: &mut RaylibDrawHandle<'_>) {

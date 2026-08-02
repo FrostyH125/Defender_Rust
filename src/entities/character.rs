@@ -172,7 +172,7 @@ impl Character {
 
     pub fn draw_selected(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
-        draw_utils::draw_selected(d, sprite, self.get_draw_pos(), texture);
+        draw_utils::draw_with_extra_brightness(d, sprite, self.get_draw_pos(), texture);
     }
 
     pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
