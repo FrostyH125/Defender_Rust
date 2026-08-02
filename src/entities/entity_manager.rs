@@ -1,22 +1,15 @@
-
 use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
 
 use crate::{
     GameContext, TILE_SIZE,
-    entities::{
-        character::Character,
-        object::{Object},
-    },
+    entities::{character::Character, object::Object},
     map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
     systems::{
+        action_button_manager::{self, ActionButtonManager},
         entity_selecting_manager::{EntitySelectingManager, SelectingMode},
         select_rect::SelectRect,
     },
-    utils::{
-        map_cord::MapCord,
-        map_utils,
-        mouse_utils::{mouse_world_coords},
-    },
+    utils::{map_cord::MapCord, map_utils, mouse_utils::mouse_world_coords},
 };
 
 /// num of tiles to the left and top of the cam view where objects are still being updated and drawn
@@ -72,8 +65,11 @@ impl EntityManager {
         game_context: &mut GameContext,
         selector: &mut EntitySelectingManager,
         select_rect: &SelectRect,
+        action_button_manager: &mut ActionButtonManager,
         zoom: u32,
     ) {
+        let mut was_anything_selected_this_frame = false;
+
         if game_context.input_state.left_clicked_once {
             match selector.selecting_mode {
                 SelectingMode::Objects => selector.deselect_objs(),
@@ -158,9 +154,7 @@ impl EntityManager {
                         }
                         // carry on as normal if not dragging
                         false => {
-                            if obj.is_point_intersecting(mouse_world_coords(
-                                &game_context,
-                            )) {
+                            if obj.is_point_intersecting(mouse_world_coords(&game_context)) {
                                 hover_obj = Some(index);
                             }
                         }
@@ -173,6 +167,7 @@ impl EntityManager {
             SelectingMode::Objects => {
                 if select_rect.is_selecting_this_frame {
                     selector.select_multiple_objs(&mut map.map_object_grid, hover_objs);
+                    was_anything_selected_this_frame = true;
                 } else {
                     if let Some(idx) = hover_obj {
                         let obj = &mut map.map_object_grid[idx];
@@ -181,6 +176,7 @@ impl EntityManager {
 
                         if game_context.input_state.left_clicked_once {
                             selector.select_single_obj(obj, idx);
+                            was_anything_selected_this_frame = true;
                         }
                     }
                 }
@@ -188,16 +184,30 @@ impl EntityManager {
             SelectingMode::Characters => {
                 if select_rect.is_selecting_this_frame {
                     selector.select_multiple_chars(hover_chars);
+                    was_anything_selected_this_frame = true;
                 } else {
                     if let Some(ch) = hover_char {
                         ch.character.get_mut_data().is_hovering = true;
 
                         if game_context.input_state.left_clicked_once {
                             selector.select_single_char(ch);
+                            was_anything_selected_this_frame = true;
                         }
                     }
                 }
             }
+        }
+
+        if was_anything_selected_this_frame {
+            // this function will reset the action buttons and then check if there are any matches between selected objects and selected characters
+            // if it finds any number of matches, it will spawn them at the position passed as an argument
+            action_button_manager.try_trigger_match(
+                mouse_world_coords(game_context),
+                &map.map_object_grid,
+                &selector.selected_objects,
+                &selector.selected_characters,
+                &mut self.characters,
+            );
         }
 
         // sort the characters by tile index (important)

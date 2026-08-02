@@ -1,11 +1,10 @@
 use basic_raylib_core::graphics::sprite::Sprite;
-use rand::rngs::ThreadRng;
 use raylib::{
-    audio::RaylibAudio, drawing::RaylibDrawHandle, math::{Rectangle, Vector2}, texture::{RaylibRenderTexture2D, Texture2D},
+    drawing::RaylibDrawHandle, math::{Rectangle, Vector2}, texture::Texture2D,
 };
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{characters::gatherer::Gatherer, object::Object}, map::tile_map::{MapDimensions, TileMap}, systems::day_night_cycle::DayNightCycle, utils::{
+    GameContext, TILE_SIZE, entities::{characters::gatherer::Gatherer, object::Object}, map::tile_map::{MapDimensions, TileMap}, utils::{
         camera_utils, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath}, vector2_utils,
     },
 };

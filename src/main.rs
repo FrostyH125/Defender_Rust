@@ -12,7 +12,7 @@ use raylib::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect}, utils::{
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{action_button_manager::ActionButtonManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect}, utils::{
         map_cord::MapCord, mouse_utils, pathfinding::{self, PathFinder, PathResult},
     },
 };
@@ -103,6 +103,7 @@ fn main() {
     let mut camera_pos = camera.target;
     let input_state = InputState::new();
     let mut entity_selecting_manager = EntitySelectingManager::new();
+    let mut action_button_manager = ActionButtonManager::new();
 
     let map_width = 500;
     let map_height = 500;
@@ -237,18 +238,20 @@ fn main() {
         game_context.camera.target.x = camera_pos.x.round();
         game_context.camera.target.y = camera_pos.y.round();
 
-        entity_selecting_manager.update(&mut rl);
 
         //--UPDATE BEGINS HERE--//
         map.update(game_context.dt);
+        entity_selecting_manager.update(&mut rl);
         entity_manager.update(
             &mut map,
             &mut game_context,
             &mut entity_selecting_manager,
             &select_rect,
+            &mut action_button_manager,
             current_zoom.zoom(),
         );
 
+        action_button_manager.update(game_context.dt);
         game_context.day_night_cycle.update(game_context.dt, &mut rl);
 
         shader.set_shader_value(red_tint_loc, game_context.day_night_cycle.red_tint);
@@ -282,6 +285,7 @@ fn main() {
                             &mut shader_handle,
                             &game_context.texture,
                         );
+                        action_button_manager.draw(&mut shader_handle, &game_context);
                         mouse_utils::draw_mouse(
                             &mut shader_handle,
                             mouse_utils::mouse_world_coords(&game_context),

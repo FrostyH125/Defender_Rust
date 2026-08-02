@@ -1,7 +1,7 @@
 use basic_raylib_core::graphics::sprite::Sprite;
 use raylib::math::Vector2;
 
-use crate::{GameContext, entities::character::{Character, CharacterData, CharacterMovementResult}, map::tile_map::TileMap, utils::mouse_utils};
+use crate::{GameContext, entities::character::{Character, CharacterData}, map::tile_map::TileMap};
 
 pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
 

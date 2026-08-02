@@ -15,10 +15,10 @@ pub struct ActionButton {
     kind: ActionButtonKind,
     sprite: Sprite,
     pub hover_rect: Rectangle,
-    spawn_pos: Vector2,
+    pub spawn_pos: Vector2,
     current_pos: Vector2,
     total_life_time: f32,
-    sin_offset: f32,
+    pub sin_offset: f32,
 }
 
 impl ActionButton {
@@ -43,7 +43,8 @@ impl ActionButton {
     pub fn update(&mut self, dt: f32) {
         self.total_life_time += dt;
 
-        self.current_pos.y = self.spawn_pos.y + (self.total_life_time + self.sin_offset).sin();
+        self.current_pos.y = self.spawn_pos.y + ((self.total_life_time + self.sin_offset) / 2.0).sin() * 2.0;
+        self.current_pos.x = self.spawn_pos.x;
         self.hover_rect.x = self.current_pos.x;
         self.hover_rect.y = self.current_pos.y
     }
@@ -62,13 +63,13 @@ impl ActionButton {
             ActionButtonKind::ChopButton => chop_button::on_click(obj_ids, chars),
         }
 
-        todo!("draw particles")
+        self.make_pop_particles();
     }
 
-    pub fn make_spawn_particles() {
+    pub fn make_spawn_particles(&self) {
         todo!()
     }
-    pub fn make_pop_particles() {
+    pub fn make_pop_particles(&self) {
         todo!()
     }
 }

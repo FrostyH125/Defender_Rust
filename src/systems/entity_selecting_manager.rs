@@ -20,8 +20,8 @@ pub struct EntitySelectingManager {
     // these store map id's and character unique ids respectively
     // if it weren't for needing the character id's and object id's for the action buttons being able
     // to know which characters should be checked, i probably wouldnt need these lists at all.
-    selected_objects: Vec<usize>,
-    selected_characters: Vec<usize>,
+    pub selected_objects: Vec<usize>,
+    pub selected_characters: Vec<usize>,
     pub selecting_mode: SelectingMode,
     pub is_deselecting_chars: bool,
     pub is_deselecting_objs: bool,
