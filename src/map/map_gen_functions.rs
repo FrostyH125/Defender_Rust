@@ -1,6 +1,6 @@
-use std::{cell, collections::{HashMap, VecDeque}};
+use std::collections::{HashMap, VecDeque};
 
-use rand::{RngExt, random_bool, rngs::ThreadRng};
+use rand::{RngExt, rngs::ThreadRng};
 
 use crate::{
     entities::{
@@ -8,7 +8,6 @@ use crate::{
         objects::{grass::Grass, tree::Tree},
     },
     map::{
-        self,
         map_cell::{CELL_SIZE, MapCell},
         tile::{LakeSpriteData, RiverSpriteData, TileType},
         tile_map::{MapDimensions, MapObjectGrid, MapTileGrid},
@@ -673,7 +672,8 @@ pub fn spawn_forests_around_lakes(
                 let index = map_utils::cords_to_index(map_dimensions, tree_target_tile);
 
                 if let Object::NoObject = object_grid[index] {
-                    object_grid[index] = Tree::new(tree_target_tile, rng, map_dimensions, map_cells);
+                    object_grid[index] =
+                        Tree::new(tree_target_tile, rng, map_dimensions, map_cells);
                 }
             }
         }
@@ -823,7 +823,7 @@ pub fn spawn_standalone_grass(
     cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
-    let num_of_grass = (map_dimensions.total_tiles() as f32 * rng.random_range(0.02..=0.04)) as i32;
+    let num_of_grass = (map_dimensions.total_tiles() as f32 * rng.random_range(0.01..=0.02)) as i32;
 
     for _ in 0..=num_of_grass {
         loop {
@@ -856,8 +856,8 @@ pub fn spawn_grass_around_lakes(
     rng: &mut ThreadRng,
 ) {
     for lake_tile in lake_tiles {
-        let mut range = rng.random_range(0..=10);
-        if rng.random_bool(0.03) {
+        let mut range = rng.random_range(3..=17);
+        if rng.random_bool(0.6) {
             range += rng.random_range(2..=5);
         }
 
@@ -898,11 +898,11 @@ pub fn spawn_grass_around_rivers(
     rng: &mut ThreadRng,
 ) {
     for (cord, _) in river_tiles {
-        let range = rng.random_range(0..=6);
+        let range = rng.random_range(1..=8);
 
         for dir in CARDINAL_DELTAS {
             for range_out in 1..=range {
-                if !rng.random_bool(0.25) {
+                if !rng.random_bool(0.35) {
                     continue;
                 }
 

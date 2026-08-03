@@ -1,10 +1,15 @@
 use basic_raylib_core::graphics::sprite::Sprite;
-use raylib::{drawing::RaylibDrawHandle, math::{Rectangle, Vector2}, texture::Texture2D};
+use raylib::{
+    drawing::RaylibDrawHandle,
+    math::{Rectangle, Vector2},
+    texture::Texture2D,
+};
 
 use crate::{
+    GameContext,
     entities::entity_manager::CharacterEntry,
     systems::action_buttons::chop_button::{self, CHOP_BUTTON_SPRITE},
-    utils::draw_utils,
+    utils::{draw_utils, mouse_utils::mouse_world_coords},
 };
 
 pub enum ActionButtonKind {
@@ -19,6 +24,7 @@ pub struct ActionButton {
     current_pos: Vector2,
     total_life_time: f32,
     pub sin_offset: f32,
+    pub is_hovering: bool,
 }
 
 impl ActionButton {
@@ -35,22 +41,28 @@ impl ActionButton {
             hover_rect: Rectangle::new(0.0, 0.0, 16.0, 16.0),
             total_life_time: 0.0,
             sin_offset: 0.0,
+            is_hovering: false,
         };
     }
 }
 
 impl ActionButton {
-    pub fn update(&mut self, dt: f32) {
-        self.total_life_time += dt;
+    pub fn update(&mut self, game_context: &GameContext) {
+        self.total_life_time += game_context.dt;
 
-        self.current_pos.y = self.spawn_pos.y + ((self.total_life_time + self.sin_offset) / 2.0).sin() * 2.0;
+        self.current_pos.y =
+            self.spawn_pos.y + ((self.total_life_time + self.sin_offset) / 2.0).sin() * 2.0;
         self.current_pos.x = self.spawn_pos.x;
         self.hover_rect.x = self.current_pos.x;
-        self.hover_rect.y = self.current_pos.y
+        self.hover_rect.y = self.current_pos.y;
+
+        self.is_hovering = self
+            .hover_rect
+            .check_collision_point_rec(mouse_world_coords(game_context));
     }
 
-    pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, hover: bool) {
-        match hover {
+    pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        match self.is_hovering {
             true => {
                 draw_utils::draw_with_extra_brightness(d, &self.sprite, self.current_pos, texture)
             }

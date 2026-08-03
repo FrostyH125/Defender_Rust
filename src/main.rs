@@ -12,8 +12,17 @@ use raylib::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{action_button_manager::ActionButtonManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect}, utils::{
-        map_cord::MapCord, mouse_utils, pathfinding::{self, PathFinder, PathResult},
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX},
+    entities::{characters::gatherer::Gatherer, entity_manager::EntityManager},
+    map::tile_map::TileMap,
+    systems::{
+        action_button_manager::ActionButtonManager, day_night_cycle::DayNightCycle,
+        entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
+    },
+    utils::{
+        map_cord::MapCord,
+        mouse_utils,
+        pathfinding::{self, PathFinder, PathResult},
     },
 };
 
@@ -26,12 +35,12 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 
 // any of these can be done in any order:
 //      add new tree variants
+//      grass patches
 //      pre-requisites for first gatherer-tree interaction implementation:
 //          action buttons
 //              next ->
-//                  add the algorithm that spawns each button with certain margins and positions to ABM::trigger_match()
 //                  add particle stuff to AB::spawn_particles() and AB::pop_particles()
-//                  test that the action buttons spawn and set properly
+//                  test particles
 //                  add gatherer and tree interaction ->
 //                      gatherer.state = LookingForTree
 //                      tree.is_marked_for_chopping = true
@@ -42,13 +51,13 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 //                      Gatherer::hit_tree() // notably before update
 //                      Object::update() -> + if obj.health < 0 {self.state = Falling}
 //                      Tree::TakeHit()
-//                      
-// 
+//
+//
 //      gatherer-tree interaction implementation
 
 // unrelated:
 //  when a in/outlet is being drawn, draw the corners on that tile still if there exists some
-//  BUGFIX: the river sprite algo sometimes encounters rivers with 4 neighbors, either make it 
+//  BUGFIX: the river sprite algo sometimes encounters rivers with 4 neighbors, either make it
 //      never happen or make it redo river generation or something if it happens
 
 pub const TILE_SIZE: f32 = 8.0;
@@ -66,7 +75,7 @@ pub struct GameContext {
     texture: Texture2D,
     path_finder: PathFinder,
     update_rect: Rectangle,
-    dt: f32
+    dt: f32,
 }
 
 fn main() {
@@ -97,7 +106,7 @@ fn main() {
     };
 
     let mut select_rect = SelectRect::new();
-    
+
     let mut rng = rand::rng();
 
     let mut camera_pos = camera.target;
@@ -238,7 +247,6 @@ fn main() {
         game_context.camera.target.x = camera_pos.x.round();
         game_context.camera.target.y = camera_pos.y.round();
 
-
         //--UPDATE BEGINS HERE--//
         map.update(game_context.dt);
         entity_selecting_manager.update(&mut rl);
@@ -251,8 +259,10 @@ fn main() {
             current_zoom.zoom(),
         );
 
-        action_button_manager.update(game_context.dt);
-        game_context.day_night_cycle.update(game_context.dt, &mut rl);
+        action_button_manager.update(&game_context);
+        game_context
+            .day_night_cycle
+            .update(game_context.dt, &mut rl);
 
         shader.set_shader_value(red_tint_loc, game_context.day_night_cycle.red_tint);
         shader.set_shader_value(blue_tint_loc, game_context.day_night_cycle.blue_tint);
@@ -272,12 +282,12 @@ fn main() {
                 render_texture_handle.clear_background(Color::RAYWHITE);
                 {
                     let mut cam_handle = render_texture_handle.begin_mode2D(game_context.camera);
-                    
+
                     {
                         let mut shader_handle = cam_handle.begin_shader_mode(&mut shader);
 
                         map.draw(&mut shader_handle, &game_context);
-                        
+
                         select_rect.draw(&mut shader_handle);
 
                         entity_manager.draw(

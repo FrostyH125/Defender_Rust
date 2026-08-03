@@ -1,3 +1,4 @@
+use basic_raylib_core::utils::math_utils::center_of_rect;
 use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
 
 use crate::{
@@ -69,12 +70,15 @@ impl EntityManager {
         zoom: u32,
     ) {
         let mut was_anything_selected_this_frame = false;
+        let are_any_action_buttons_hovering = action_button_manager.check_for_buttons_being_hovered();
 
         if game_context.input_state.left_clicked_once {
             match selector.selecting_mode {
                 SelectingMode::Objects => selector.deselect_objs(),
                 SelectingMode::Characters => selector.deselect_chars(),
             }
+
+            action_button_manager.clear_buttons();
         }
 
         self.update_update_rect(game_context, zoom);
@@ -91,7 +95,7 @@ impl EntityManager {
                 .character
                 .get_render_tile_index(self.map_dimensions);
 
-            // only do this shit if the selecting mode is proper, otherwise theres no point
+            // only do this shit if the selecting mode is proper, and if there are no buttons hovering, otherwise theres no point
             if let SelectingMode::Characters = selector.selecting_mode {
                 match select_rect.select_range_active {
                     // count each character inside of the rectangle if its dragging, they should all be drawing with hover
@@ -107,7 +111,7 @@ impl EntityManager {
                     }
                     // if the select rect is not currently active, then just go as usual with the normal single slot
                     false => {
-                        if character
+                        if  !are_any_action_buttons_hovering && character
                             .character
                             .get_hover_rect()
                             .check_collision_point_rec(mouse_world_coords(game_context))
@@ -154,7 +158,7 @@ impl EntityManager {
                         }
                         // carry on as normal if not dragging
                         false => {
-                            if obj.is_point_intersecting(mouse_world_coords(&game_context)) {
+                            if  !are_any_action_buttons_hovering && obj.is_point_intersecting(mouse_world_coords(&game_context)) {
                                 hover_obj = Some(index);
                             }
                         }
@@ -199,10 +203,15 @@ impl EntityManager {
         }
 
         if was_anything_selected_this_frame {
+            let button_base_pos = match select_rect.is_selecting_this_frame {
+                true => center_of_rect(select_rect.rectangle),
+                false => mouse_world_coords(game_context),
+            };
+            
             // this function will reset the action buttons and then check if there are any matches between selected objects and selected characters
             // if it finds any number of matches, it will spawn them at the position passed as an argument
             action_button_manager.try_trigger_match(
-                mouse_world_coords(game_context),
+                button_base_pos,
                 &map.map_object_grid,
                 &selector.selected_objects,
                 &selector.selected_characters,

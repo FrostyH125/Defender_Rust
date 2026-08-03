@@ -8,3 +8,4 @@ pub mod map_utils;
 pub mod pathfinding;
 pub mod camera_utils;
 pub mod entity_utils;
+pub mod rectangle_utils;

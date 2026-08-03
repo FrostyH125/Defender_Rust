@@ -26,6 +26,10 @@ impl ActionButtonManager {
         };
     }
 
+    pub fn clear_buttons(&mut self) {
+        self.action_buttons.clear();
+    }
+
     pub fn try_trigger_match(
         &mut self,
         button_tray_base_pos: Vector2,
@@ -34,7 +38,7 @@ impl ActionButtonManager {
         char_ids: &[usize],
         chars: &mut [CharacterEntry],
     ) {
-        self.action_buttons.clear();
+        self.clear_buttons();
 
         let mut successful_buttons = check_for_matches(object_grid, obj_ids, char_ids, chars);
 
@@ -103,20 +107,28 @@ impl ActionButtonManager {
         }
     }
 
-    pub fn update(&mut self, dt: f32) {
+    pub fn update(&mut self, game_context: &GameContext) {
         for b in &mut self.action_buttons {
-            b.update(dt);
+            b.update(game_context);
         }
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, game_context: &GameContext) {
         for b in &self.action_buttons {
-            let hover = b
-                .hover_rect
-                .check_collision_point_rec(mouse_world_coords(game_context));
-
-            b.draw(d, &game_context.texture, hover);
+            b.draw(d, &game_context.texture);
         }
+    }
+
+    pub fn check_for_buttons_being_hovered(&self) -> bool {
+        let mut button_hovering = false;
+
+        for b in &self.action_buttons {
+            if b.is_hovering {
+                button_hovering = true;
+            }
+        }
+
+        return button_hovering;
     }
 }
 
