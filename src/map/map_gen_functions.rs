@@ -218,9 +218,11 @@ pub fn create_rivers(
     map_dimensions: MapDimensions,
     rng: &mut ThreadRng,
 ) -> HashMap<MapCord, Direction> {
-    let dir_change_chance = 0.01;
-    let river_chance = 0.05;
-    let ok_shore_masks: [u8; 4] = [1, 2, 4, 8];
+
+    const DIR_CHANGE_CHANCE: f64 = 0.01;
+    const RIVER_CHANCE_ADJUSTMENT_FOR_CANCELLED_RIVERS: f64 = 0.002;
+    const RIVER_CHANCE: f64 = 0.05 + RIVER_CHANCE_ADJUSTMENT_FOR_CANCELLED_RIVERS;
+    static OK_SHORE_MASKS: [u8; 4] = [1, 2, 4, 8];
 
     // (cord, flow dir)
     let estimated_num_of_river_tiles = map_dimensions.total_tiles() / 50;
@@ -228,13 +230,13 @@ pub fn create_rivers(
         HashMap::with_capacity(estimated_num_of_river_tiles);
 
     for (cord, data) in lake_data {
-        if !ok_shore_masks.contains(&data.shore_animation_index) {
+        if !OK_SHORE_MASKS.contains(&data.shore_animation_index) {
             // not viable
             continue;
         }
 
         // since we found a viable candidate, lets see if it can turn into a river
-        if !rng.random_bool(river_chance) {
+        if !rng.random_bool(RIVER_CHANCE) {
             continue;
         }
 
@@ -266,7 +268,7 @@ pub fn create_rivers(
             // skip the random turning change if you just turned, skips it for exactly 1 iteration
             if just_turned {
                 just_turned = false;
-            } else if rng.random_bool(dir_change_chance) {
+            } else if rng.random_bool(DIR_CHANGE_CHANCE) {
                 let new_dir = match rng.random_bool(0.5) {
                     true => direction.turn_left(),
                     false => direction.turn_right(),
@@ -312,7 +314,7 @@ pub fn create_rivers(
             } else if check_tile_type == TileType::Lake {
                 let lake_sh = lake_data.get(&check_tile).unwrap().shore_animation_index;
 
-                if ok_shore_masks.contains(&lake_sh) {
+                if OK_SHORE_MASKS.contains(&lake_sh) {
                     // end river here, but add shore tile to river for inlet/outlet
 
                     // check to see if lake tiles are all around it, because if so, scrap it
@@ -403,18 +405,10 @@ pub fn create_rivers(
             };
 
             if counter == 4 {
-                // restart this river
-                current_tile = MapCord::new(cord.x, cord.y);
-                direction = match data.shore_animation_index {
-                    1 => Direction::North,
-                    2 => Direction::East,
-                    4 => Direction::South,
-                    8 => Direction::West,
-                    _ => panic!(
-                        "river dir is not any of the ok bit masks, should not have made it past the viability check"
-                    ),
-                };
-                current_river.insert(current_tile, direction);
+                // throw this river away. its not going to work
+                // i originally was going to have the game just restart this river but i figured in particularly unlucky
+                // circumstances, it would probably end up as an endless loop
+                // i will simply raise the average river rate to account for this rare occurrence
                 break;
             }
 
