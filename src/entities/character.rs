@@ -17,10 +17,10 @@ pub enum CharacterMovementResult {
 }
 
 pub struct CharacterData {
+    path: PathResult,
     pub pos: Vector2,
     draw_offset: Vector2,
     target_pos: Option<Vector2>,
-    path: PathResult,
     width: f32,
     height: f32,
     shadow_shear_x: f32,

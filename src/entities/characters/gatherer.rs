@@ -1,10 +1,15 @@
-use basic_raylib_core::graphics::sprite::Sprite;
+use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
 use raylib::math::Vector2;
 
 use crate::{
-    GameContext, entities::{
-        character::{Character, CharacterData, CharacterMovementResult}, characters::gatherer::{self, GathererState::MovingToObject}, object::Object,
-    }, map::tile_map::{MapObjectGrid, TileMap}, utils::{map_utils::get_cell_at_cord, vector2_utils::v2_to_cord},
+    GameContext,
+    entities::{
+        character::{Character, CharacterData, CharacterMovementResult},
+        characters::gatherer::{self, GathererState::MovingToObject},
+        object::{Object, ObjectState},
+    },
+    map::tile_map::{MapObjectGrid, TileMap},
+    utils::{map_utils::get_cell_at_cord, vector2_utils::v2_to_cord},
 };
 
 pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
@@ -27,15 +32,19 @@ pub enum GathererState {
     MovingToObject {
         target_pos: Vector2,
         object_index: Option<usize>,
+        gather_target: GatherTarget,
     },
     Gathering {
         object_index: usize,
+        gather_target: GatherTarget,
     },
 }
 
 pub struct Gatherer {
     pub data: CharacterData,
     pub state: GathererState,
+    gathering_power: f32,
+    gather_timer: Timer
 }
 
 impl Gatherer {
@@ -43,6 +52,8 @@ impl Gatherer {
         let gatherer = Gatherer {
             data: CharacterData::new(pos, Vector2::zero(), 8.0, 8.0, 30.0),
             state: GathererState::Idle,
+            gathering_power: 1.0,
+            gather_timer: Timer::new(2.0)
         };
 
         return Character::GathererChar(gatherer);
@@ -64,6 +75,7 @@ impl Gatherer {
                         self.state = MovingToObject {
                             target_pos: t.pos,
                             object_index: Some(t.idx),
+                            gather_target,
                         }
                     }
                     None => self.state = GathererState::Idle,
@@ -72,10 +84,12 @@ impl Gatherer {
             GathererState::MovingToObject {
                 target_pos,
                 object_index,
+                gather_target,
             } => match self.data.move_to(target_pos, game_context, map) {
                 CharacterMovementResult::Success => {
                     self.state = GathererState::Gathering {
                         object_index: object_index.unwrap(),
+                        gather_target,
                     }
                 }
                 CharacterMovementResult::NotArrivedYet => (),
@@ -83,12 +97,27 @@ impl Gatherer {
                     self.state = GathererState::Idle
                 }
             },
-            GathererState::Gathering { object_index } => {
-                // if obj.gather( // obj.take_hit() ) {
-                //      self.state = GathererState::LookingForTree
-                // }
+            GathererState::Gathering {
+                object_index,
+                gather_target,
+            } => {
+                self.gather_timer.track(game_context.dt);
+
+                if self.gather_timer.is_done() {
+                    self.gather_timer.reset();
+                    
+                    if self.gather(&mut map.map_object_grid[object_index]) {
+                        self.state = GathererState::LookingForObject(gather_target);
+                    }
+                }
             }
         }
+    }
+
+    fn gather(&self, obj: &mut Object) -> bool {
+        obj.take_hit(self.gathering_power);
+
+        return obj.get_data().state == ObjectState::Breaking;
     }
 
     fn find_closest_target(
@@ -135,7 +164,7 @@ impl Gatherer {
 
         return closest_obj;
     }
-    
+
     fn obj_matches_target(obj: &Object, target_obj: GatherTarget) -> bool {
         match target_obj {
             GatherTarget::Tree => {

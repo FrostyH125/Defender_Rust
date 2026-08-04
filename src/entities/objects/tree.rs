@@ -3,10 +3,7 @@ use rand::rngs::ThreadRng;
 use raylib::math::Vector2;
 
 use crate::{
-    TILE_SIZE,
-    entities::object::{Object, ObjectData},
-    map::{map_cell::MapCell, tile_map::MapDimensions},
-    utils::{map_cord::MapCord, vector2_utils},
+    TILE_SIZE, entities::object::{Object, ObjectData, ObjectState}, map::{map_cell::MapCell, tile_map::MapDimensions}, utils::{map_cord::MapCord, vector2_utils},
 };
 
 static TREE_SPRITE: Sprite = Sprite::new(144, 24, 8, 16);
@@ -31,13 +28,22 @@ impl Tree {
                 map_dimensions,
                 8.0,
                 16.0,
+                100.0,
+                0.1,
+                1.0
             ),
         };
 
         return Object::TreeObj(tree);
     }
 
-    pub fn update(&mut self, dt: f32) {}
+    pub fn update(&mut self, dt: f32) {
+        if let ObjectState::GettingHit = self.data.state {
+            self.data.situational_draw_offset.x = 1.0;
+        } else {
+            self.data.situational_draw_offset.x = 0.0;
+        }
+    }
 
     pub fn sprite(&self) -> &Sprite {
         return &TREE_SPRITE;

@@ -175,6 +175,9 @@ impl Grass {
             map_dimensions,
             GRASS_WIDTH as f32,
             height as f32,
+            10.0, 
+            0.0,
+            0.0
         );
 
         let grass = Grass {

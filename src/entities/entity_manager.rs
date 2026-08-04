@@ -83,6 +83,12 @@ impl EntityManager {
                 SelectingMode::Characters => selector.deselect_chars(),
             }
 
+            // need to deselect all objs and chars so they dont stay selected even after the button is activated
+            if are_any_action_buttons_hovering {
+                selector.deselect_chars();
+                selector.deselect_objs();
+            }
+
             action_button_manager.clear_buttons();
         }
 

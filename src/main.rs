@@ -185,7 +185,7 @@ fn main() {
     // DEBUG START
     //
 
-    for _ in 0..100 {
+    for _ in 0..10 {
         entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));  
     }
 
