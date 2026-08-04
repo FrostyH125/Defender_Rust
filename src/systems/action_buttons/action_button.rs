@@ -1,4 +1,5 @@
 use basic_raylib_core::graphics::sprite::Sprite;
+use rand::RngExt;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
@@ -6,10 +7,7 @@ use raylib::{
 };
 
 use crate::{
-    GameContext,
-    entities::entity_manager::CharacterEntry,
-    systems::action_buttons::chop_button::{self, CHOP_BUTTON_SPRITE},
-    utils::{draw_utils, mouse_utils::mouse_world_coords},
+    GameContext, entities::entity_manager::CharacterEntry, map::tile_map::MapObjectGrid, systems::action_buttons::chop_button::{self, CHOP_BUTTON_SPRITE}, utils::{draw_utils, mouse_utils::mouse_world_coords},
 };
 
 pub enum ActionButtonKind {
@@ -19,9 +17,8 @@ pub enum ActionButtonKind {
 pub struct ActionButton {
     kind: ActionButtonKind,
     sprite: Sprite,
-    pub hover_rect: Rectangle,
-    pub spawn_pos: Vector2,
-    current_pos: Vector2,
+    pub rect: Rectangle,
+    pub spawn_y_pos: f32,
     total_life_time: f32,
     pub sin_offset: f32,
     pub is_hovering: bool,
@@ -36,9 +33,8 @@ impl ActionButton {
         return Self {
             kind,
             sprite,
-            spawn_pos: Vector2::default(),
-            current_pos: Vector2::default(),
-            hover_rect: Rectangle::new(0.0, 0.0, 16.0, 16.0),
+            spawn_y_pos: f32::default(),
+            rect: Rectangle::new(0.0, 0.0, 16.0, 16.0),
             total_life_time: 0.0,
             sin_offset: 0.0,
             is_hovering: false,
@@ -50,36 +46,63 @@ impl ActionButton {
     pub fn update(&mut self, game_context: &GameContext) {
         self.total_life_time += game_context.dt;
 
-        self.current_pos.y =
-            self.spawn_pos.y + ((self.total_life_time + self.sin_offset) / 2.0).sin() * 2.0;
-        self.current_pos.x = self.spawn_pos.x;
-        self.hover_rect.x = self.current_pos.x;
-        self.hover_rect.y = self.current_pos.y;
+        self.rect.y =
+            self.spawn_y_pos + ((self.total_life_time + self.sin_offset) / 2.0).sin() * 2.0;
 
         self.is_hovering = self
-            .hover_rect
+            .rect
             .check_collision_point_rec(mouse_world_coords(game_context));
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        let current_pos = Vector2::new(self.rect.x, self.rect.y);
+        
         match self.is_hovering {
             true => {
-                draw_utils::draw_with_extra_brightness(d, &self.sprite, self.current_pos, texture)
+                draw_utils::draw_with_extra_brightness(d, &self.sprite, current_pos, texture)
             }
-            false => self.sprite.draw(d, self.current_pos, texture),
+            false => self.sprite.draw(d, current_pos, texture),
         }
     }
 
-    pub fn on_click(&mut self, obj_ids: &[usize], chars: &[&mut CharacterEntry]) {
+    pub fn on_click(&mut self, obj_ids: &[usize], char_ids: &[usize], object_grid: &mut MapObjectGrid, characters: &mut [CharacterEntry]) {
         match self.kind {
-            ActionButtonKind::ChopButton => chop_button::on_click(obj_ids, chars),
+            ActionButtonKind::ChopButton => chop_button::on_click(obj_ids, char_ids, object_grid, characters),
         }
 
         self.make_pop_particles();
     }
 
-    pub fn make_spawn_particles(&self) {
-        todo!()
+    pub fn make_spawn_particles(&self, game_context: &mut GameContext) {
+        static BUBBLE_PARTICLE_SPAWN_SPRITE_LARGE: Sprite = Sprite::new(48, 0, 3, 3);
+        static BUBBLE_PARTICLE_SPAWN_SPRITE_SMALL: Sprite = Sprite::new(49, 0, 1, 1);
+
+        let rng = &mut game_context.rng;
+
+        for _ in 0..=rng.random_range(30..=40) {
+            let x_pos =
+                rng.random_range(self.rect.x..=(self.rect.x + self.rect.width));
+            let y_pos =
+                rng.random_range((self.rect.y + 5.0)..=(self.rect.y + self.rect.height + 5.0));
+
+            let y_vel = rng.random_range(-5.0..=0.0);
+            let x_vel = rng.random_range(-0.5..=0.5);
+            let y_acc = rng.random_range(-90.0..=-50.0);
+            let life_span = rng.random_range(0.75..=1.25);
+
+            let spr = match rng.random_bool(0.05) {
+                true => &BUBBLE_PARTICLE_SPAWN_SPRITE_LARGE,
+                false => &BUBBLE_PARTICLE_SPAWN_SPRITE_SMALL,
+            };
+
+            game_context.particle_system.emit(
+                spr,
+                Vector2::new(x_pos, y_pos),
+                Vector2::new(x_vel, y_vel),
+                Vector2::new(0.0, y_acc),
+                life_span,
+            );
+        }
     }
     pub fn make_pop_particles(&self) {
         todo!()

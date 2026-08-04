@@ -27,7 +27,7 @@ pub struct CharacterEntry {
 
 pub struct EntityManager {
     next_character_id: usize,
-    characters: Vec<CharacterEntry>,
+    pub characters: Vec<CharacterEntry>,
     map_dimensions: MapDimensions,
     start_tile_x: i16,
     start_tile_y: i16,
@@ -69,6 +69,11 @@ impl EntityManager {
         action_button_manager: &mut ActionButtonManager,
         zoom: u32,
     ) {
+
+        // update the action buttons first so that they can interrupt and do their on_click before the next batch of selections starts
+        // since left clicking ALWAYS removes the selected objects and clears the action buttons active
+        action_button_manager.update(game_context, selector, &mut map.map_object_grid, &mut self.characters);
+        
         let mut was_anything_selected_this_frame = false;
         let are_any_action_buttons_hovering = action_button_manager.check_for_buttons_being_hovered();
 
@@ -211,10 +216,10 @@ impl EntityManager {
             // this function will reset the action buttons and then check if there are any matches between selected objects and selected characters
             // if it finds any number of matches, it will spawn them at the position passed as an argument
             action_button_manager.try_trigger_match(
+                game_context,
                 button_base_pos,
+                &selector,
                 &map.map_object_grid,
-                &selector.selected_objects,
-                &selector.selected_characters,
                 &mut self.characters,
             );
         }

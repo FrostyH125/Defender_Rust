@@ -6,19 +6,15 @@ use crate::{
     entities::{
         object::Object,
         objects::{grass::Grass, tree::Tree},
-    },
-    map::{
+    }, map::{
         map_cell::{CELL_SIZE, MapCell},
         tile::{LakeSpriteData, RiverSpriteData, TileType},
         tile_map::{MapDimensions, MapObjectGrid, MapTileGrid},
         tile_map_animation_data::{
             FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType,
         },
-    },
-    utils::{
-        directional_deltas::{CARDINAL_DELTAS, Direction},
-        map_cord::MapCord,
-        map_utils::{self, is_tile_in_bounds},
+    }, utils::{
+        directional_deltas::{CARDINAL_DELTAS, Direction}, map_cord::MapCord, map_utils::{self, get_tile_at_cord, is_tile_in_bounds},
     },
 };
 
@@ -388,6 +384,38 @@ pub fn create_rivers(
                     break;
                 }
                 _ => (),
+            }
+
+            // this little section just makes sure a river tile with 4 river neighbors is impossible before adding a tile
+            let mut counter = 0;
+            
+            for dir in CARDINAL_DELTAS {
+                let r = check_tile + dir;
+
+                if !is_tile_in_bounds(map_dimensions, r) {
+                    // impossible to have all 4 neighbors so doesnt even need to count it
+                    break;
+                }
+
+                if get_tile_at_cord(map, map_dimensions, r) == TileType::River {
+                    counter += 1;
+                }
+            };
+
+            if counter == 4 {
+                // restart this river
+                current_tile = MapCord::new(cord.x, cord.y);
+                direction = match data.shore_animation_index {
+                    1 => Direction::North,
+                    2 => Direction::East,
+                    4 => Direction::South,
+                    8 => Direction::West,
+                    _ => panic!(
+                        "river dir is not any of the ok bit masks, should not have made it past the viability check"
+                    ),
+                };
+                current_river.insert(current_tile, direction);
+                break;
             }
 
             // prepare for next iteration

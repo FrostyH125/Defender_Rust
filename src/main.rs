@@ -1,4 +1,4 @@
-use basic_raylib_core::{graphics::sprite::Sprite, system::input_handler::InputState};
+use basic_raylib_core::{graphics::sprite::Sprite, system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem}};
 use rand::rngs::ThreadRng;
 use raylib::{
     RaylibHandle, RaylibThread,
@@ -39,8 +39,6 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 //      pre-requisites for first gatherer-tree interaction implementation:
 //          action buttons
 //              next ->
-//                  add particle stuff to AB::spawn_particles() and AB::pop_particles()
-//                  test particles
 //                  add gatherer and tree interaction ->
 //                      gatherer.state = LookingForTree
 //                      tree.is_marked_for_chopping = true
@@ -51,14 +49,8 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 //                      Gatherer::hit_tree() // notably before update
 //                      Object::update() -> + if obj.health < 0 {self.state = Falling}
 //                      Tree::TakeHit()
-//
-//
-//      gatherer-tree interaction implementation
-
-// unrelated:
-//  when a in/outlet is being drawn, draw the corners on that tile still if there exists some
-//  BUGFIX: the river sprite algo sometimes encounters rivers with 4 neighbors, either make it
-//      never happen or make it redo river generation or something if it happens
+//                  add particle stuff to AB::pop_particles()
+//                  test_particles
 
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -75,6 +67,7 @@ pub struct GameContext {
     texture: Texture2D,
     path_finder: PathFinder,
     update_rect: Rectangle,
+    particle_system: SpriteParticleSystem,
     dt: f32,
 }
 
@@ -106,6 +99,7 @@ fn main() {
     };
 
     let mut select_rect = SelectRect::new();
+    let sprite_particle_system = SpriteParticleSystem::new(1000);
 
     let mut rng = rand::rng();
 
@@ -183,6 +177,7 @@ fn main() {
         rng,
         texture,
         path_finder,
+        particle_system: sprite_particle_system,
         update_rect: Rectangle::default(),
         dt: 0.0,
     };
@@ -248,8 +243,15 @@ fn main() {
         game_context.camera.target.y = camera_pos.y.round();
 
         //--UPDATE BEGINS HERE--//
+         
+        // update map first
         map.update(game_context.dt);
+
+        // entity selecting manager updated next in order to properly maintain good order with
+        // select modes
         entity_selecting_manager.update(&mut rl);
+
+        // with proper select modes, can now update entity manager itself
         entity_manager.update(
             &mut map,
             &mut game_context,
@@ -259,7 +261,10 @@ fn main() {
             current_zoom.zoom(),
         );
 
-        action_button_manager.update(&game_context);
+        // particle system updates next since the particle system could be used by the buttons
+        game_context.particle_system.update(game_context.dt);
+
+        // this just updates the values used for the shader
         game_context
             .day_night_cycle
             .update(game_context.dt, &mut rl);
@@ -288,14 +293,15 @@ fn main() {
 
                         map.draw(&mut shader_handle, &game_context);
 
-                        select_rect.draw(&mut shader_handle);
 
                         entity_manager.draw(
                             &map.map_object_grid,
                             &mut shader_handle,
                             &game_context.texture,
                         );
+                        select_rect.draw(&mut shader_handle);
                         action_button_manager.draw(&mut shader_handle, &game_context);
+                        game_context.particle_system.draw(&mut shader_handle, &game_context.texture);
                         mouse_utils::draw_mouse(
                             &mut shader_handle,
                             mouse_utils::mouse_world_coords(&game_context),

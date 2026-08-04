@@ -8,7 +8,14 @@ use raylib::{
 };
 
 use crate::{
-    GameContext, entities::{character::Character, entity_manager::CharacterEntry, object::Object}, map::tile_map::MapObjectGrid, systems::action_buttons::action_button::{self, ActionButton, ActionButtonKind}, utils::{entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},
+    GameContext,
+    entities::{character::Character, entity_manager::CharacterEntry, object::Object},
+    map::tile_map::MapObjectGrid,
+    systems::{
+        action_buttons::action_button::{self, ActionButton, ActionButtonKind},
+        entity_selecting_manager::EntitySelectingManager,
+    },
+    utils::{entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},
 };
 
 // struct with list action buttons
@@ -32,15 +39,20 @@ impl ActionButtonManager {
 
     pub fn try_trigger_match(
         &mut self,
+        game_context: &mut GameContext,
         button_tray_base_pos: Vector2,
+        selector: &EntitySelectingManager,
         object_grid: &MapObjectGrid,
-        obj_ids: &[usize],
-        char_ids: &[usize],
         chars: &mut [CharacterEntry],
     ) {
         self.clear_buttons();
 
-        let mut successful_buttons = check_for_matches(object_grid, obj_ids, char_ids, chars);
+        let mut successful_buttons = check_for_matches(
+            object_grid,
+            &selector.selected_objects,
+            &selector.selected_characters,
+            chars,
+        );
 
         if successful_buttons.len() > 0 {
             const MARGIN_SIZE: f32 = 4.0;
@@ -51,11 +63,14 @@ impl ActionButtonManager {
             // handle base case of there only being one button (in which case the game would otherwise crash
             // because when it adjusts the number of buttons, it divides by 0)
             if successful_buttons.len() == 1 {
+                let b = &mut successful_buttons[0];
                 let x = button_tray_base_pos.x - (BUTTON_SIZE / 2.0);
                 let y = button_tray_base_pos.y
                     - (START_HEIGHT_FROM_BASE + MAX_HEIGHT_OFFSET + BUTTON_SIZE);
-                successful_buttons[0].spawn_pos.x = x;
-                successful_buttons[0].spawn_pos.y = y;
+                b.rect.x = x;
+                b.spawn_y_pos = y;
+                b.rect.y = y;
+                b.make_spawn_particles(game_context);
                 self.action_buttons.push(successful_buttons.remove(0));
                 return;
             }
@@ -91,12 +106,12 @@ impl ActionButtonManager {
                     - (START_HEIGHT_FROM_BASE
                         + (current_progress * MAX_HEIGHT_OFFSET)
                         + BUTTON_SIZE);
-
-                b.spawn_pos.x = x;
-                b.spawn_pos.y = y;
+                b.rect.x = x;
+                b.spawn_y_pos = y;
+                b.rect.y = y;
                 b.sin_offset = sin_offset;
 
-                //b.make_spawn_particles();
+                b.make_spawn_particles(game_context);
 
                 self.action_buttons.push(b);
 
@@ -107,9 +122,12 @@ impl ActionButtonManager {
         }
     }
 
-    pub fn update(&mut self, game_context: &GameContext) {
+    pub fn update(&mut self, game_context: &GameContext, selector: &EntitySelectingManager, object_grid: &mut MapObjectGrid, chars: &mut [CharacterEntry]) {
         for b in &mut self.action_buttons {
             b.update(game_context);
+            if b.is_hovering && game_context.input_state.left_clicked_once {
+                b.on_click(&selector.selected_objects, &selector.selected_characters, object_grid, chars);
+            }
         }
     }
 
