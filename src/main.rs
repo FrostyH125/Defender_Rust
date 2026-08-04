@@ -20,7 +20,7 @@ use crate::{
         entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
     },
     utils::{
-        map_cord::MapCord,
+
         mouse_utils,
         pathfinding::{self, PathFinder, PathResult},
     },
@@ -185,7 +185,9 @@ fn main() {
     // DEBUG START
     //
 
-    entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
+    for _ in 0..100 {
+        entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));  
+    }
 
     //
     // DEBUG END

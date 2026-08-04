@@ -16,7 +16,7 @@ use crate::{
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
-    }, utils::{map_cord::MapCord, map_utils::cords_to_index, mouse_utils, vector2_utils},
+    }, utils::{directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index, mouse_utils, vector2_utils},
 };
 
 pub type MapTileGrid = Vec<TileType>;
@@ -417,6 +417,22 @@ impl TileMap {
         let num_of_cells_wide = self.map_dimensions.width / CELL_SIZE;
 
         return Some(&self.map_cell_grid[(cell_y * num_of_cells_wide + cell_x) as usize]);
+    }
+
+    pub fn get_3_x_3_cell_grid(&self, cord: MapCord) -> Vec<&MapCell>{
+        let mut cells: Vec<&MapCell> = Vec::new();
+
+        // add the current cell
+        cells.push(self.get_cell_at_cord(cord).unwrap());
+
+        for dir in ORTHOGONAL_DELTAS {
+            let check_cord = cord + (dir * CELL_SIZE as i32);
+            if let Some(c) = self.get_cell_at_cord(check_cord) {
+                cells.push(c);
+            }
+        }
+        
+        return cells;
     }
 
     /// adds the objects index (where it is on the map) to the cell's array of indices

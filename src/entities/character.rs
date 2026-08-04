@@ -52,7 +52,6 @@ impl CharacterData {
     pub fn move_to(
         &mut self,
         target: Vector2,
-        dt: f32,
         game_context: &mut GameContext,
         map: &TileMap,
     ) -> CharacterMovementResult {
@@ -109,7 +108,7 @@ impl CharacterData {
                 delta.normalize();
             }
 
-            self.pos += delta * self.move_speed * dt;
+            self.pos += delta * self.move_speed * game_context.dt;
 
             if delta.x < 0.0 {
                 self.sprite_flip = true;
@@ -139,7 +138,7 @@ impl Character {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, map: &TileMap, should_deselect: bool) {
+    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap, should_deselect: bool) {
 
         if should_deselect {
             self.get_mut_data().is_selected = false;
@@ -223,13 +222,13 @@ impl Character {
         return idx + 1;
     }
 
-    pub fn update_obj_if_out_of_update_range(object: &mut Object, game_context: &mut GameContext, dt: f32) {
+    pub fn update_obj_if_out_of_update_range(object: &mut Object, game_context: &mut GameContext, map: &mut TileMap) {
         let object_pos = object.get_data().pos;
 
         if !camera_utils::is_in_update_area(object_pos, game_context) {
             return;
         }
 
-        object.update(game_context, false);
+        object.update(game_context, false, &mut map.map_cell_grid, map.map_dimensions);
     }
 }

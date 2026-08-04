@@ -70,7 +70,7 @@ impl ActionButton {
             ActionButtonKind::ChopButton => chop_button::on_click(obj_ids, char_ids, object_grid, characters),
         }
 
-        self.make_pop_particles();
+        //self.make_pop_particles();
     }
 
     pub fn make_spawn_particles(&self, game_context: &mut GameContext) {

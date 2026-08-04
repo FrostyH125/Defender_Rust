@@ -285,24 +285,24 @@ pub fn create_rivers(
                 break;
             }
 
-            if !map_utils::is_tile_in_bounds(map_dimensions, check_tile) {
+            if !is_tile_in_bounds(map_dimensions, check_tile) {
                 // end river it reached the end
                 add_river(&mut current_river, &mut all_rivers, map, map_dimensions);
                 break;
             }
 
-            let check_tile_type = map_utils::get_tile_at_cord(map, map_dimensions, check_tile);
+            let check_tile_type = get_tile_at_cord(map, map_dimensions, check_tile);
 
             if check_tile_type == TileType::River {
                 let check_tile_two = check_tile + CARDINAL_DELTAS[direction as usize];
 
-                if !map_utils::is_tile_in_bounds(map_dimensions, check_tile_two) {
+                if !is_tile_in_bounds(map_dimensions, check_tile_two) {
                     // not a cross section because the point past the river is out of bounds, just add this river
                     add_river(&mut current_river, &mut all_rivers, map, map_dimensions);
                     break;
                 }
 
-                if map_utils::get_tile_at_cord(map, map_dimensions, check_tile_two)
+                if get_tile_at_cord(map, map_dimensions, check_tile_two)
                     == TileType::River
                 {
                     // i dont want a cross section piece

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{cell::Cell, collections::HashSet};
 
 use basic_raylib_core::graphics::sprite::Sprite;
 use rand::rngs::ThreadRng;
@@ -9,19 +9,14 @@ use raylib::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
+    GameContext, entities::{
         object::Object::*,
         objects::{grass::Grass, tree::Tree},
-    },
-    map::{
+    }, map::{
         map_cell::MapCell,
         tile_map::{MapDimensions, TileMap},
-    },
-    systems::day_night_cycle::DayNightCycle,
-    utils::{
-        camera_utils, draw_utils, map_cord::MapCord, map_utils::get_cell_at_cord,
-        vector2_utils::v2_to_cord,
+    }, systems::day_night_cycle::DayNightCycle, utils::{
+        camera_utils, draw_utils, map_cord::MapCord, map_utils::{cords_to_index, get_cell_at_cord}, vector2_utils::v2_to_cord,
     },
 };
 
@@ -41,6 +36,8 @@ pub struct ObjectData {
     shadow_scale_y: f32,
     pub is_hovering: bool,
     pub is_selected: bool,
+    pub is_occupied: bool,
+    pub is_marked_for_gathering: bool,
     state: ObjectState,
 }
 
@@ -72,6 +69,8 @@ impl ObjectData {
             shadow_scale_y: 0.0,
             is_hovering: false,
             is_selected: false,
+            is_occupied: false,
+            is_marked_for_gathering: false,
             state: ObjectState::Idle,
         };
     }
@@ -100,7 +99,7 @@ impl Object {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool) {
+    pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool, cells: &mut [MapCell], map_dimensions: MapDimensions) {
 
         
         match self {
@@ -132,6 +131,12 @@ impl Object {
                 // remove no matter what, this object is ready to go
                 // can be removed on same frame as set for deletion, so, no
                 // worry about going out of bounds in this state (which would be a 1 frame window otherwise)
+
+                let cord = v2_to_cord(self.get_data().pos);
+                let idx = cords_to_index(map_dimensions, cord);
+                
+                let cell = get_cell_at_cord(cells, map_dimensions, cord).unwrap();
+                cell.remove_obj(idx);
                 *self = Self::NoObject
             }
         }

@@ -143,7 +143,7 @@ impl EntityManager {
 
                 let obj = &mut map.map_object_grid[index];
 
-                obj.update(game_context, selector.is_deselecting_objs);
+                obj.update(game_context, selector.is_deselecting_objs, &mut map.map_cell_grid, map.map_dimensions);
 
                 if let Object::NoObject = obj {
                     continue;
