@@ -7,8 +7,18 @@ use raylib::{
 };
 
 use crate::{
-    GameContext, entities::entity_manager::CharacterEntry, map::tile_map::MapObjectGrid, systems::action_buttons::chop_button::{self, CHOP_BUTTON_SPRITE}, utils::{draw_utils, mouse_utils::mouse_world_coords},
+    GameContext,
+    entities::{
+        character::Character,
+        characters::gatherer::{GatherTarget, GathererState},
+        entity_manager::CharacterEntry,
+        object::Object,
+    },
+    map::tile_map::MapObjectGrid,
+    utils::{draw_utils, entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},
 };
+
+pub const CHOP_BUTTON_SPRITE: Sprite = Sprite::new(144, 40, 16, 16);
 
 pub enum ActionButtonKind {
     ChopButton,
@@ -56,21 +66,59 @@ impl ActionButton {
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let current_pos = Vector2::new(self.rect.x, self.rect.y);
-        
+
         match self.is_hovering {
-            true => {
-                draw_utils::draw_with_extra_brightness(d, &self.sprite, current_pos, texture)
-            }
+            true => draw_utils::draw_with_extra_brightness(d, &self.sprite, current_pos, texture),
             false => self.sprite.draw(d, current_pos, texture),
         }
     }
 
-    pub fn on_click(&mut self, obj_ids: &[usize], char_ids: &[usize], object_grid: &mut MapObjectGrid, characters: &mut [CharacterEntry]) {
+    pub fn on_click(
+        &mut self,
+        obj_ids: &[usize],
+        char_ids: &[usize],
+        object_grid: &mut MapObjectGrid,
+        characters: &mut [CharacterEntry],
+    ) {
         match self.kind {
-            ActionButtonKind::ChopButton => chop_button::on_click(obj_ids, char_ids, object_grid, characters),
+            ActionButtonKind::ChopButton => ActionButton::set_gatherers_to_gather(
+                obj_ids,
+                char_ids,
+                object_grid,
+                characters,
+                GatherTarget::Tree,
+            ),
         }
 
         //self.make_pop_particles();
+    }
+
+    /// sets the gatherers to gather the objects specified in the obj_kind parameter
+    pub fn set_gatherers_to_gather(
+        obj_ids: &[usize],
+        char_ids: &[usize],
+        object_grid: &mut MapObjectGrid,
+        characters: &mut [CharacterEntry],
+        obj_kind: GatherTarget,
+    ) {
+        for obj_id in obj_ids {
+            let obj = &mut object_grid[*obj_id];
+
+            match obj_kind {
+                GatherTarget::Tree => {
+                    obj.get_mut_data().is_marked_for_gathering = true;
+                }
+                GatherTarget::Grass => todo!(),
+            }
+        }
+
+        for char_id in char_ids {
+            let char = &mut get_char_by_index(characters, *char_id).character;
+
+            if let Character::GathererChar(gatherer) = char {
+                gatherer.state = GathererState::LookingForObject(obj_kind);
+            }
+        }
     }
 
     pub fn make_spawn_particles(&self, game_context: &mut GameContext) {
@@ -80,8 +128,7 @@ impl ActionButton {
         let rng = &mut game_context.rng;
 
         for _ in 0..=rng.random_range(30..=40) {
-            let x_pos =
-                rng.random_range(self.rect.x..=(self.rect.x + self.rect.width));
+            let x_pos = rng.random_range(self.rect.x..=(self.rect.x + self.rect.width));
             let y_pos =
                 rng.random_range((self.rect.y + 5.0)..=(self.rect.y + self.rect.height + 5.0));
 

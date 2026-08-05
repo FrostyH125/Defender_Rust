@@ -12,15 +12,11 @@ use crate::{
     entities::{character::Character, entity_manager::CharacterEntry, object::Object},
     map::tile_map::MapObjectGrid,
     systems::{
-        action_buttons::action_button::{self, ActionButton, ActionButtonKind},
+        action_buttons::action_button::{ActionButton, ActionButtonKind},
         entity_selecting_manager::EntitySelectingManager,
     },
-    utils::{entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},
+    utils::{entity_utils::get_char_by_index},
 };
-
-// struct with list action buttons
-// ABM::update()
-// ABM::draw()
 
 pub struct ActionButtonManager {
     action_buttons: Vec<ActionButton>,
