@@ -32,7 +32,7 @@ pub enum GathererState {
     MovingToObject {
         target_pos: Vector2,
         object_index: Option<usize>,
-        gather_target: GatherTarget,
+        gather_target: Option<GatherTarget>,
     },
     Gathering {
         object_index: usize,
@@ -75,7 +75,7 @@ impl Gatherer {
                         self.state = MovingToObject {
                             target_pos: t.pos,
                             object_index: Some(t.idx),
-                            gather_target,
+                            gather_target: Some(gather_target),
                         }
                     }
                     None => self.state = GathererState::Idle,
@@ -87,10 +87,11 @@ impl Gatherer {
                 gather_target,
             } => match self.data.move_to(target_pos, game_context, map) {
                 CharacterMovementResult::Success => {
-                    self.state = GathererState::Gathering {
-                        object_index: object_index.unwrap(),
-                        gather_target,
-                    }
+                    // gather the object if it exists, otherwise, it was just a normal move
+                    self.state = match gather_target {
+                        Some(g_t) => GathererState::Gathering { object_index: object_index.unwrap(), gather_target: g_t },
+                        None => GathererState::Idle,
+                    };     
                 }
                 CharacterMovementResult::NotArrivedYet => (),
                 CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {

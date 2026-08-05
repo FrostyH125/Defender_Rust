@@ -22,10 +22,7 @@ use crate::{
         action_button_manager::ActionButtonManager, day_night_cycle::DayNightCycle,
         entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
     },
-    utils::{
-        mouse_utils,
-        pathfinding::PathFinder,
-    },
+    utils::{mouse_utils, pathfinding::PathFinder},
 };
 
 pub mod entities;
@@ -38,7 +35,14 @@ pub mod utils;
 //      grass patches
 //      cool shader for background instead of no tiles
 //      add particle stuff to AB::pop_particles()
-//      test_particles
+//      move rect 
+//          + selected_for_move list in selector
+//          + clear regular selected lists when right click 
+//          + no regular selecting when right is held 
+//          + finally if right clicked once again, move chars to pos 
+//          + deselect move list
+//          + yellow outline shader + draw method
+//          + yellow particles + drop shadow
 
 pub const TILE_SIZE: f32 = 8.0;
 
