@@ -5,11 +5,11 @@ use crate::{
     GameContext,
     entities::{
         character::{Character, CharacterData, CharacterMovementResult},
-        characters::gatherer::{self, GathererState::MovingToObject},
+        characters::gatherer::GathererState::MovingToObject,
         object::{Object, ObjectState},
     },
     map::tile_map::{MapObjectGrid, TileMap},
-    utils::{map_utils::get_cell_at_cord, vector2_utils::v2_to_cord},
+    utils::vector2_utils::v2_to_cord,
 };
 
 pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
@@ -52,7 +52,7 @@ impl Gatherer {
         let gatherer = Gatherer {
             data: CharacterData::new(pos, Vector2::zero(), 8.0, 8.0, 30.0),
             state: GathererState::Idle,
-            gathering_power: 1.0,
+            gathering_power: 20.0,
             gather_timer: Timer::new(2.0)
         };
 

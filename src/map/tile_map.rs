@@ -1,4 +1,4 @@
-use std::{cell, collections::HashMap, range::RangeToInclusive, thread::yield_now};
+use std::collections::HashMap;
 
 use basic_raylib_core::graphics::{sprite::Sprite, sprite_animation::SpriteAnimationInstance};
 use rand::rngs::ThreadRng;
@@ -211,7 +211,6 @@ impl TileMap {
                 );
                 
                 if !self.is_tile_in_bounds(x, y) {
-                    OOB_SP.draw(d, pos, &game_context.texture);
                     continue;
                 }
 
@@ -354,6 +353,7 @@ impl TileMap {
                 }
             }
         }
+        self.dbg_cells(d);
     }
 
     fn dbg_cells(&self, d: &mut RaylibDrawHandle<'_>) {

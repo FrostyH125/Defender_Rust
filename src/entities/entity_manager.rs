@@ -6,7 +6,7 @@ use crate::{
     entities::{character::Character, object::Object},
     map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
     systems::{
-        action_button_manager::{self, ActionButtonManager},
+        action_button_manager::ActionButtonManager,
         entity_selecting_manager::{EntitySelectingManager, SelectingMode},
         select_rect::SelectRect,
     },

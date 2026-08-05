@@ -36,21 +36,9 @@ static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 // any of these can be done in any order:
 //      add new tree variants
 //      grass patches
-//      pre-requisites for first gatherer-tree interaction implementation:
-//          action buttons
-//              next ->
-//                  add gatherer and tree interaction ->
-//                      gatherer.state = LookingForTree
-//                      tree.is_marked_for_chopping = true
-//                      Gatherer::look_for_tree() -> bool // if false, gatherer is no longer gathering and goes back to idle
-//                      // if true, gatherer.state = MovingToTree
-//                      // then, gatherer.state = ChoppingTree
-//                      // then back to LookingForTree
-//                      Gatherer::hit_tree() // notably before update
-//                      Object::update() -> + if obj.health < 0 {self.state = Falling}
-//                      Tree::TakeHit()
-//                  add particle stuff to AB::pop_particles()
-//                  test_particles
+//      cool shader for background instead of no tiles
+//      add particle stuff to AB::pop_particles()
+//      test_particles
 
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -286,7 +274,7 @@ fn main() {
             let mut d = rl.begin_drawing(&thread);
             {
                 let mut render_texture_handle = d.begin_texture_mode(&thread, current_rt);
-                render_texture_handle.clear_background(Color::RAYWHITE);
+                render_texture_handle.clear_background(Color::DARKCYAN);
                 {
                     let mut cam_handle = render_texture_handle.begin_mode2D(game_context.camera);
 

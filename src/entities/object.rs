@@ -1,9 +1,7 @@
-use std::{cell::Cell, collections::HashSet};
 
 use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
-use rand::rngs::ThreadRng;
 use raylib::{
-    drawing::{RaylibDraw, RaylibDrawHandle},
+    drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
@@ -13,9 +11,9 @@ use crate::{
         object::{Object::*, ObjectState::GettingHit}, objects::{grass::Grass, tree::Tree},
     }, map::{
         map_cell::MapCell,
-        tile_map::{MapDimensions, TileMap},
-    }, systems::day_night_cycle::DayNightCycle, utils::{
-        camera_utils, draw_utils, map_cord::MapCord, map_utils::{cords_to_index, get_cell_at_cord}, vector2_utils::v2_to_cord,
+        tile_map::MapDimensions,
+    }, utils::{
+        camera_utils, draw_utils, map_utils::{cords_to_index, get_cell_at_cord}, vector2_utils::v2_to_cord,
     },
 };
 
@@ -113,7 +111,7 @@ impl Object {
     pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool, cells: &mut [MapCell], map_dimensions: MapDimensions) {
 
         match self {
-            TreeObj(tree) => tree.update(game_context.dt),
+            TreeObj(tree) => tree.update(game_context),
             GrassObj(grass) => grass.update(game_context),
             // pass if none
             NoObject => return,
@@ -135,7 +133,8 @@ impl Object {
                 // only remove if out of camera view, otherwise, carry to completion
                 if !camera_utils::is_in_camera_view(&data.hover_rect, game_context) {
                     self.delete(map_dimensions, cells);
-                    *self = Self::NoObject
+                    *self = Self::NoObject;
+                    return;
                 }
 
                 let disappear_timer = &mut self.get_mut_data().disappear_timer;
@@ -143,6 +142,7 @@ impl Object {
                 disappear_timer.track(game_context.dt);
                 if disappear_timer.is_done() {
                     self.delete(map_dimensions, cells);
+                    return;
                 }
             }
             ObjectState::GettingHit => {
@@ -161,7 +161,8 @@ impl Object {
                 // worry about going out of bounds in this state (which would be a 1 frame window otherwise)
 
                 self.delete(map_dimensions, cells);
-                *self = Self::NoObject
+                *self = Self::NoObject;
+                return;
             }
         }
     }
