@@ -1,22 +1,35 @@
 use std::collections::HashMap;
 
-use basic_raylib_core::graphics::{sprite::Sprite, sprite_animation::SpriteAnimationInstance};
+use basic_raylib_core::graphics::sprite_animation::SpriteAnimationInstance;
 use rand::rngs::ThreadRng;
-use raylib::{color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, math::{Rectangle, Vector2}};
+use raylib::{
+    color::Color,
+    drawing::{RaylibDraw, RaylibDrawHandle},
+    math::{Rectangle, Vector2},
+};
 
 use crate::{
-    GameContext, TILE_SIZE, entities::object::Object, map::{
-        map_cell::{CELL_SIZE, MapCell}, map_gen_functions, tile::{
+    GameContext, TILE_SIZE,
+    entities::object::Object,
+    map::{
+        map_cell::{CELL_SIZE, MapCell},
+        map_gen_functions,
+        tile::{
             LakeSpriteData, RiverSpriteData,
             TileType::{self},
-        }, tile_map_animation_data::{
+        },
+        tile_map_animation_data::{
             GRASS_TILE, INLET_ANIMS, LAKE_TILE_ANIM, LAKE_TILE_CORNER_ANIMATION_REFERENCE,
             LAKE_TILE_SHORE_ANIMATION_REFERENCE, OUTLETS_ANIMS, REGULAR_TILE_FRAME_DURATION,
             RIVER_TILE_CORNER_ANIMS, RIVER_TILE_STRAIGHT_ANIMS, RIVER_TILE_T_SECTION_ANIMS,
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
-    }, utils::{directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index, mouse_utils, vector2_utils},
+    },
+    utils::{
+        directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index,
+        vector2_utils,
+    },
 };
 
 pub type MapTileGrid = Vec<TileType>;
@@ -200,16 +213,13 @@ impl TileMap {
         let end_tile_x = (end.x / TILE_SIZE) as i16 + 2;
         let end_tile_y = (end.y / TILE_SIZE) as i16 + 2;
 
-        static OOB_SP: Sprite = Sprite::new(96, 128, 8, 8);
-
         for y in start_tile_y..=end_tile_y {
             for x in start_tile_x..=end_tile_x {
-                
                 let pos = Vector2::new(
                     (x as f32 * TILE_SIZE).floor(),
                     (y as f32 * TILE_SIZE).floor(),
                 );
-                
+
                 if !self.is_tile_in_bounds(x, y) {
                     continue;
                 }
@@ -358,21 +368,39 @@ impl TileMap {
 
     fn dbg_cells(&self, d: &mut RaylibDrawHandle<'_>) {
         for i in 0..self.map_cell_grid.len() {
-
             let cells_wide = self.map_dimensions.width / CELL_SIZE;
             let cell_y = i as u16 / cells_wide;
             let cell_x = i as u16 % cells_wide;
 
-            let pos = Vector2::new((cell_x * CELL_SIZE) as f32 * TILE_SIZE, (cell_y * CELL_SIZE) as f32 * TILE_SIZE);
-            let rect = Rectangle::new(pos.x, pos.y, CELL_SIZE as f32 * TILE_SIZE, CELL_SIZE as f32 * TILE_SIZE);
-    
-            d.draw_rectangle_lines_ex(rect, 3.0, Color::WHITE);
-            d.draw_text(&format!("{}", i), pos.x as i32 + 5, pos.y as i32 + 5, 10, Color::WHITE);
+            let pos = Vector2::new(
+                (cell_x * CELL_SIZE) as f32 * TILE_SIZE,
+                (cell_y * CELL_SIZE) as f32 * TILE_SIZE,
+            );
+            let rect = Rectangle::new(
+                pos.x,
+                pos.y,
+                CELL_SIZE as f32 * TILE_SIZE,
+                CELL_SIZE as f32 * TILE_SIZE,
+            );
 
+            d.draw_rectangle_lines_ex(rect, 3.0, Color::WHITE);
+            d.draw_text(
+                &format!("{}", i),
+                pos.x as i32 + 5,
+                pos.y as i32 + 5,
+                10,
+                Color::WHITE,
+            );
 
             // REMOVE &MUT SELF
             let cell = self.get_cell_at_cord(vector2_utils::v2_to_cord(pos));
-            d.draw_text(&format!("{}", cell.unwrap().objects_in_cell.len()), pos.x as i32 + 5, pos.y as i32 + 20, 10, Color::BLACK);
+            d.draw_text(
+                &format!("{}", cell.unwrap().objects_in_cell.len()),
+                pos.x as i32 + 5,
+                pos.y as i32 + 20,
+                10,
+                Color::BLACK,
+            );
         }
     }
 
@@ -395,11 +423,10 @@ impl TileMap {
 
     /// returns an optional mutable reference to the cell at the cord, if oob, returns None
     pub fn get_mut_cell_at_cord(&mut self, cord: MapCord) -> Option<&mut MapCell> {
-
         if !self.is_cord_in_bounds(cord) {
             return None;
         }
-        
+
         let cell_x = cord.x as u16 / CELL_SIZE;
         let cell_y = cord.y as u16 / CELL_SIZE;
         let num_of_cells_wide = self.map_dimensions.width / CELL_SIZE;
@@ -411,7 +438,7 @@ impl TileMap {
         if !self.is_cord_in_bounds(cord) {
             return None;
         }
-        
+
         let cell_x = cord.x as u16 / CELL_SIZE;
         let cell_y = cord.y as u16 / CELL_SIZE;
         let num_of_cells_wide = self.map_dimensions.width / CELL_SIZE;
@@ -419,7 +446,7 @@ impl TileMap {
         return Some(&self.map_cell_grid[(cell_y * num_of_cells_wide + cell_x) as usize]);
     }
 
-    pub fn get_3_x_3_cell_grid(&self, cord: MapCord) -> Vec<&MapCell>{
+    pub fn get_3_x_3_cell_grid(&self, cord: MapCord) -> Vec<&MapCell> {
         let mut cells: Vec<&MapCell> = Vec::new();
 
         // add the current cell
@@ -431,7 +458,7 @@ impl TileMap {
                 cells.push(c);
             }
         }
-        
+
         return cells;
     }
 

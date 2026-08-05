@@ -1,10 +1,9 @@
-use core::num;
 use std::collections::HashSet;
 
 use raylib::{
     drawing::RaylibDrawHandle,
-    math::{Rectangle, Vector2},
-    texture::Texture2D,
+    math::Vector2,
+
 };
 
 use crate::{

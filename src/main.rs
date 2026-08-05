@@ -1,4 +1,7 @@
-use basic_raylib_core::{graphics::sprite::Sprite, system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem}};
+use basic_raylib_core::{
+    graphics::sprite::Sprite,
+    system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem},
+};
 use rand::rngs::ThreadRng;
 use raylib::{
     RaylibHandle, RaylibThread,
@@ -20,9 +23,8 @@ use crate::{
         entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
     },
     utils::{
-
         mouse_utils,
-        pathfinding::{self, PathFinder, PathResult},
+        pathfinding::PathFinder,
     },
 };
 
@@ -30,8 +32,6 @@ pub mod entities;
 pub mod map;
 pub mod systems;
 pub mod utils;
-
-static PATH_SPRITE: Sprite = Sprite::new(96, 136, 8, 8);
 
 // any of these can be done in any order:
 //      add new tree variants
@@ -174,7 +174,7 @@ fn main() {
     //
 
     for _ in 0..10 {
-        entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));  
+        entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
     }
 
     //
@@ -233,7 +233,7 @@ fn main() {
         game_context.camera.target.y = camera_pos.y.round();
 
         //--UPDATE BEGINS HERE--//
-         
+
         // update map first
         map.update(game_context.dt);
 
@@ -283,7 +283,6 @@ fn main() {
 
                         map.draw(&mut shader_handle, &game_context);
 
-
                         entity_manager.draw(
                             &map.map_object_grid,
                             &mut shader_handle,
@@ -291,7 +290,9 @@ fn main() {
                         );
                         select_rect.draw(&mut shader_handle);
                         action_button_manager.draw(&mut shader_handle, &game_context);
-                        game_context.particle_system.draw(&mut shader_handle, &game_context.texture);
+                        game_context
+                            .particle_system
+                            .draw(&mut shader_handle, &game_context.texture);
                         mouse_utils::draw_mouse(
                             &mut shader_handle,
                             mouse_utils::mouse_world_coords(&game_context),

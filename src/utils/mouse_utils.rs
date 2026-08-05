@@ -1,5 +1,5 @@
 use basic_raylib_core::graphics::sprite::Sprite;
-use raylib::{camera::Camera2D, drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
+use raylib::{drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
 
 use crate::GameContext;
 

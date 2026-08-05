@@ -12,7 +12,6 @@ use crate::{
         character::Character,
         characters::gatherer::{GatherTarget, GathererState},
         entity_manager::CharacterEntry,
-        object::Object,
     },
     map::tile_map::MapObjectGrid,
     utils::{draw_utils, entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},

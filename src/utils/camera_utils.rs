@@ -1,6 +1,6 @@
-use raylib::{camera::Camera2D, math::{Rectangle, Vector2}};
+use raylib::math::{Rectangle, Vector2};
 
-use crate::{GameContext, entities::object::{self, Object}};
+use crate::GameContext;
 
 /// checks if an object is within the visible view
 pub fn is_in_camera_view(visual_rect: &Rectangle, game_context: &GameContext) -> bool {

@@ -1,8 +1,6 @@
-// need to add moon phases
-
 use basic_raylib_core::utils::math_utils::lerp_min_max;
 use raylib::{
-    RaylibHandle, color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, ffi::KeyboardKey, math::lerp,
+    RaylibHandle, color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, ffi::KeyboardKey,
 };
 
 use crate::systems::day_night_cycle::MoonPhase::{FirstQuarter, FullMoon, LastQuarter, NewMoon, WaningCrescent, WaningGibbous, WaxingCrescent, WaxingGibbous};

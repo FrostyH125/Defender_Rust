@@ -1,7 +1,7 @@
-use basic_raylib_core::system::input_handler::InputState;
+
 use raylib::{color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, math::{Rectangle, Vector2}};
 
-use crate::{GameContext, utils::mouse_utils::{self, mouse_world_coords}};
+use crate::{GameContext, utils::mouse_utils::mouse_world_coords};
 
 pub struct SelectRect {
     origin_pos: Vector2,
