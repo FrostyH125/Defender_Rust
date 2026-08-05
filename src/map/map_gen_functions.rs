@@ -3,18 +3,23 @@ use std::collections::{HashMap, VecDeque};
 use rand::{RngExt, rngs::ThreadRng};
 
 use crate::{
+    GameContext,
     entities::{
-        object::Object,
+        object::Object::{self},
         objects::{grass::Grass, tree::Tree},
-    }, map::{
+    },
+    map::{
         map_cell::{CELL_SIZE, MapCell},
         tile::{LakeSpriteData, RiverSpriteData, TileType},
         tile_map::{MapDimensions, MapObjectGrid, MapTileGrid},
         tile_map_animation_data::{
             FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType,
         },
-    }, utils::{
-        directional_deltas::{CARDINAL_DELTAS, Direction}, map_cord::MapCord, map_utils::{self, get_tile_at_cord, is_tile_in_bounds},
+    },
+    utils::{
+        directional_deltas::{CARDINAL_DELTAS, Direction, ORTHOGONAL_DELTAS},
+        map_cord::MapCord,
+        map_utils::{self, get_tile_at_cord, is_tile_in_bounds},
     },
 };
 
@@ -218,7 +223,6 @@ pub fn create_rivers(
     map_dimensions: MapDimensions,
     rng: &mut ThreadRng,
 ) -> HashMap<MapCord, Direction> {
-
     const DIR_CHANGE_CHANCE: f64 = 0.01;
     const RIVER_CHANCE_ADJUSTMENT_FOR_CANCELLED_RIVERS: f64 = 0.002;
     const RIVER_CHANCE: f64 = 0.05 + RIVER_CHANCE_ADJUSTMENT_FOR_CANCELLED_RIVERS;
@@ -302,9 +306,7 @@ pub fn create_rivers(
                     break;
                 }
 
-                if get_tile_at_cord(map, map_dimensions, check_tile_two)
-                    == TileType::River
-                {
+                if get_tile_at_cord(map, map_dimensions, check_tile_two) == TileType::River {
                     // i dont want a cross section piece
                     break;
                 }
@@ -390,7 +392,7 @@ pub fn create_rivers(
 
             // this little section just makes sure a river tile with 4 river neighbors is impossible before adding a tile
             let mut counter = 0;
-            
+
             for dir in CARDINAL_DELTAS {
                 let r = check_tile + dir;
 
@@ -402,7 +404,7 @@ pub fn create_rivers(
                 if get_tile_at_cord(map, map_dimensions, r) == TileType::River {
                     counter += 1;
                 }
-            };
+            }
 
             if counter == 4 {
                 // throw this river away. its not going to work
@@ -843,14 +845,15 @@ pub fn spawn_standalone_grass(
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
     cells: &mut Vec<MapCell>,
-    rng: &mut ThreadRng,
+    game_context: &mut GameContext,
 ) {
-    let num_of_grass = (map_dimensions.total_tiles() as f32 * rng.random_range(0.01..=0.02)) as i32;
+    let num_of_grass =
+        (map_dimensions.total_tiles() as f32 * game_context.rng.random_range(0.01..=0.02)) as i32;
 
     for _ in 0..=num_of_grass {
         loop {
-            let rand_x = rng.random_range(0..map_dimensions.width);
-            let rand_y = rng.random_range(0..map_dimensions.height);
+            let rand_x = game_context.rng.random_range(0..map_dimensions.width);
+            let rand_y = game_context.rng.random_range(0..map_dimensions.height);
 
             let try_tile = MapCord::new(rand_x as i16, rand_y as i16);
 
@@ -862,7 +865,7 @@ pub fn spawn_standalone_grass(
             let idx = map_utils::cords_to_index(map_dimensions, try_tile);
 
             if let Object::NoObject = object_grid[idx] {
-                object_grid[idx] = Grass::new(try_tile, rng, 0.0, map_dimensions, cells);
+                object_grid[idx] = Grass::new(try_tile, game_context, map_dimensions, cells);
                 break;
             }
         }
@@ -875,17 +878,22 @@ pub fn spawn_grass_around_lakes(
     lake_tiles: Vec<MapCord>,
     map_dimensions: MapDimensions,
     cells: &mut Vec<MapCell>,
-    rng: &mut ThreadRng,
+    game_context: &mut GameContext,
 ) {
     for lake_tile in lake_tiles {
-        let mut range = rng.random_range(3..=17);
-        if rng.random_bool(0.6) {
-            range += rng.random_range(2..=5);
+        let mut range = game_context.rng.random_range(4..=12);
+
+        let extra_large_grass_patch = game_context.rng.random_bool(0.4);
+
+        if extra_large_grass_patch {
+            range += game_context.rng.random_range(2..=5);
         }
 
-        for dir in CARDINAL_DELTAS {
+        for dir in ORTHOGONAL_DELTAS {
             for range_out in 1..=range {
-                if !rng.random_bool(0.1) {
+                let normalized_range = range_out as f64 / range as f64;
+
+                if !game_context.rng.random_bool(0.1) {
                     continue;
                 }
 
@@ -903,8 +911,29 @@ pub fn spawn_grass_around_lakes(
 
                 let idx = map_utils::cords_to_index(map_dimensions, check_tile);
 
-                if let Object::NoObject = object_grid[idx] {
-                    object_grid[idx] = Grass::new(check_tile, rng, 0.0, map_dimensions, cells);
+                let obj = &mut object_grid[idx];
+
+                if let Object::NoObject = obj {
+                    // spawn different grass levels on average depending on distance from the water
+                    match normalized_range {
+                        0.0..=0.2 => {
+                            *obj = Grass::new_large_likely(
+                                check_tile,
+                                game_context,
+                                map_dimensions,
+                                cells,
+                            )
+                        }
+                        0.7..=1.0 => {
+                            *obj = Grass::new_small_likely(
+                                check_tile,
+                                game_context,
+                                map_dimensions,
+                                cells,
+                            )
+                        }
+                        _ => *obj = Grass::new(check_tile, game_context, map_dimensions, cells),
+                    }
                 }
             }
         }
@@ -917,14 +946,20 @@ pub fn spawn_grass_around_rivers(
     river_tiles: &HashMap<MapCord, RiverSpriteData>,
     map_dimensions: MapDimensions,
     cells: &mut Vec<MapCell>,
-    rng: &mut ThreadRng,
+    game_context: &mut GameContext,
 ) {
     for (cord, _) in river_tiles {
-        let range = rng.random_range(1..=8);
+        let range = game_context.rng.random_range(1..=8);
 
         for dir in CARDINAL_DELTAS {
             for range_out in 1..=range {
-                if !rng.random_bool(0.35) {
+                let normalized_range = range_out as f64 / range as f64;
+
+                // make it more likely to spawn the closer it is to the river
+                if !game_context
+                    .rng
+                    .random_bool(0.5 + (0.2 - (normalized_range / 5.0)))
+                {
                     continue;
                 }
 
@@ -942,8 +977,181 @@ pub fn spawn_grass_around_rivers(
 
                 let idx = map_utils::cords_to_index(map_dimensions, check_tile);
 
-                if let Object::NoObject = object_grid[idx] {
-                    object_grid[idx] = Grass::new(check_tile, rng, 0.0, map_dimensions, cells);
+                let obj = &mut object_grid[idx];
+
+                if let Object::NoObject = obj {
+                    // spawn different grass levels on average depending on distance from the water
+                    match normalized_range {
+                        0.0..=0.2 => {
+                            *obj = Grass::new_large_likely(
+                                check_tile,
+                                game_context,
+                                map_dimensions,
+                                cells,
+                            )
+                        }
+                        0.7..=1.0 => {
+                            *obj = Grass::new_small_likely(
+                                check_tile,
+                                game_context,
+                                map_dimensions,
+                                cells,
+                            )
+                        }
+                        _ => *obj = Grass::new(check_tile, game_context, map_dimensions, cells),
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn spawn_fields_of_grass(
+    tile_grid: &MapTileGrid,
+    object_grid: &mut MapObjectGrid,
+    map_dimensions: MapDimensions,
+    map_cells: &mut Vec<MapCell>,
+    game_context: &mut GameContext,
+) {
+    let total_tiles = map_dimensions.total_tiles();
+    let cycles = game_context
+        .rng
+        .random_range(total_tiles / 10_000..=total_tiles / 5_000);
+
+    for _ in 0..=cycles {
+        let horizontal_dir = match game_context.rng.random_bool(0.5) {
+            true => Direction::West,
+            false => Direction::East,
+        };
+
+        let vertical_dir = match game_context.rng.random_bool(0.5) {
+            true => Direction::North,
+            false => Direction::South,
+        };
+
+        // check if forest will be vertical or horizontal
+        let (dir_1, dir_2) = match game_context.rng.random_bool(0.5) {
+            true => (vertical_dir, horizontal_dir),
+            false => (horizontal_dir, vertical_dir),
+        };
+
+        let mut start_pos = MapCord::new(
+            game_context.rng.random_range(0..map_dimensions.width) as i16,
+            game_context.rng.random_range(0..map_dimensions.height) as i16,
+        );
+
+        // height of a column of trees
+        let mut height = 1;
+
+        // how many columns there are
+        let mut length = 0;
+
+        while height > 0 {
+            // make a line of trees from 0 to height
+            for j in 0..height {
+                let normalized_progress = j as f64 / height as f64;
+
+                // if at edges, just plain have a chance not to spawn one
+                if normalized_progress < 0.05 || normalized_progress > 0.95 {
+                    if game_context.rng.random_bool(0.15) {
+                        continue;
+                    }
+                }
+
+                let try_grass_tile = start_pos + CARDINAL_DELTAS[dir_1 as usize] * j;
+
+                if !map_utils::is_tile_in_bounds(map_dimensions, try_grass_tile) {
+                    continue;
+                }
+                if map_utils::get_tile_at_cord(tile_grid, map_dimensions, try_grass_tile)
+                    != TileType::Grass
+                {
+                    continue;
+                }
+
+                let idx = map_utils::cords_to_index(map_dimensions, try_grass_tile);
+
+                let obj = &mut object_grid[idx];
+
+                if let Object::NoObject = obj {
+
+                    // meant to be used on any thin parts (typically the end)
+                    if height <= 4 {
+                        if game_context.rng.random_bool(0.03) {
+                            continue;
+                        }
+                        *obj = Grass::new_small_likely(
+                            try_grass_tile,
+                            game_context,
+                            map_dimensions,
+                            map_cells,
+                        )
+                    } else {
+                        // if its on the edges of the field, make it likely to be small, if in middle, its likely to be large, else, random size
+                        match normalized_progress {
+                            0.0..=0.15 | 0.85..=1.0 => {
+                                // even though the spot is viable, if its on the edges, give it some variation by just not spawning one
+                                if game_context.rng.random_bool(0.05) {
+                                    continue;
+                                }
+                                *obj = Grass::new_small_likely(
+                                    try_grass_tile,
+                                    game_context,
+                                    map_dimensions,
+                                    map_cells,
+                                )
+                            }
+                            0.4..=0.6 => {
+                                *obj = Grass::new_large_likely(
+                                    try_grass_tile,
+                                    game_context,
+                                    map_dimensions,
+                                    map_cells,
+                                )
+                            }
+                            _ => {
+                                *obj = Grass::new(
+                                    try_grass_tile,
+                                    game_context,
+                                    map_dimensions,
+                                    map_cells,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // move it one tile to the left or right
+            start_pos += CARDINAL_DELTAS[dir_2 as usize];
+
+            length += 1;
+
+            let rng = &mut game_context.rng;
+
+            // change height based on length based weights
+            match length {
+                ..=15 => {
+                    if rng.random_bool(0.4) {
+                        height += rng.random_range(2..=5);
+                        start_pos -= CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                    }
+                }
+                ..35 => {
+                    if rng.random_bool(0.8) {
+                        height += rng.random_range(1..=2);
+                        start_pos -= CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                    }
+                    if rng.random_bool(0.8) {
+                        height -= rng.random_range(1..=2);
+                        start_pos += CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                    }
+                }
+                35.. => {
+                    if rng.random_bool(0.4) {
+                        height -= rng.random_range(2..=5);
+                        start_pos += CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                    }
                 }
             }
         }

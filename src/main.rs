@@ -32,10 +32,9 @@ pub mod utils;
 
 // any of these can be done in any order:
 //      add new tree variants
-//      grass patches
 //      cool shader for background instead of no tiles
 //      add particle stuff to AB::pop_particles()
-//      move rect 
+//      move rect sprint:
 //          + selected_for_move list in selector
 //          + clear regular selected lists when right click 
 //          + no regular selecting when right is held 
@@ -103,8 +102,6 @@ fn main() {
     let map_width = 500;
     let map_height = 500;
 
-    let mut map = TileMap::generate_map(map_width, map_height, &mut rng);
-    let mut entity_manager = EntityManager::new(map.map_dimensions);
 
     let day_night_cycle = DayNightCycle::new();
 
@@ -116,6 +113,26 @@ fn main() {
     let path_finder = PathFinder::new(map_width, map_height);
 
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
+    let mut game_context = GameContext {
+        total_game_time: 0.0,
+        logical_window_width: window_width_target,
+        logical_window_height: window_height_target,
+        v_width,
+        v_height,
+        camera,
+        day_night_cycle,
+        input_state,
+        rng,
+        texture,
+        path_finder,
+        particle_system: sprite_particle_system,
+        update_rect: Rectangle::default(),
+        dt: 0.0,
+    };
+    
+    let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
+    let mut entity_manager = EntityManager::new(map.map_dimensions);
+    
     let mut shader = rl.load_shader(&thread, None, Some("base_shader.frag"));
     let red_tint_loc = shader.get_shader_location("red_tint");
     let blue_tint_loc = shader.get_shader_location("blue_tint");
@@ -157,22 +174,6 @@ fn main() {
     rl.set_target_fps(60);
     rl.disable_cursor();
 
-    let mut game_context = GameContext {
-        total_game_time: 0.0,
-        logical_window_width: window_width_target,
-        logical_window_height: window_height_target,
-        v_width,
-        v_height,
-        camera,
-        day_night_cycle,
-        input_state,
-        rng,
-        texture,
-        path_finder,
-        particle_system: sprite_particle_system,
-        update_rect: Rectangle::default(),
-        dt: 0.0,
-    };
     //
     // DEBUG START
     //

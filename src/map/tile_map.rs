@@ -60,7 +60,7 @@ pub struct TileMap {
 }
 
 impl TileMap {
-    pub fn generate_map(map_width: u16, map_height: u16, rng: &mut ThreadRng) -> Self {
+    pub fn generate_map(map_width: u16, map_height: u16, game_context: &mut GameContext) -> Self {
         let map_dimensions = MapDimensions {
             width: map_width,
             height: map_height,
@@ -75,11 +75,8 @@ impl TileMap {
         let mut object_grid = Vec::new();
         object_grid.resize_with(total_map_length, || Object::NoObject);
 
-        // ok this looks bad (it is) because the functions purpose is to actually create lakes
-        // but it returns a vec of tiles to make forest lakes of which isnt used until way later.
-        // ive acknowledged the poor choice. if someone wants to fix it, let me know what you think
         let (forest_lake_tiles, grass_lake_tiles) =
-            map_gen_functions::create_lakes(&mut tile_grid, map_dimensions, rng);
+            map_gen_functions::create_lakes(&mut tile_grid, map_dimensions, &mut game_context.rng);
         println!("Lakes created!");
 
         let lake_sprite_data =
@@ -90,7 +87,7 @@ impl TileMap {
             &mut tile_grid,
             &lake_sprite_data,
             map_dimensions,
-            rng,
+            &mut game_context.rng,
         );
         println!("River generated!");
 
@@ -107,7 +104,7 @@ impl TileMap {
             forest_lake_tiles,
             map_dimensions,
             &mut map_cell_grid,
-            rng,
+            &mut game_context.rng,
         );
         println!("Made forest lakes!");
 
@@ -116,7 +113,7 @@ impl TileMap {
             &mut object_grid,
             map_dimensions,
             &mut map_cell_grid,
-            rng,
+            &mut game_context.rng,
         );
         println!("Forests created!");
 
@@ -125,7 +122,7 @@ impl TileMap {
             &mut object_grid,
             map_dimensions,
             &mut map_cell_grid,
-            rng,
+            &mut game_context.rng,
         );
         println!("Standalone trees created!");
 
@@ -134,7 +131,7 @@ impl TileMap {
             &mut object_grid,
             map_dimensions,
             &mut map_cell_grid,
-            rng,
+            game_context,
         );
         println!("Standalone grass created!");
 
@@ -144,7 +141,7 @@ impl TileMap {
             grass_lake_tiles,
             map_dimensions,
             &mut map_cell_grid,
-            rng,
+            game_context,
         );
         println!("Made grass around lakes!");
 
@@ -154,9 +151,18 @@ impl TileMap {
             &river_sprite_data,
             map_dimensions,
             &mut map_cell_grid,
-            rng,
+            game_context,
         );
         println!("Made grass around rivers!");
+
+        map_gen_functions::spawn_fields_of_grass(
+            &tile_grid,
+            &mut object_grid,
+            map_dimensions,
+            &mut map_cell_grid,
+            game_context,
+        );
+        println!("Made fields of grass!");
 
         //SpawnGrassAroundSomeTrees();
         //SetGrassTileGrowMultiplier();
