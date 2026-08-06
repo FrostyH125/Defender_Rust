@@ -26,6 +26,10 @@ impl MapCord {
     
         return (dx * dx + dy * dy).sqrt();
     }
+
+    pub fn as_vec2(self) -> Vector2 {
+        return Vector2::new(self.x as f32, self.y as f32);
+    }
 }
 
 impl Add for MapCord {

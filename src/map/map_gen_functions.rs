@@ -56,70 +56,58 @@ pub fn create_lakes(
         let is_surrounded_by_trees = rng.random_bool(0.03);
         let is_surrounded_by_grass = rng.random_bool(0.25);
 
-        // yes width and height are swapped. i sat down with a notebook and pencil
-        // to figure that one out, apparently it wasn't obvious that was the right way
-        // but it makes sense since a = w * h, so w = a / h and h = a / w (excuse my dumbness)
-        let start_x =
-            rng.random_range(0..(tile_grid.len() / map_dimensions.height as usize)) as i16;
-        let start_y = rng.random_range(0..(tile_grid.len() / map_dimensions.width as usize)) as i16;
+        let start_x = rng.random_range(0..map_dimensions.width) as i16;
+        let start_y = rng.random_range(0..map_dimensions.height) as i16;
 
-        // will only reach this size as long as the queue doesnt run out of tiles
-        let target_lake_size = rng.random_range(60..=100);
+        let max_lake_size = rng.random_range(60..=100);
 
         let mut tiles_placed = 0;
 
         let mut next_tiles: VecDeque<MapCord> = VecDeque::new();
         next_tiles.push_back(MapCord::new(start_x, start_y));
 
-        let mut lake_tiles: Vec<MapCord> = Vec::with_capacity(100);
+        let mut current_lake: Vec<MapCord> = Vec::with_capacity(100);
 
-        while next_tiles.len() > 0 && tiles_placed < target_lake_size {
-            // guaranteed to be Some(tile) because of the while condition
-            let current = next_tiles.pop_front().unwrap();
+        while next_tiles.len() > 0 && tiles_placed < max_lake_size {
+            let current_tile = next_tiles.pop_front().unwrap();
 
-            // cant use self.is_tile_in_bounds because theres no self yet
-            // to avoid inconvenient ass function parameters, im going
-            // to just do it manually here
-
-            if !map_utils::is_tile_in_bounds(map_dimensions, current) {
+            if !map_utils::is_tile_in_bounds(map_dimensions, current_tile) {
                 continue;
             }
 
-            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, current) == TileType::Lake {
+            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, current_tile) == TileType::Lake {
                 continue;
             }
 
-            let tile_index = map_utils::cords_to_index(map_dimensions, current);
+            let tile_index = map_utils::cords_to_index(map_dimensions, current_tile);
 
             tile_grid[tile_index] = TileType::Lake;
 
-            // push for tree or lake tiles
-            lake_tiles.push(current);
+            current_lake.push(current_tile);
 
             tiles_placed += 1;
 
-            let chance = 0.8;
+            let chance_for_new_tile = 0.8;
 
-            if next_tiles.len() >= target_lake_size {
+            if next_tiles.len() >= max_lake_size {
                 continue;
             }
 
             for i in 0..CARDINAL_DELTAS.len() {
-                if rng.random_bool(chance) {
+                if rng.random_bool(chance_for_new_tile) {
                     let dir = CARDINAL_DELTAS[i];
-                    next_tiles.push_back(current + dir);
+                    next_tiles.push_back(current_tile + dir);
                 }
             }
         }
 
         if is_surrounded_by_trees {
-            let mut lake_copy = lake_tiles.clone();
+            let mut lake_copy = current_lake.clone();
             tree_lake_tiles.append(&mut lake_copy);
         }
 
         if is_surrounded_by_grass {
-            // could mimic the tree one but it would be an unneccesary copy
-            grass_lake_tiles.append(&mut lake_tiles);
+            grass_lake_tiles.append(&mut current_lake);
         }
     }
 
@@ -1074,7 +1062,6 @@ pub fn spawn_fields_of_grass(
                 let obj = &mut object_grid[idx];
 
                 if let Object::NoObject = obj {
-
                     // meant to be used on any thin parts (typically the end)
                     if height <= 4 {
                         if game_context.rng.random_bool(0.03) {

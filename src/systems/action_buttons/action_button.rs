@@ -1,4 +1,4 @@
-use basic_raylib_core::graphics::sprite::Sprite;
+use basic_raylib_core::{graphics::sprite::Sprite, system::sprite_particle_system::SpriteParticleSystem};
 use rand::RngExt;
 use raylib::{
     drawing::RaylibDrawHandle,
@@ -7,14 +7,11 @@ use raylib::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
+    GameContext, entities::{
         character::Character,
         characters::gatherer::{GatherTarget, GathererState},
         entity_manager::CharacterEntry,
-    },
-    map::tile_map::MapObjectGrid,
-    utils::{draw_utils, entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},
+    }, map::tile_map::MapObjectGrid, utils::{directional_deltas::{CARDINAL_DELTAS, ORTHOGONAL_DELTAS}, draw_utils, entity_utils::get_char_by_index, mouse_utils::mouse_world_coords, vector2_utils},
 };
 
 pub const CHOP_BUTTON_SPRITE: Sprite = Sprite::new(144, 40, 16, 16);
@@ -88,8 +85,6 @@ impl ActionButton {
                 GatherTarget::Tree,
             ),
         }
-
-        //self.make_pop_particles();
     }
 
     /// sets the gatherers to gather the objects specified in the obj_kind parameter
@@ -150,7 +145,23 @@ impl ActionButton {
             );
         }
     }
-    pub fn make_pop_particles(&self) {
-        todo!()
+    pub fn make_pop_particles(&self, particle_system: &mut SpriteParticleSystem) {
+
+        static POP_PARTICLE_SPRITE: Sprite = Sprite::new(48, 1, 3, 1);
+        
+        let center_of_button = Vector2::new(self.rect.x + self.rect.width / 2.0, self.rect.y + self.rect.height / 2.0);
+        
+        for dir in ORTHOGONAL_DELTAS {
+
+            const SPEED: f32 = 50.0;
+            
+            let pos = center_of_button + dir.as_vec2();
+            let delta = (pos - center_of_button).normalized();
+            let angle = delta.y.atan2(delta.x);
+            let velocity = delta * SPEED;
+            let acceleration = -delta * SPEED;
+
+            particle_system.emit_ex(&POP_PARTICLE_SPRITE, pos, velocity, acceleration, 0.0, angle.to_degrees(), 0.5, false);
+        }
     }
 }

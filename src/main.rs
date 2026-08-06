@@ -4,25 +4,14 @@ use basic_raylib_core::{
 };
 use rand::rngs::ThreadRng;
 use raylib::{
-    RaylibHandle, RaylibThread,
-    camera::Camera2D,
-    color::Color,
-    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
-    ffi::KeyboardKey,
-    math::{Rectangle, Vector2},
-    shaders::RaylibShader,
-    texture::{RenderTexture2D, Texture2D},
+    RaylibHandle, RaylibThread, camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, ffi::{KeyboardKey, TextureFilter::{self, TEXTURE_FILTER_POINT}, rlTextureFilter::RL_TEXTURE_FILTER_POINT}, math::{Rectangle, Vector2}, shaders::RaylibShader, texture::{RaylibTexture2D, RenderTexture2D, Texture2D},
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX},
-    entities::{characters::gatherer::Gatherer, entity_manager::EntityManager},
-    map::tile_map::TileMap,
-    systems::{
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
         action_button_manager::ActionButtonManager, day_night_cycle::DayNightCycle,
         entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
-    },
-    utils::{mouse_utils, pathfinding::PathFinder},
+    }, utils::{directional_deltas::ORTHOGONAL_DELTAS, mouse_utils::{self, mouse_world_coords}, pathfinding::PathFinder},
 };
 
 pub mod entities;
@@ -33,7 +22,7 @@ pub mod utils;
 // any of these can be done in any order:
 //      add new tree variants
 //      cool shader for background instead of no tiles
-//      add particle stuff to AB::pop_particles()
+//      ALL the sounds from the github repo
 //      move rect sprint:
 //          + selected_for_move list in selector
 //          + clear regular selected lists when right click 
@@ -193,6 +182,14 @@ fn main() {
 
         // update input first
         game_context.input_state.update(&mut rl, camera.zoom);
+
+        if game_context.input_state.left_clicked_once {
+
+            let pos = mouse_world_coords(&game_context);
+            //let new_pos = Vector2::new(pos.x.floor() + 0.1, pos.y.floor() + 0.1);
+            make_mouse_click_particles(pos, &mut game_context.particle_system);
+        }
+        
         select_rect.update(&game_context);
 
         if game_context.input_state.middle_roll.abs() >= 1.0 {
@@ -419,4 +416,28 @@ fn set_render_textures(
             .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))
             .unwrap();
     }
+}
+
+pub fn make_mouse_click_particles(click_pos: Vector2, particle_system: &mut SpriteParticleSystem) {
+
+    static CLICK_PARTICLE_SPRITE: Sprite = Sprite::new(48, 1, 2, 1);
+
+    let mut count = 0;
+    
+    for dir in ORTHOGONAL_DELTAS {
+
+        const SPEED: f32 = 20.0;
+        
+        let pos = click_pos + dir.as_vec2() * 2.0;
+        let delta = (pos - click_pos).normalized();
+        let angle = delta.y.atan2(delta.x);
+        let velocity = delta * SPEED;
+        let acceleration = -delta * SPEED;
+
+        particle_system.emit_ex(&CLICK_PARTICLE_SPRITE, pos, velocity, acceleration, 0.0, angle.to_degrees(), 0.5, false);
+        count += 1;
+    }
+
+    println!("added: {count}");
+    println!("actual num of parts: {}", particle_system.n_particles)
 }

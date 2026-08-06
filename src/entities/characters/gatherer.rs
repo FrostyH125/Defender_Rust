@@ -63,7 +63,6 @@ impl Gatherer {
         match self.state {
             GathererState::Idle => (),
             GathererState::LookingForObject(gather_target) => {
-                // first look within the same block as you
                 let check_cells = map.get_3_x_3_cell_grid(v2_to_cord(self.data.pos));
 
                 let closest_obj: Option<ObjectEntry> =
@@ -87,9 +86,8 @@ impl Gatherer {
                 gather_target,
             } => match self.data.move_to(target_pos, game_context, map) {
                 CharacterMovementResult::Success => {
-                    // gather the object if it exists, otherwise, it was just a normal move
                     self.state = match gather_target {
-                        Some(g_t) => GathererState::Gathering { object_index: object_index.unwrap(), gather_target: g_t },
+                        Some(gathering_target) => GathererState::Gathering { object_index: object_index.unwrap(), gather_target: gathering_target },
                         None => GathererState::Idle,
                     };     
                 }
@@ -143,7 +141,6 @@ impl Gatherer {
                     Some(obj_entry) => {
                         let dist = obj_data.pos.distance_to(self.data.pos);
 
-                        // only add if its closer
                         if dist < obj_entry.dist {
                             closest_obj = Some(ObjectEntry {
                                 idx: *idx,
@@ -175,7 +172,7 @@ impl Gatherer {
                     }
                 }
             }
-            GatherTarget::Grass => todo!(),
+            GatherTarget::Grass => todo!("grass not yet implemented for collecting"),
         }
 
         return false;
