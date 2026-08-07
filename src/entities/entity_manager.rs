@@ -1,4 +1,4 @@
-use basic_raylib_core::utils::math_utils::center_of_rect;
+use basic_raylib_core::{graphics::sprite::Sprite, utils::math_utils::center_of_rect};
 use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
 
 use crate::{
@@ -69,13 +69,18 @@ impl EntityManager {
         action_button_manager: &mut ActionButtonManager,
         zoom: u32,
     ) {
-
         // update the action buttons first so that they can interrupt and do their on_click before the next batch of selections starts
         // since left clicking ALWAYS removes the selected objects and clears the action buttons active
-        action_button_manager.update(game_context, selector, &mut map.map_object_grid, &mut self.characters);
-        
+        action_button_manager.update(
+            game_context,
+            selector,
+            &mut map.map_object_grid,
+            &mut self.characters,
+        );
+
         let mut was_anything_selected_this_frame = false;
-        let are_any_action_buttons_hovering = action_button_manager.check_for_buttons_being_hovered();
+        let are_any_action_buttons_hovering =
+            action_button_manager.check_for_buttons_being_hovered();
 
         if game_context.input_state.left_clicked_once {
             match selector.selecting_mode {
@@ -87,26 +92,62 @@ impl EntityManager {
             if are_any_action_buttons_hovering {
                 selector.deselect_chars();
                 selector.deselect_objs();
+                selector.deselect_move();
             }
 
             action_button_manager.clear_buttons();
+
+            selector.deselect_move();
+        }
+
+        if game_context.input_state.right_clicked_once {
+            selector.deselect_move();
         }
 
         self.update_update_rect(game_context, zoom);
 
         let mut hover_char: Option<&mut CharacterEntry> = None;
+        let mut hover_char_for_move: Option<&mut CharacterEntry> = None;
         let mut hover_chars: Vec<&mut CharacterEntry> = Vec::new();
+        let mut hover_chars_for_move: Vec<&mut CharacterEntry> = Vec::new();
 
         for character in &mut self.characters {
+            if selector.is_deselecting_chars {
+                character.character.get_mut_data().is_selected = false;
+            }
+
+            if game_context.input_state.right_clicked_once {
+                if character.character.get_mut_data().is_selected_for_move {
+                    character.character.start_moving_to(mouse_world_coords(game_context), game_context, map);
+                }
+            }
+            
+            if selector.is_deselecting_move {
+                // deselecting move means right mouse button was clicked
+                // this means move the character to a new pos 
+                character.character.get_mut_data().is_selected_for_move = false;
+            }
+            
             character
                 .character
-                .update(game_context, map, selector.is_deselecting_chars);
+                .update(game_context, map);
 
             character.render_index = character
                 .character
                 .get_render_tile_index(self.map_dimensions);
 
-            // only do this shit if the selecting mode is proper, and if there are no buttons hovering, otherwise theres no point
+            if select_rect.move_select_range_active {
+                if character
+                    .character
+                    .get_hover_rect()
+                    .check_collision_recs(&select_rect.rectangle)
+                {
+                    character.character.get_mut_data().is_hovering_for_move = true;
+                    hover_chars_for_move.push(character);
+                    continue;
+                }
+            }
+
             if let SelectingMode::Characters = selector.selecting_mode {
                 match select_rect.select_range_active {
                     // count each character inside of the rectangle if its dragging, they should all be drawing with hover
@@ -122,14 +163,24 @@ impl EntityManager {
                     }
                     // if the select rect is not currently active, then just go as usual with the normal single slot
                     false => {
-                        if  !are_any_action_buttons_hovering && character
-                            .character
-                            .get_hover_rect()
-                            .check_collision_point_rec(mouse_world_coords(game_context))
+                        if !are_any_action_buttons_hovering
+                            && character
+                                .character
+                                .get_hover_rect()
+                                .check_collision_point_rec(mouse_world_coords(game_context))
                         {
                             hover_char = Some(character);
                         }
                     }
+                }
+            } else {
+                if !are_any_action_buttons_hovering
+                    && character
+                        .character
+                        .get_hover_rect()
+                        .check_collision_point_rec(mouse_world_coords(game_context))
+                {
+                    hover_char_for_move = Some(character);
                 }
             }
         }
@@ -149,7 +200,12 @@ impl EntityManager {
 
                 let obj = &mut map.map_object_grid[index];
 
-                obj.update(game_context, selector.is_deselecting_objs, &mut map.map_cell_grid, map.map_dimensions);
+                obj.update(
+                    game_context,
+                    selector.is_deselecting_objs,
+                    &mut map.map_cell_grid,
+                    map.map_dimensions,
+                );
 
                 if let Object::NoObject = obj {
                     continue;
@@ -169,7 +225,9 @@ impl EntityManager {
                         }
                         // carry on as normal if not dragging
                         false => {
-                            if  !are_any_action_buttons_hovering && obj.is_point_intersecting(mouse_world_coords(&game_context)) {
+                            if !are_any_action_buttons_hovering
+                                && obj.is_point_intersecting(mouse_world_coords(&game_context))
+                            {
                                 hover_obj = Some(index);
                             }
                         }
@@ -213,12 +271,24 @@ impl EntityManager {
             }
         }
 
+        if select_rect.is_selecting_for_move_this_frame {
+            selector.select_multiple_moves(hover_chars_for_move);
+        } else {
+            if let Some(ch) = hover_char_for_move {
+                ch.character.get_mut_data().is_hovering_for_move = true;
+
+                if game_context.input_state.right_clicked_once {
+                    selector.select_single_move(ch);
+                }
+            }
+        }
+
         if was_anything_selected_this_frame {
             let button_base_pos = match select_rect.is_selecting_this_frame {
                 true => center_of_rect(select_rect.rectangle),
                 false => mouse_world_coords(game_context),
             };
-            
+
             // this function will reset the action buttons and then check if there are any matches between selected objects and selected characters
             // if it finds any number of matches, it will spawn them at the position passed as an argument
             action_button_manager.try_trigger_match(
@@ -335,6 +405,15 @@ impl EntityManager {
 
                         if character_data.is_selected {
                             character.draw_selected(d, texture);
+                        }
+
+                        if character_data.is_hovering_for_move {
+                            character.draw_hover_for_move(d, texture);
+                        }
+
+                        if character_data.is_selected_for_move {
+                            const MOVE_PLACEHOLDER_SPRITE: Sprite = Sprite::new(64, 72, 8, 8);
+                            MOVE_PLACEHOLDER_SPRITE.draw(d, character.get_draw_pos(), texture);
                         }
                     }
 

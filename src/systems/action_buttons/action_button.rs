@@ -11,7 +11,7 @@ use crate::{
         character::Character,
         characters::gatherer::{GatherTarget, GathererState},
         entity_manager::CharacterEntry,
-    }, map::tile_map::MapObjectGrid, utils::{directional_deltas::{CARDINAL_DELTAS, ORTHOGONAL_DELTAS}, draw_utils, entity_utils::get_char_by_index, mouse_utils::mouse_world_coords, vector2_utils},
+    }, map::tile_map::MapObjectGrid, utils::{directional_deltas::ORTHOGONAL_DELTAS, draw_utils, entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},
 };
 
 pub const CHOP_BUTTON_SPRITE: Sprite = Sprite::new(144, 40, 16, 16);

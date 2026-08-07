@@ -34,6 +34,12 @@ void main()
         return;
     }
 
+    // is hovering for move
+    if (fragColor.r == 0) {
+        finalColor = vec4(0.9, 0.9, 0.1, tex.a);
+        return;
+    }
+
     vec4 time_of_day_tint = vec4(red_tint, 0.0, blue_tint, 0.0);
     time_of_day_tint.rgb += brightness_modifier;
     

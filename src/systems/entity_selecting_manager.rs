@@ -17,13 +17,11 @@ pub enum SelectingMode {
 }
 
 pub struct EntitySelectingManager {
-    // these store map id's and character unique ids respectively
-    // if it weren't for needing the character id's and object id's for the action buttons being able
-    // to know which characters should be checked, i probably wouldnt need these lists at all.
     pub selected_objects: Vec<usize>,
     pub selected_characters: Vec<usize>,
     pub selecting_mode: SelectingMode,
     pub is_deselecting_chars: bool,
+    pub is_deselecting_move: bool,
     pub is_deselecting_objs: bool,
 }
 
@@ -35,12 +33,14 @@ impl EntitySelectingManager {
             selecting_mode: SelectingMode::Objects,
             is_deselecting_chars: false,
             is_deselecting_objs: false,
+            is_deselecting_move: false,
         };
     }
 
     pub fn update(&mut self, rl: &mut RaylibHandle) {
         self.is_deselecting_chars = false;
         self.is_deselecting_objs = false;
+        self.is_deselecting_move = false;
 
         if rl.is_key_pressed(KeyboardKey::KEY_ONE) {
             self.selecting_mode = SelectingMode::Objects;
@@ -75,12 +75,25 @@ impl EntitySelectingManager {
         self.selected_characters.push(character_entry.unique_id);
     }
 
+    pub fn select_single_move(&mut self, character_entry: &mut CharacterEntry) {
+        self.deselect_move();
+        character_entry.character.get_mut_data().is_selected_for_move = true;
+    }
+
     pub fn select_multiple_chars(&mut self, hover_characters: Vec<&mut CharacterEntry>) {
         self.deselect_chars();
 
         for ch in hover_characters {
             ch.character.get_mut_data().is_selected = true;
             self.selected_characters.push(ch.unique_id);
+        }
+    }
+
+    pub fn select_multiple_moves(&mut self, hover_move_chars: Vec<&mut CharacterEntry>) {
+        self.deselect_move();
+
+        for ch in hover_move_chars {
+            ch.character.get_mut_data().is_selected_for_move = true;
         }
     }
 
@@ -101,5 +114,9 @@ impl EntitySelectingManager {
     pub fn deselect_chars(&mut self) {
         self.is_deselecting_chars = true;
         self.selected_characters.clear()
+    }
+
+    pub fn deselect_move(&mut self) {
+        self.is_deselecting_move = true;
     }
 }

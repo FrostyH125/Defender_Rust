@@ -192,7 +192,6 @@ impl DayNightCycle {
     }
 
     fn update_sky_colors(&mut self) {
-        // these will be replaced eventually with current_night.red/blue/darkness
         const MAX_BLUE: f32 = 0.2;
         const MAX_RED: f32 = 0.2;
         let current_night_brightness_modifier = NIGHTS[self.current_night].brightness_modifier;

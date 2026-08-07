@@ -1,11 +1,23 @@
 use basic_raylib_core::graphics::sprite::Sprite;
 use raylib::{
-    drawing::RaylibDrawHandle, math::{Rectangle, Vector2}, texture::Texture2D,
+    drawing::RaylibDrawHandle,
+    math::{Rectangle, Vector2},
+    texture::Texture2D,
 };
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{characters::gatherer::Gatherer, object::Object}, map::tile_map::{MapDimensions, TileMap}, utils::{
-        camera_utils, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath}, vector2_utils,
+    GameContext, TILE_SIZE,
+    entities::{
+        characters::gatherer::{Gatherer, GathererState},
+        object::Object,
+    },
+    map::tile_map::{MapDimensions, TileMap},
+    utils::{
+        camera_utils, draw_utils,
+        map_cord::MapCord,
+        map_utils,
+        pathfinding::PathResult::{self, NoPath},
+        vector2_utils,
     },
 };
 
@@ -26,13 +38,22 @@ pub struct CharacterData {
     shadow_shear_x: f32,
     shadow_scale_y: f32,
     move_speed: f32,
+    pub is_moving_to_pos: bool,
     pub is_hovering: bool,
+    pub is_hovering_for_move: bool,
     pub sprite_flip: bool,
     pub is_selected: bool,
+    pub is_selected_for_move: bool,
 }
 
 impl CharacterData {
-    pub fn new(pos: Vector2, draw_offset: Vector2, width: f32, height: f32, move_speed: f32) -> CharacterData {
+    pub fn new(
+        pos: Vector2,
+        draw_offset: Vector2,
+        width: f32,
+        height: f32,
+        move_speed: f32,
+    ) -> CharacterData {
         return CharacterData {
             pos,
             draw_offset,
@@ -44,8 +65,11 @@ impl CharacterData {
             shadow_shear_x: 0.0,
             shadow_scale_y: 0.0,
             is_hovering: false,
+            is_hovering_for_move: false,
             sprite_flip: false,
             is_selected: false,
+            is_selected_for_move: false,
+            is_moving_to_pos: false,
         };
     }
 
@@ -55,7 +79,6 @@ impl CharacterData {
         game_context: &mut GameContext,
         map: &TileMap,
     ) -> CharacterMovementResult {
-
         // compare current target to new target
         if self.target_pos != Some(target) {
             self.target_pos = Some(target);
@@ -84,7 +107,7 @@ impl CharacterData {
             if path.is_empty() {
                 return CharacterMovementResult::Success;
             }
-            
+
             let mut next = &path[0];
 
             // get the next tile
@@ -126,6 +149,12 @@ pub enum Character {
 }
 
 impl Character {
+    pub fn start_moving_to(&mut self, pos: Vector2, game_context: &mut GameContext, map: &TileMap) {
+        let data = self.get_mut_data();
+        data.is_moving_to_pos = true;
+        data.move_to(pos, game_context, map);
+    }
+
     pub fn get_data(&self) -> &CharacterData {
         match self {
             Character::GathererChar(gatherer) => &gatherer.data,
@@ -138,18 +167,29 @@ impl Character {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap, should_deselect: bool) {
-
-        if should_deselect {
-            self.get_mut_data().is_selected = false;
-        }
-        
+    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
         match self {
-            Character::GathererChar(gatherer) => gatherer.update(game_context, map),
+            Character::GathererChar(gatherer) => {
+                if let GathererState::MovingToObject { .. } = gatherer.state {
+                    gatherer.data.is_moving_to_pos = false;
+                }
+                gatherer.update(game_context, map)
+            }
+        }
+        let data = self.get_mut_data();
+
+        if data.is_moving_to_pos {
+            match data.move_to(data.target_pos.unwrap(), game_context, map) {
+                CharacterMovementResult::NotArrivedYet => (),
+                _ => {
+                    data.is_moving_to_pos = false;
+                    data.target_pos = None;
+                }
+            }
         }
 
-        let data = self.get_mut_data();
         data.is_hovering = false;
+        data.is_hovering_for_move = false;
         data.shadow_scale_y = game_context.day_night_cycle.current_shadow_scale;
         data.shadow_shear_x = game_context.day_night_cycle.current_shadow_shear;
     }
@@ -171,6 +211,11 @@ impl Character {
     pub fn draw_selected(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         draw_utils::draw_with_extra_brightness(d, sprite, self.get_draw_pos(), texture);
+    }
+
+    pub fn draw_hover_for_move(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+        let sprite = self.current_sprite();
+        draw_utils::draw_outline_for_move(d, sprite, self.get_draw_pos(), texture);
     }
 
     pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
@@ -222,13 +267,22 @@ impl Character {
         return idx + 1;
     }
 
-    pub fn update_obj_if_out_of_update_range(object: &mut Object, game_context: &mut GameContext, map: &mut TileMap) {
+    pub fn update_obj_if_out_of_update_range(
+        object: &mut Object,
+        game_context: &mut GameContext,
+        map: &mut TileMap,
+    ) {
         let object_pos = object.get_data().pos;
 
         if !camera_utils::is_in_update_area(object_pos, game_context) {
             return;
         }
 
-        object.update(game_context, false, &mut map.map_cell_grid, map.map_dimensions);
+        object.update(
+            game_context,
+            false,
+            &mut map.map_cell_grid,
+            map.map_dimensions,
+        );
     }
 }
