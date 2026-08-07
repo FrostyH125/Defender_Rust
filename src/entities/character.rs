@@ -80,7 +80,7 @@ impl CharacterData {
         map: &TileMap,
     ) -> CharacterMovementResult {
         // compare current target to new target
-        if self.target_pos != Some(target) {
+        if self.target_pos != Some(target) || matches!(self.path, PathResult::NoPath) {
             self.target_pos = Some(target);
             self.path = game_context.path_finder.a_star(
                 vector2_utils::v2_to_cord(self.pos),
@@ -149,10 +149,10 @@ pub enum Character {
 }
 
 impl Character {
-    pub fn start_moving_to(&mut self, pos: Vector2, game_context: &mut GameContext, map: &TileMap) {
+    pub fn start_moving_to(&mut self, pos: Vector2) {
         let data = self.get_mut_data();
         data.is_moving_to_pos = true;
-        data.move_to(pos, game_context, map);
+        data.target_pos = Some(pos)
     }
 
     pub fn get_data(&self) -> &CharacterData {

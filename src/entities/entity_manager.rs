@@ -118,19 +118,19 @@ impl EntityManager {
 
             if game_context.input_state.right_clicked_once {
                 if character.character.get_mut_data().is_selected_for_move {
-                    character.character.start_moving_to(mouse_world_coords(game_context), game_context, map);
+                    character
+                        .character
+                        .start_moving_to(mouse_world_coords(game_context));
                 }
             }
-            
+
             if selector.is_deselecting_move {
                 // deselecting move means right mouse button was clicked
-                // this means move the character to a new pos 
+                // this means move the character to a new pos
                 character.character.get_mut_data().is_selected_for_move = false;
             }
-            
-            character
-                .character
-                .update(game_context, map);
+
+            character.character.update(game_context, map);
 
             character.render_index = character
                 .character
