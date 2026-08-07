@@ -152,6 +152,12 @@ impl Character {
     pub fn start_moving_to(&mut self, pos: Vector2) {
         let data = self.get_mut_data();
         data.is_moving_to_pos = true;
+
+        // need to manually clear the path because the algorithm wont actually
+        // make a new path when i manually set the target pos. I would have to 
+        // call 'move_to()' manually and theres just not really any reason
+        // to do that since id have to pass game_context and map and i dont want to
+        data.path = NoPath;
         data.target_pos = Some(pos)
     }
 

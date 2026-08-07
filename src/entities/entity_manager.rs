@@ -1,5 +1,10 @@
 use basic_raylib_core::{graphics::sprite::Sprite, utils::math_utils::center_of_rect};
-use raylib::{drawing::RaylibDrawHandle, math::Rectangle, texture::Texture2D};
+use rand::RngExt;
+use raylib::{
+    drawing::RaylibDrawHandle,
+    math::{Rectangle, Vector2},
+    texture::Texture2D,
+};
 
 use crate::{
     GameContext, TILE_SIZE,
@@ -18,6 +23,8 @@ use crate::{
 /// being tested is the top left corner of each object's visible rectangle.
 pub const UPDATE_MARGIN: f32 = 4.0;
 pub const DRAW_SHADOW_EXTRA_MARGIN: f32 = 2.0;
+
+static HOVER_SELECT_PARTICLE_SPRITE: Sprite = Sprite::new(64, 72, 1, 1);
 
 pub struct CharacterEntry {
     pub character: Character,
@@ -78,11 +85,16 @@ impl EntityManager {
             &mut self.characters,
         );
 
+        let right_clicked = game_context.input_state.right_clicked_once;
+        let left_clicked = game_context.input_state.left_clicked_once;
+        let mouse_pos = mouse_world_coords(game_context);
+
         let mut was_anything_selected_this_frame = false;
+
         let are_any_action_buttons_hovering =
             action_button_manager.check_for_buttons_being_hovered();
 
-        if game_context.input_state.left_clicked_once {
+        if left_clicked {
             match selector.selecting_mode {
                 SelectingMode::Objects => selector.deselect_objs(),
                 SelectingMode::Characters => selector.deselect_chars(),
@@ -100,8 +112,10 @@ impl EntityManager {
             selector.deselect_move();
         }
 
-        if game_context.input_state.right_clicked_once {
+        if right_clicked {
             selector.deselect_move();
+            selector.deselect_chars();
+            selector.deselect_objs();
         }
 
         self.update_update_rect(game_context, zoom);
@@ -111,16 +125,18 @@ impl EntityManager {
         let mut hover_chars: Vec<&mut CharacterEntry> = Vec::new();
         let mut hover_chars_for_move: Vec<&mut CharacterEntry> = Vec::new();
 
+        let mut moved_anyone = false;
         for character in &mut self.characters {
+            let hover_rect = character.character.get_hover_rect();
+
             if selector.is_deselecting_chars {
                 character.character.get_mut_data().is_selected = false;
             }
 
-            if game_context.input_state.right_clicked_once {
+            if right_clicked {
                 if character.character.get_mut_data().is_selected_for_move {
-                    character
-                        .character
-                        .start_moving_to(mouse_world_coords(game_context));
+                    character.character.start_moving_to(mouse_pos);
+                    moved_anyone = true;
                 }
             }
 
@@ -132,16 +148,20 @@ impl EntityManager {
 
             character.character.update(game_context, map);
 
+            let should_spawn_new_selected_for_move_particle =
+                character.character.get_data().is_selected_for_move
+                    && game_context.rng.random_bool(game_context.dt as f64 * 10.0);
+
+            if should_spawn_new_selected_for_move_particle {
+                spawn_character_selected_for_potential_move_particle(game_context, character);
+            }
+
             character.render_index = character
                 .character
                 .get_render_tile_index(self.map_dimensions);
 
             if select_rect.move_select_range_active {
-                if character
-                    .character
-                    .get_hover_rect()
-                    .check_collision_recs(&select_rect.rectangle)
-                {
+                if hover_rect.check_collision_recs(&select_rect.rectangle) {
                     character.character.get_mut_data().is_hovering_for_move = true;
                     hover_chars_for_move.push(character);
                     continue;
@@ -152,37 +172,36 @@ impl EntityManager {
                 match select_rect.select_range_active {
                     // count each character inside of the rectangle if its dragging, they should all be drawing with hover
                     true => {
-                        if character
-                            .character
-                            .get_hover_rect()
-                            .check_collision_recs(&select_rect.rectangle)
-                        {
+                        if hover_rect.check_collision_recs(&select_rect.rectangle) {
                             character.character.get_mut_data().is_hovering = true;
                             hover_chars.push(character);
+                            continue;
                         }
                     }
                     // if the select rect is not currently active, then just go as usual with the normal single slot
                     false => {
-                        if !are_any_action_buttons_hovering
-                            && character
-                                .character
-                                .get_hover_rect()
-                                .check_collision_point_rec(mouse_world_coords(game_context))
-                        {
+                        let should_be_hovered = !are_any_action_buttons_hovering
+                            && !right_clicked
+                            && hover_rect.check_collision_point_rec(mouse_pos);
+
+                        if should_be_hovered {
                             hover_char = Some(character);
+                            continue;
                         }
                     }
                 }
-            } else {
-                if !are_any_action_buttons_hovering
-                    && character
-                        .character
-                        .get_hover_rect()
-                        .check_collision_point_rec(mouse_world_coords(game_context))
-                {
-                    hover_char_for_move = Some(character);
-                }
             }
+
+            let should_be_hovered_for_move =
+                !are_any_action_buttons_hovering && hover_rect.check_collision_point_rec(mouse_pos);
+
+            if should_be_hovered_for_move {
+                hover_char_for_move = Some(character);
+            }
+        }
+
+        if moved_anyone {
+            spawn_mouse_selected_move_particles(game_context, mouse_pos);
         }
 
         let mut hover_obj: Option<usize> = None;
@@ -215,19 +234,21 @@ impl EntityManager {
                     match select_rect.select_range_active {
                         // put all objects in drag rect into the rectangle
                         true => {
-                            if select_rect
+                            let should_hover_obj = select_rect
                                 .rectangle
-                                .check_collision_recs(&obj.get_data().hover_rect)
-                            {
+                                .check_collision_recs(&obj.get_data().hover_rect);
+
+                            if should_hover_obj {
                                 obj.get_mut_data().is_hovering = true;
                                 hover_objs.push(index);
                             }
                         }
                         // carry on as normal if not dragging
                         false => {
-                            if !are_any_action_buttons_hovering
-                                && obj.is_point_intersecting(mouse_world_coords(&game_context))
-                            {
+                            let should_hover_obj = !are_any_action_buttons_hovering
+                                && obj.is_point_intersecting(mouse_pos);
+
+                            if should_hover_obj {
                                 hover_obj = Some(index);
                             }
                         }
@@ -247,7 +268,7 @@ impl EntityManager {
 
                         obj.get_mut_data().is_hovering = true;
 
-                        if game_context.input_state.left_clicked_once {
+                        if left_clicked {
                             selector.select_single_obj(obj, idx);
                             was_anything_selected_this_frame = true;
                         }
@@ -262,7 +283,7 @@ impl EntityManager {
                     if let Some(ch) = hover_char {
                         ch.character.get_mut_data().is_hovering = true;
 
-                        if game_context.input_state.left_clicked_once {
+                        if left_clicked {
                             selector.select_single_char(ch);
                             was_anything_selected_this_frame = true;
                         }
@@ -277,7 +298,7 @@ impl EntityManager {
             if let Some(ch) = hover_char_for_move {
                 ch.character.get_mut_data().is_hovering_for_move = true;
 
-                if game_context.input_state.right_clicked_once {
+                if right_clicked {
                     selector.select_single_move(ch);
                 }
             }
@@ -410,11 +431,6 @@ impl EntityManager {
                         if character_data.is_hovering_for_move {
                             character.draw_hover_for_move(d, texture);
                         }
-
-                        if character_data.is_selected_for_move {
-                            const MOVE_PLACEHOLDER_SPRITE: Sprite = Sprite::new(64, 72, 8, 8);
-                            MOVE_PLACEHOLDER_SPRITE.draw(d, character.get_draw_pos(), texture);
-                        }
                     }
 
                     current_char_list_index += 1;
@@ -459,4 +475,67 @@ impl EntityManager {
         // update with the actual tiles being updated, not just the actual rectangle being used for those values
         game_context.update_rect = new_update_rect;
     }
+}
+
+fn spawn_mouse_selected_move_particles(game_context: &mut GameContext, mouse_pos: Vector2) {
+    for _ in 0..=game_context.rng.random_range(20..=30) {
+        let area_of_effect = Rectangle::new(
+            mouse_pos.x - TILE_SIZE / 2.0,
+            mouse_pos.y,
+            TILE_SIZE,
+            TILE_SIZE,
+        );
+        let p_pos = Vector2::new(
+            game_context
+                .rng
+                .random_range(area_of_effect.x..=area_of_effect.x + area_of_effect.width),
+            game_context
+                .rng
+                .random_range(area_of_effect.y..=area_of_effect.y + area_of_effect.height),
+        );
+        let p_vel = Vector2::new(0.0, game_context.rng.random_range(-50.0..=-30.0));
+        let p_acc = Vector2::new(
+            game_context.rng.random_range(-3.0..=3.0),
+            game_context.rng.random_range(40.0..=65.0),
+        );
+        game_context.particle_system.emit(
+            &HOVER_SELECT_PARTICLE_SPRITE,
+            p_pos,
+            p_vel,
+            p_acc,
+            game_context.rng.random_range(0.5..=0.75),
+        );
+    }
+}
+
+fn spawn_character_selected_for_potential_move_particle(
+    game_context: &mut GameContext,
+    character: &mut CharacterEntry,
+) {
+    let data = character.character.get_data();
+
+    let height = character.character.get_hover_rect().height;
+
+    let p_pos = Vector2::new(
+        game_context
+            .rng
+            .random_range(data.pos.x..=data.pos.x + character.character.get_hover_rect().width),
+        game_context
+            .rng
+            .random_range(data.pos.y + height / 2.0..=data.pos.y + height),
+    );
+
+    let p_vel = Vector2::new(0.0, game_context.rng.random_range(-50.0..=-45.0));
+    let p_acc = Vector2::new(
+        game_context.rng.random_range(-3.0..=3.0),
+        game_context.rng.random_range(70.0..=80.0),
+    );
+
+    game_context.particle_system.emit(
+        &HOVER_SELECT_PARTICLE_SPRITE,
+        p_pos,
+        p_vel,
+        p_acc,
+        game_context.rng.random_range(0.5..=0.75),
+    );
 }

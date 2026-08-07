@@ -109,13 +109,14 @@ impl Object {
     }
 
     pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool, cells: &mut [MapCell], map_dimensions: MapDimensions) {
-
         match self {
             TreeObj(tree) => tree.update(game_context),
             GrassObj(grass) => grass.update(game_context),
             // pass if none
             NoObject => return,
         }
+        
+        self.get_mut_data().is_occupied = false;
 
         let data = self.get_mut_data();
 

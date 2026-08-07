@@ -42,9 +42,10 @@ pub mod utils;
 //      add new tree variants
 //      cool shader for background instead of no tiles
 //      ALL the sounds from the github repo
-//      some cooler way to demonstrate being selected for moving
-//      move rect sprint:
-//          + yellow particles + drop shadow
+
+// BUGFIX:
+//  if a gatherer is chopping a tree, if that gatherer is selected again with that tree and the button is pressed to chop,
+//  it just wont do anything
 
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -68,8 +69,8 @@ pub struct GameContext {
 fn main() {
     // what the game is pretending the game is running at,
     // to be honest, ideally this will never change unless aspect ratio changes
-    let mut window_width_target = 1920;
-    let mut window_height_target = 1080;
+    let window_width_target = 1920;
+    let window_height_target = 1080;
 
     // what the game will stretch the render target to, to fill the screen
     let actual_window_width = 2560;
@@ -95,7 +96,7 @@ fn main() {
     let mut select_rect = SelectRect::new();
     let sprite_particle_system = SpriteParticleSystem::new(1000);
 
-    let mut rng = rand::rng();
+    let rng = rand::rng();
 
     let mut camera_pos = camera.target;
     let input_state = InputState::new();
@@ -196,8 +197,12 @@ fn main() {
 
         if game_context.input_state.left_clicked_once {
             let pos = mouse_world_coords(&game_context);
-            //let new_pos = Vector2::new(pos.x.floor() + 0.1, pos.y.floor() + 0.1);
             make_mouse_click_particles(pos, &mut game_context.particle_system);
+        }
+
+        if game_context.input_state.right_clicked_once {
+            let pos = mouse_world_coords(&game_context);
+            make_mouse_right_click_particles(pos, &mut game_context.particle_system);
         }
 
         select_rect.update(&game_context);
@@ -406,7 +411,7 @@ fn change_window_size(
     *window_height = new_height;
     rl.set_window_size(*window_width as i32, *window_height as i32);
 
-    set_render_textures(rl, thread, rt_array, *window_width, *window_height);
+    //set_render_textures(rl, thread, rt_array, *window_width, *window_height);
 }
 
 fn set_render_textures(
@@ -430,17 +435,14 @@ fn set_render_textures(
 
 pub fn make_mouse_click_particles(click_pos: Vector2, particle_system: &mut SpriteParticleSystem) {
     static CLICK_PARTICLE_SPRITE: Sprite = Sprite::new(48, 1, 2, 1);
-
-    let mut count = 0;
-
     for dir in ORTHOGONAL_DELTAS {
-        const SPEED: f32 = 20.0;
+        const SPEED: f32 = 60.0;
 
         let pos = click_pos + dir.as_vec2() * 2.0;
         let delta = (pos - click_pos).normalized();
         let angle = delta.y.atan2(delta.x);
         let velocity = delta * SPEED;
-        let acceleration = -delta * SPEED;
+        let acceleration = -delta * SPEED * 3.0;
 
         particle_system.emit_ex(
             &CLICK_PARTICLE_SPRITE,
@@ -449,12 +451,32 @@ pub fn make_mouse_click_particles(click_pos: Vector2, particle_system: &mut Spri
             acceleration,
             0.0,
             angle.to_degrees(),
-            0.5,
+            0.3,
             false,
         );
-        count += 1;
     }
+}
 
-    println!("added: {count}");
-    println!("actual num of parts: {}", particle_system.n_particles)
+pub fn make_mouse_right_click_particles(click_pos: Vector2, particle_system: &mut SpriteParticleSystem) {
+    static CLICK_PARTICLE_SPRITE: Sprite = Sprite::new(48, 4, 2, 1);
+    for dir in ORTHOGONAL_DELTAS {
+        const SPEED: f32 = 60.0;
+
+        let pos = click_pos + dir.as_vec2() * 2.0;
+        let delta = (pos - click_pos).normalized();
+        let angle = delta.y.atan2(delta.x);
+        let velocity = delta * SPEED;
+        let acceleration = -delta * SPEED * 3.0;
+
+        particle_system.emit_ex(
+            &CLICK_PARTICLE_SPRITE,
+            pos,
+            velocity,
+            acceleration,
+            0.0,
+            angle.to_degrees(),
+            0.3,
+            false,
+        );
+    }
 }
