@@ -35,7 +35,6 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
-//      add new tree variants
 //      wobble shader effect on the action buttons (will later be used on building buttons too)
 //      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo

@@ -239,9 +239,19 @@ impl Character {
     }
 
     pub fn current_sprite(&self) -> Sprite {
-        match self {
+        let mut spr = match self {
             Character::GathererChar(gatherer) => gatherer.sprite(),
+        };
+
+        if self.get_data().sprite_flip {
+
+            // if i dont -0.1 then the width will apparently be less than the width due
+            // to floating point shenanigans, since its drawn to a low res grid its 
+            // rounded down, i have to add to the width essentially
+            spr.src_rect.width = -spr.src_rect.width -0.1;
         }
+        
+        return spr;
     }
 
     pub fn get_draw_pos(&self) -> Vector2 {

@@ -212,7 +212,7 @@ impl Object {
         };
 
         if self.get_data().sprite_flip {
-            spr.src_rect.width = -spr.src_rect.width;
+            spr.src_rect.width = -spr.src_rect.width - 0.1;
         }
 
         return spr;
