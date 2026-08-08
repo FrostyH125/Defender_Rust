@@ -353,22 +353,22 @@ impl Grass {
         }
     }
 
-    pub fn sprite(&self) -> &Sprite {
+    pub fn sprite(&self) -> Sprite {
         return match self.grass_type {
             Wheaty => {
-                &WHEATY_GRASS_ANIMS[self.grass_level as usize].frames
+                WHEATY_GRASS_ANIMS[self.grass_level as usize].frames
                     [self.anim_instance.current_frame_index as usize]
             }
             GrassType::Flowery => {
-                &FLOWERY_GRASS_ANIMS[self.grass_level as usize].frames
+                FLOWERY_GRASS_ANIMS[self.grass_level as usize].frames
                     [self.anim_instance.current_frame_index as usize]
             }
             GrassType::Bushy => {
-                &BUSHY_GRASS_ANIMS[self.grass_level as usize].frames
+                BUSHY_GRASS_ANIMS[self.grass_level as usize].frames
                     [self.anim_instance.current_frame_index as usize]
             }
             GrassType::Stalky => {
-                &STALKY_GRASS_ANIMS[self.grass_level as usize].frames
+                STALKY_GRASS_ANIMS[self.grass_level as usize].frames
                     [self.anim_instance.current_frame_index as usize]
             }
         };

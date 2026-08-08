@@ -8,14 +8,10 @@ use raylib::{
     camera::Camera2D,
     color::Color,
     drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
-    ffi::{
-        KeyboardKey,
-        TextureFilter::{self, TEXTURE_FILTER_POINT},
-        rlTextureFilter::RL_TEXTURE_FILTER_POINT,
-    },
+    ffi::KeyboardKey,
     math::{Rectangle, Vector2},
     shaders::RaylibShader,
-    texture::{RaylibTexture2D, RenderTexture2D, Texture2D},
+    texture::{RenderTexture2D, Texture2D},
 };
 
 use crate::{
@@ -40,12 +36,9 @@ pub mod utils;
 
 // any of these can be done in any order:
 //      add new tree variants
-//      cool shader for background instead of no tiles
+//      wobble shader effect on the action buttons (will later be used on building buttons too)
+//      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo
-
-// BUGFIX:
-//  if a gatherer is chopping a tree, if that gatherer is selected again with that tree and the button is pressed to chop,
-//  it just wont do anything
 
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -400,8 +393,6 @@ impl ZoomSizes {
 
 fn change_window_size(
     rl: &mut RaylibHandle,
-    thread: &RaylibThread,
-    rt_array: &mut [RenderTexture2D],
     window_width: &mut f32,
     window_height: &mut f32,
     new_width: f32,
@@ -410,19 +401,19 @@ fn change_window_size(
     *window_width = new_width;
     *window_height = new_height;
     rl.set_window_size(*window_width as i32, *window_height as i32);
-
-    //set_render_textures(rl, thread, rt_array, *window_width, *window_height);
 }
 
+/// sets render textures based on a window width target.
+/// for example, if you pass in 1920, 1080, the zooms will be based on that
 fn set_render_textures(
     rl: &mut RaylibHandle,
     thread: &RaylibThread,
     rt_array: &mut [RenderTexture2D],
-    window_width: f32,
-    window_height: f32,
+    window_width_target: f32,
+    window_height_target: f32,
 ) {
-    let w_u32 = window_width as u32;
-    let h_u32 = window_height as u32;
+    let w_u32 = window_width_target as u32;
+    let h_u32 = window_height_target as u32;
 
     let rt_count = rt_array.len();
 
@@ -457,7 +448,10 @@ pub fn make_mouse_click_particles(click_pos: Vector2, particle_system: &mut Spri
     }
 }
 
-pub fn make_mouse_right_click_particles(click_pos: Vector2, particle_system: &mut SpriteParticleSystem) {
+pub fn make_mouse_right_click_particles(
+    click_pos: Vector2,
+    particle_system: &mut SpriteParticleSystem,
+) {
     static CLICK_PARTICLE_SPRITE: Sprite = Sprite::new(48, 4, 2, 1);
     for dir in ORTHOGONAL_DELTAS {
         const SPEED: f32 = 60.0;

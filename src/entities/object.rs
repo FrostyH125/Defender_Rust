@@ -41,6 +41,7 @@ pub struct ObjectData {
     pub is_occupied: bool,
     pub is_marked_for_gathering: bool,
     pub state: ObjectState,
+    pub sprite_flip: bool,
 }
 
 impl ObjectData {
@@ -81,6 +82,7 @@ impl ObjectData {
             is_occupied: false,
             is_marked_for_gathering: false,
             state: ObjectState::Idle,
+            sprite_flip: false
         };
     }
 }
@@ -202,12 +204,18 @@ impl Object {
         );
     }
 
-    pub fn current_sprite(&self) -> &Sprite {
-        match self {
+    pub fn current_sprite(&self) -> Sprite {
+        let mut spr = match self {
             NoObject => todo!(),
             TreeObj(tree) => tree.sprite(),
             GrassObj(grass) => grass.sprite(),
+        };
+
+        if self.get_data().sprite_flip {
+            spr.src_rect.width = -spr.src_rect.width;
         }
+
+        return spr;
     }
 
     pub fn take_hit(&mut self, damage: f32) {

@@ -64,7 +64,7 @@ impl ActionButton {
         let current_pos = Vector2::new(self.rect.x, self.rect.y);
 
         match self.is_hovering {
-            true => draw_utils::draw_with_extra_brightness(d, &self.sprite, current_pos, texture),
+            true => draw_utils::draw_with_extra_brightness(d, self.sprite, current_pos, texture),
             false => self.sprite.draw(d, current_pos, texture),
         }
     }

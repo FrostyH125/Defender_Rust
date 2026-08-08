@@ -180,8 +180,18 @@ impl Gatherer {
                 if !Gatherer::obj_matches_target(obj, target_obj) {
                     continue;
                 }
-
+                
                 let obj_data = obj.get_data();
+
+                // since objects reset their is_occupied variable each frame
+                // the object its looking at could potentially fit the
+                // requirements even though its breaking and would turn to NoObject
+                // soon
+                // this would crash the game since the character would then
+                // try to get the data from the NoObject
+                if let ObjectState::Breaking = obj_data.state {
+                    continue;
+                }
 
                 match &closest_obj {
                     Some(obj_entry) => {
@@ -224,7 +234,7 @@ impl Gatherer {
         return false;
     }
 
-    pub fn sprite(&self) -> &Sprite {
-        return &GATHERER_SPRITE;
+    pub fn sprite(&self) -> Sprite {
+        return GATHERER_SPRITE;
     }
 }

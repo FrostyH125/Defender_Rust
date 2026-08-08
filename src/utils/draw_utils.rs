@@ -12,7 +12,7 @@ use crate::utils::directional_deltas::CARDINAL_DELTAS;
 /// 1.0 exact dimensions of base sprite, -1.0 being exact dimensions of base sprite, flipped upside down, mirrored over x axis
 pub fn draw_shadow(
     d: &mut RaylibDrawHandle,
-    sprite: &Sprite,
+    sprite: Sprite,
     pos: Vector2,
     shear_x: f32,
     scale_y: f32,
@@ -78,7 +78,7 @@ pub fn draw_shadow(
     }
 }
 
-pub fn draw_outline(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vector2, texture: &Texture2D) {
+pub fn draw_outline(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, texture: &Texture2D) {
     const OUTLINE_TRIGGER_COLOR: Color = Color::new(255, 255, 255, 0);
     
     for dir in CARDINAL_DELTAS {
@@ -89,7 +89,7 @@ pub fn draw_outline(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vector2, tex
     sprite.draw(d, pos, texture);
 }
 
-pub fn draw_outline_for_move(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vector2, texture: &Texture2D) {
+pub fn draw_outline_for_move(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, texture: &Texture2D) {
     const MOVE_OUTLINE_TRIGGER_COLOR: Color = Color::new(0, 255, 255, 255);
     
     for dir in CARDINAL_DELTAS {
@@ -100,7 +100,7 @@ pub fn draw_outline_for_move(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vec
     sprite.draw(d, pos, texture);
 }
 
-pub fn draw_with_extra_brightness(d: &mut RaylibDrawHandle, sprite: &Sprite, pos: Vector2, texture: &Texture2D) {
+pub fn draw_with_extra_brightness(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, texture: &Texture2D) {
     const EXTRA_BRIGHTNESS_TRIGGER_COLOR: Color = Color::new(255, 0, 255, 255);
     
     sprite.draw_col(d, pos, texture, EXTRA_BRIGHTNESS_TRIGGER_COLOR);

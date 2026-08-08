@@ -238,7 +238,7 @@ impl Character {
         );
     }
 
-    pub fn current_sprite(&self) -> &Sprite {
+    pub fn current_sprite(&self) -> Sprite {
         match self {
             Character::GathererChar(gatherer) => gatherer.sprite(),
         }

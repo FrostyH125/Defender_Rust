@@ -219,9 +219,11 @@ impl PathFinder {
                 let check_index = cords_to_index(tile_map.map_dimensions, check_tile);
 
                 // see what the g_score would be if you went with this tile
-                // MIGHT FIX LATER IDK: the paths are a little wonky without the sqrt2, but i almost prefer the path that
-                // they go with without it, might change it later though
-                let tentative_g = current.g + 1.0;
+                let tentative_g = if i % 2 == 0 {
+                    current.g + 1.0
+                } else {
+                    current.g + SQRT_2
+                };
 
                 // if a g score already exists for this tile, use that for the comparison, otherwise,
                 // let this win because g_score hasnt been assigned for this tile yet
