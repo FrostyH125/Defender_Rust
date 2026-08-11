@@ -9,6 +9,12 @@ pub enum Direction {
     West
 }
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum FacingDirection {
+    Left,
+    Right
+}
+
 impl Direction {
     pub fn get_enum_from_repr(repr: i8) -> Direction {
         match repr {

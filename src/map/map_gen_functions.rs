@@ -17,7 +17,7 @@ use crate::{
         },
     },
     utils::{
-        directional_deltas::{CARDINAL_DELTAS, Direction, ORTHOGONAL_DELTAS},
+        direction_utils::{CARDINAL_DELTAS, Direction, ORTHOGONAL_DELTAS},
         map_cord::MapCord,
         map_utils::{self, get_tile_at_cord, is_tile_in_bounds},
     },

@@ -12,7 +12,7 @@ use crate::{
         tile_map::{MapDimensions, TileMap},
     },
     utils::{
-        directional_deltas::ORTHOGONAL_DELTAS,
+        direction_utils::ORTHOGONAL_DELTAS,
         map_cord::MapCord,
         map_utils::{self, cords_to_index, get_tile_at_cord, is_tile_in_bounds},
         vector2_utils,

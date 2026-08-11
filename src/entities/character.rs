@@ -6,18 +6,11 @@ use raylib::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::{
+    GameContext, TILE_SIZE, entities::{
         characters::gatherer::{Gatherer, GathererState},
         object::Object,
-    },
-    map::tile_map::{MapDimensions, TileMap},
-    utils::{
-        camera_utils, draw_utils,
-        map_cord::MapCord,
-        map_utils,
-        pathfinding::PathResult::{self, NoPath},
-        vector2_utils,
+    }, map::tile_map::{MapDimensions, TileMap}, utils::{
+        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath}, vector2_utils,
     },
 };
 
@@ -38,10 +31,10 @@ pub struct CharacterData {
     shadow_shear_x: f32,
     shadow_scale_y: f32,
     move_speed: f32,
+    pub facing_direction: FacingDirection,
     pub is_moving_to_pos: bool,
     pub is_hovering: bool,
     pub is_hovering_for_move: bool,
-    pub sprite_flip: bool,
     pub is_selected: bool,
     pub is_selected_for_move: bool,
 }
@@ -64,9 +57,9 @@ impl CharacterData {
             move_speed,
             shadow_shear_x: 0.0,
             shadow_scale_y: 0.0,
+            facing_direction: FacingDirection::Right,
             is_hovering: false,
             is_hovering_for_move: false,
-            sprite_flip: false,
             is_selected: false,
             is_selected_for_move: false,
             is_moving_to_pos: false,
@@ -90,6 +83,17 @@ impl CharacterData {
             );
             if let PathResult::Success { path } = &mut self.path {
                 path.push_back(target);
+
+                // if the target path entry is more than or equal to an eigth of a block away from the last
+                // real final path entry, remove the real final path entry
+                // this reduces backtracking
+                 
+                if path.len() > 1 {
+                    if path[0].distance_to(path[1]) >= 2.0 {
+                        path.remove(1);
+                    }                  
+                }
+                
             }
         }
 
@@ -134,9 +138,9 @@ impl CharacterData {
             self.pos += delta * self.move_speed * game_context.dt;
 
             if delta.x < 0.0 {
-                self.sprite_flip = true;
+                self.facing_direction = FacingDirection::Left;
             } else {
-                self.sprite_flip = false;
+                self.facing_direction = FacingDirection::Right;
             }
         }
 
@@ -150,6 +154,9 @@ pub enum Character {
 
 impl Character {
     pub fn start_moving_to(&mut self, pos: Vector2) {
+
+        self.reset_state();
+        
         let data = self.get_mut_data();
         data.is_moving_to_pos = true;
 
@@ -161,12 +168,14 @@ impl Character {
         data.target_pos = Some(pos)
     }
 
+    #[inline]
     pub fn get_data(&self) -> &CharacterData {
         match self {
             Character::GathererChar(gatherer) => &gatherer.data,
         }
     }
 
+    #[inline]
     pub fn get_mut_data(&mut self) -> &mut CharacterData {
         match self {
             Character::GathererChar(gatherer) => &mut gatherer.data,
@@ -243,7 +252,7 @@ impl Character {
             Character::GathererChar(gatherer) => gatherer.sprite(),
         };
 
-        if self.get_data().sprite_flip {
+        if self.get_data().facing_direction == FacingDirection::Left {
 
             // if i dont -0.1 then the width will apparently be less than the width due
             // to floating point shenanigans, since its drawn to a low res grid its 
@@ -254,11 +263,13 @@ impl Character {
         return spr;
     }
 
+    #[inline]
     pub fn get_draw_pos(&self) -> Vector2 {
         let data = self.get_data();
         return data.pos + data.draw_offset;
     }
 
+    #[inline]
     pub fn get_hover_rect(&self) -> Rectangle {
         let data = self.get_data();
         let d_pos = self.get_draw_pos();
@@ -278,6 +289,7 @@ impl Character {
     /// since rendering uses the tile indices in a single dimension,
     /// objects immediately to the right would draw over the character
     /// when they should be drawn behind it if one wasn't added
+    #[inline]
     pub fn get_render_tile_index(&self, map_dimensions: MapDimensions) -> usize {
         let idx = self.get_tile_index(map_dimensions);
         return idx + 1;
@@ -300,5 +312,11 @@ impl Character {
             &mut map.map_cell_grid,
             map.map_dimensions,
         );
+    }
+
+    pub fn reset_state(&mut self) {
+        match self {
+            Character::GathererChar(gatherer) => gatherer.state = GathererState::Idle,
+        }
     }
 }

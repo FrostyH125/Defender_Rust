@@ -6,7 +6,7 @@ use raylib::{
     texture::Texture2D,
 };
 
-use crate::utils::directional_deltas::CARDINAL_DELTAS;
+use crate::utils::direction_utils::CARDINAL_DELTAS;
 
 /// scale_y is -1.0..=1.0, meaning how far the sprite is scaled down, 0 being not at all
 /// 1.0 exact dimensions of base sprite, -1.0 being exact dimensions of base sprite, flipped upside down, mirrored over x axis

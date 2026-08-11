@@ -23,7 +23,7 @@ use crate::{
         entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
     },
     utils::{
-        directional_deltas::ORTHOGONAL_DELTAS,
+        direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
     },
@@ -38,6 +38,13 @@ pub mod utils;
 //      wobble shader effect on the action buttons (will later be used on building buttons too)
 //      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo
+//      fighter struct sprint
+//          -- enemy
+//          -- fighter
+//          -- FighterState::Idle
+//          -- FighterState::LookingForEnemy
+//          -- FighterState::MovingToEnemy
+//          -- FighterState::AttackingEnemy
 
 pub const TILE_SIZE: f32 = 8.0;
 

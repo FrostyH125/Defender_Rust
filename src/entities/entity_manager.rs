@@ -236,7 +236,7 @@ impl EntityManager {
                         true => {
                             let should_hover_obj = select_rect
                                 .rectangle
-                                .check_collision_recs(&obj.get_data().hover_rect);
+                                .check_collision_recs(&obj.hover_rect());
 
                             if should_hover_obj {
                                 obj.get_mut_data().is_hovering = true;

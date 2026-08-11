@@ -1,4 +1,6 @@
-use basic_raylib_core::{graphics::sprite::Sprite, system::sprite_particle_system::SpriteParticleSystem};
+use basic_raylib_core::{
+    graphics::sprite::Sprite, system::sprite_particle_system::SpriteParticleSystem,
+};
 use rand::RngExt;
 use raylib::{
     drawing::RaylibDrawHandle,
@@ -8,16 +10,19 @@ use raylib::{
 
 use crate::{
     GameContext, entities::{
-        character::Character,
-        characters::gatherer::{GatherTarget, GathererState},
-        entity_manager::CharacterEntry,
-    }, map::tile_map::MapObjectGrid, utils::{directional_deltas::ORTHOGONAL_DELTAS, draw_utils, entity_utils::get_char_by_index, mouse_utils::mouse_world_coords},
+        character::Character, characters::gatherer::{GatherTarget, GathererState}, entity_manager::CharacterEntry, object::Object,
+    }, map::tile_map::MapObjectGrid, utils::{
+        direction_utils::ORTHOGONAL_DELTAS, draw_utils, entity_utils::get_char_by_index,
+        mouse_utils::mouse_world_coords,
+    },
 };
 
-pub const CHOP_BUTTON_SPRITE: Sprite = Sprite::new(144, 40, 16, 16);
+pub const CHOP_TREE_BUTTON_SPRITE: Sprite = Sprite::new(144, 40, 16, 16);
+pub const CUT_GRASS_BUTTON_SPRITE: Sprite = Sprite::new(160, 40, 16, 16);
 
 pub enum ActionButtonKind {
-    ChopButton,
+    ChopTreeButton,
+    CutGrassButton,
 }
 
 pub struct ActionButton {
@@ -33,7 +38,8 @@ pub struct ActionButton {
 impl ActionButton {
     pub fn new(kind: ActionButtonKind) -> Self {
         let sprite = match kind {
-            ActionButtonKind::ChopButton => CHOP_BUTTON_SPRITE,
+            ActionButtonKind::ChopTreeButton => CHOP_TREE_BUTTON_SPRITE,
+            ActionButtonKind::CutGrassButton => CUT_GRASS_BUTTON_SPRITE,
         };
 
         return Self {
@@ -77,12 +83,19 @@ impl ActionButton {
         characters: &mut [CharacterEntry],
     ) {
         match self.kind {
-            ActionButtonKind::ChopButton => ActionButton::set_gatherers_to_gather(
+            ActionButtonKind::ChopTreeButton => ActionButton::set_gatherers_to_gather(
                 obj_ids,
                 char_ids,
                 object_grid,
                 characters,
                 GatherTarget::Tree,
+            ),
+            ActionButtonKind::CutGrassButton => ActionButton::set_gatherers_to_gather(
+                obj_ids,
+                char_ids,
+                object_grid,
+                characters,
+                GatherTarget::Grass,
             ),
         }
     }
@@ -95,14 +108,25 @@ impl ActionButton {
         characters: &mut [CharacterEntry],
         obj_kind: GatherTarget,
     ) {
+
+        let mut object_ids_with_correct_type: Vec<usize> = Vec::with_capacity(100);
+        
         for obj_id in obj_ids {
             let obj = &mut object_grid[*obj_id];
 
             match obj_kind {
                 GatherTarget::Tree => {
-                    obj.get_mut_data().is_marked_for_gathering = true;
+                    if let Object::TreeObj(tree) = obj {
+                        tree.data.is_marked_for_gathering = true;
+                        object_ids_with_correct_type.push(*obj_id);
+                    }
                 }
-                GatherTarget::Grass => todo!(),
+                GatherTarget::Grass => {
+                    if let Object::GrassObj(grass) = obj {
+                        grass.data.is_marked_for_gathering = true;
+                        object_ids_with_correct_type.push(*obj_id);
+                    }
+                },
             }
         }
 
@@ -110,7 +134,9 @@ impl ActionButton {
             let char = &mut get_char_by_index(characters, *char_id).character;
 
             if let Character::GathererChar(gatherer) = char {
-                gatherer.state = GathererState::LookingForObject(obj_kind);
+                gatherer.object_indices.clear();
+                gatherer.object_indices = object_ids_with_correct_type.clone();
+                gatherer.state = GathererState::LookingForObject {gather_target: obj_kind };
             }
         }
     }
@@ -146,22 +172,32 @@ impl ActionButton {
         }
     }
     pub fn make_pop_particles(&self, particle_system: &mut SpriteParticleSystem) {
-
         static POP_PARTICLE_SPRITE: Sprite = Sprite::new(48, 1, 3, 1);
-        
-        let center_of_button = Vector2::new(self.rect.x + self.rect.width / 2.0, self.rect.y + self.rect.height / 2.0);
-        
-        for dir in ORTHOGONAL_DELTAS {
 
+        let center_of_button = Vector2::new(
+            self.rect.x + self.rect.width / 2.0,
+            self.rect.y + self.rect.height / 2.0,
+        );
+
+        for dir in ORTHOGONAL_DELTAS {
             const SPEED: f32 = 50.0;
-            
+
             let pos = center_of_button + dir.as_vec2();
             let delta = (pos - center_of_button).normalized();
             let angle = delta.y.atan2(delta.x);
             let velocity = delta * SPEED;
             let acceleration = -delta * SPEED;
 
-            particle_system.emit_ex(&POP_PARTICLE_SPRITE, pos, velocity, acceleration, 0.0, angle.to_degrees(), 0.5, false);
+            particle_system.emit_ex(
+                &POP_PARTICLE_SPRITE,
+                pos,
+                velocity,
+                acceleration,
+                0.0,
+                angle.to_degrees(),
+                0.5,
+                false,
+            );
         }
     }
 }

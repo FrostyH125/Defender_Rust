@@ -54,7 +54,6 @@ pub struct Tree {
     pub data: ObjectData,
     falling_anim: SpriteAnimationInstance,
     variant: TreeVariant,
-    has_set_offset: bool,
 }
 
 impl Tree {
@@ -69,6 +68,7 @@ impl Tree {
                 cord.map_pos(),
                 Vector2::new(0.0, -TILE_SIZE),
                 vector2_utils::random_offset_by_one(rng),
+                cord,
                 cells,
                 map_dimensions,
                 8.0,
@@ -78,7 +78,6 @@ impl Tree {
                 TREE_FALL_ANIM_ONE.frame_duration
                     * TREE_FALL_ANIM_ONE.frames.len() as f32,
             ),
-            has_set_offset: false,
             falling_anim: SpriteAnimationInstance::new(),
             variant: match rng.random_range(0..=1) {
                 0 => TreeVariant::One,
@@ -95,19 +94,6 @@ impl Tree {
     }
 
     pub fn update(&mut self, game_context: &mut GameContext) {
-        if let ObjectState::GettingHit = self.data.state {
-            if !self.has_set_offset {
-                self.data.situational_draw_offset.x = match game_context.rng.random_bool(0.5) {
-                    true => 1.0,
-                    false => -1.0,
-                };
-                self.has_set_offset = true;
-            }
-        } else {
-            self.data.situational_draw_offset.x = 0.0;
-            self.has_set_offset = false;
-        }
-
         if let ObjectState::Breaking = self.data.state {
             // doesnt matter which one to use because update data is same
             TREE_FALL_ANIM_ONE.update(&mut self.falling_anim, game_context.dt);
@@ -116,6 +102,17 @@ impl Tree {
                 self.data.situational_draw_offset.x = -8.0;
             }
         }
+    }
+
+    pub fn on_hit(&mut self, rng: &mut ThreadRng) {
+        self.data.situational_draw_offset.x = match rng.random_bool(0.5) {
+            true => 1.0,
+            false => -1.0,
+        };
+    }
+
+    pub fn on_out_of_hit(&mut self) {
+        self.data.situational_draw_offset.x = 0.0;
     }
 
     pub fn sprite(&self) -> Sprite {

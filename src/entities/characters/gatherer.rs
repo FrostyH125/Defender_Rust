@@ -1,4 +1,5 @@
 use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
+use rand::rngs::ThreadRng;
 use raylib::math::Vector2;
 
 use crate::{
@@ -28,7 +29,9 @@ pub enum GatherTarget {
 
 pub enum GathererState {
     Idle,
-    LookingForObject(GatherTarget),
+    LookingForObject {
+        gather_target: GatherTarget,
+    },
     MovingToObject {
         target_pos: Vector2,
         object_index: usize,
@@ -44,7 +47,7 @@ impl std::fmt::Debug for GathererState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Idle => write!(f, "Idle"),
-            Self::LookingForObject(_) => write!(f, "Looking for Object"),
+            Self::LookingForObject { .. } => write!(f, "Looking for Object"),
             Self::MovingToObject { .. } => write!(f, "Moving to Object"),
             Self::GatheringObject { .. } => write!(f, "Gathering"),
         }
@@ -56,6 +59,7 @@ pub struct Gatherer {
     pub state: GathererState,
     gathering_power: f32,
     gather_timer: Timer,
+    pub object_indices: Vec<usize>
 }
 
 impl Gatherer {
@@ -65,6 +69,7 @@ impl Gatherer {
             state: GathererState::Idle,
             gathering_power: 20.0,
             gather_timer: Timer::new(2.0),
+            object_indices: Vec::new()
         };
 
         return Character::GathererChar(gatherer);
@@ -73,8 +78,8 @@ impl Gatherer {
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
         match self.state {
             GathererState::Idle => (),
-            GathererState::LookingForObject(gather_target) => {
-                self.looking_for_object(map, gather_target)
+            GathererState::LookingForObject { gather_target } => {
+                self.looking_for_object(map, gather_target);
             }
 
             GathererState::MovingToObject {
@@ -105,8 +110,10 @@ impl Gatherer {
         if self.gather_timer.is_done() {
             self.gather_timer.reset();
 
-            if self.gather(&mut map.map_object_grid[object_index]) {
-                self.state = GathererState::LookingForObject(gather_target);
+            if self.gather(&mut map.map_object_grid[object_index], game_context) {
+                self.state = GathererState::LookingForObject {
+                    gather_target,
+                };
             }
         }
     }
@@ -124,8 +131,8 @@ impl Gatherer {
         match self.data.move_to(target_pos, game_context, map) {
             CharacterMovementResult::Success => {
                 self.state = GathererState::GatheringObject {
-                        object_index: object_index,
-                        gather_target: gather_target,
+                    object_index: object_index,
+                    gather_target: gather_target,
                 };
             }
             CharacterMovementResult::NotArrivedYet => (),
@@ -135,16 +142,18 @@ impl Gatherer {
         }
     }
 
-    fn looking_for_object(&mut self, map: &mut TileMap, gather_target: GatherTarget) {
+    fn looking_for_object(
+        &mut self,
+        map: &mut TileMap,
+        gather_target: GatherTarget,
+    ) {
         // reset this here because if an object that is currently being gathered is reselected, then
         // i need it to reset the timer so it doesnt just continue off from where it stopped.
         // this also just acts as a nice safeguard
         self.gather_timer.reset();
 
-        let check_cells = map.get_3_x_3_cell_grid(v2_to_cord(self.data.pos));
-
         let closest_obj: Option<ObjectEntry> =
-            self.find_closest_target(&map.map_object_grid, check_cells, gather_target);
+            self.find_closest_target(&map.map_object_grid, &self.object_indices, gather_target);
 
         match closest_obj {
             Some(t) => {
@@ -153,14 +162,18 @@ impl Gatherer {
                     target_pos: t.pos,
                     object_index: t.idx,
                     gather_target: gather_target,
-                }
+                };
             }
             None => self.state = GathererState::Idle,
         }
     }
 
-    fn gather(&self, obj: &mut Object) -> bool {
-        obj.take_hit(self.gathering_power);
+    fn gather(&self, obj: &mut Object, game_context: &mut GameContext) -> bool {
+        obj.take_hit(
+            self.gathering_power,
+            game_context,
+            self.data.facing_direction,
+        );
         obj.get_mut_data().is_occupied = true;
         return obj.get_data().state == ObjectState::Breaking;
     }
@@ -168,50 +181,52 @@ impl Gatherer {
     fn find_closest_target(
         &self,
         object_grid: &MapObjectGrid,
-        check_cells: Vec<&crate::map::map_cell::MapCell>,
+        idxs: &Vec<usize>,
         target_obj: GatherTarget,
     ) -> Option<ObjectEntry> {
         let mut closest_obj: Option<ObjectEntry> = None;
 
-        for cell in check_cells {
-            // check each object in that cell
-            for idx in &cell.objects_in_cell {
-                let obj = &object_grid[*idx];
-                if !Gatherer::obj_matches_target(obj, target_obj) {
-                    continue;
-                }
-                
-                let obj_data = obj.get_data();
+        for idx in idxs {
+            let obj = &object_grid[*idx];
 
-                // since objects reset their is_occupied variable each frame
-                // the object its looking at could potentially fit the
-                // requirements even though its breaking and would turn to NoObject
-                // soon
-                // this would crash the game since the character would then
-                // try to get the data from the NoObject
-                if let ObjectState::Breaking = obj_data.state {
-                    continue;
-                }
+            if let Object::NoObject = obj {
+                continue;
+            }
+            
+            if !Gatherer::obj_matches_target(obj, target_obj) {
+                continue;
+            }
 
-                match &closest_obj {
-                    Some(obj_entry) => {
-                        let dist = obj_data.pos.distance_to(self.data.pos);
+            let obj_data = obj.get_data();
 
-                        if dist < obj_entry.dist {
-                            closest_obj = Some(ObjectEntry {
-                                idx: *idx,
-                                pos: obj_data.pos,
-                                dist,
-                            })
-                        }
-                    }
-                    None => {
+            // since objects reset their is_occupied variable each frame
+            // the object its looking at could potentially fit the
+            // requirements even though its breaking and would turn to NoObject
+            // soon
+            // this would crash the game since the character would then
+            // try to get the data from the NoObject
+            if let ObjectState::Breaking = obj_data.state {
+                continue;
+            }
+
+            match &closest_obj {
+                Some(obj_entry) => {
+                    let dist = obj_data.pos.distance_to(self.data.pos);
+
+                    if dist < obj_entry.dist {
                         closest_obj = Some(ObjectEntry {
                             idx: *idx,
                             pos: obj_data.pos,
-                            dist: obj_data.pos.distance_to(self.data.pos),
+                            dist,
                         })
                     }
+                }
+                None => {
+                    closest_obj = Some(ObjectEntry {
+                        idx: *idx,
+                        pos: obj_data.pos,
+                        dist: obj_data.pos.distance_to(self.data.pos),
+                    })
                 }
             }
         }
@@ -228,9 +243,14 @@ impl Gatherer {
                     }
                 }
             }
-            GatherTarget::Grass => todo!("grass not yet implemented for collecting"),
+            GatherTarget::Grass => {
+                if let Object::GrassObj(grass) = obj {
+                    if grass.data.is_marked_for_gathering && !grass.data.is_occupied {
+                        return true;
+                    }
+                }
+            }
         }
-
         return false;
     }
 

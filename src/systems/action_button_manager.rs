@@ -197,7 +197,10 @@ fn check_for_matches(
         for c in &char_types {
             let button: Option<ActionButton> = match (*o, *c) {
                 (ObjectKind::Tree, CharacterKind::Gatherer) => {
-                    Some(ActionButton::new(ActionButtonKind::ChopButton))
+                    Some(ActionButton::new(ActionButtonKind::ChopTreeButton))
+                }
+                (ObjectKind::Grass, CharacterKind::Gatherer) => {
+                    Some(ActionButton::new(ActionButtonKind::CutGrassButton))
                 }
                 _ => None,
             };

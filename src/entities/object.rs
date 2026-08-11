@@ -1,5 +1,6 @@
 
 use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
+use rand::rngs::ThreadRng;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
@@ -13,7 +14,7 @@ use crate::{
         map_cell::MapCell,
         tile_map::MapDimensions,
     }, utils::{
-        camera_utils, draw_utils, map_utils::{cords_to_index, get_cell_at_cord}, vector2_utils::v2_to_cord,
+        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils::{cords_to_index, get_cell_at_cord}, vector2_utils::v2_to_cord,
     },
 };
 
@@ -30,12 +31,14 @@ pub struct ObjectData {
     pub pos: Vector2,
     pub draw_pos: Vector2,
     pub situational_draw_offset: Vector2,
-    pub hover_rect: Rectangle,
+    width: f32,
+    height: f32,
     hit_timer: Timer,
     disappear_timer: Timer,
     shadow_shear_x: f32,
     shadow_scale_y: f32,
     health: f32,
+    pub cord: MapCord,
     pub is_hovering: bool,
     pub is_selected: bool,
     pub is_occupied: bool,
@@ -49,6 +52,7 @@ impl ObjectData {
         pos: Vector2,
         draw_offset: Vector2,
         randomized_offset: Vector2,
+        cord: MapCord,
         map_cells: &mut Vec<MapCell>,
         map_dimensions: MapDimensions,
         width: f32,
@@ -60,8 +64,6 @@ impl ObjectData {
         let true_pos = pos + randomized_offset;
         let draw_pos = true_pos + draw_offset;
 
-        let hover_rect = Rectangle::new(draw_pos.x, draw_pos.y, width, height);
-
         // add current index of object to appropriate cell
         let map_cord = v2_to_cord(pos);
         let cell = get_cell_at_cord(map_cells, map_dimensions, map_cord).unwrap();
@@ -71,10 +73,12 @@ impl ObjectData {
             pos: true_pos,
             draw_pos,
             situational_draw_offset: Vector2::default(),
-            hover_rect,
             shadow_shear_x: 0.0,
             shadow_scale_y: 0.0,
+            width,
+            height,
             health,
+            cord,
             hit_timer: Timer::new(hit_timer_duration),
             disappear_timer: Timer::new(disappear_timer_duration),
             is_hovering: false,
@@ -85,6 +89,11 @@ impl ObjectData {
             sprite_flip: false
         };
     }
+
+    #[inline]
+    pub fn hover_rect(&self) -> Rectangle {
+        return Rectangle::new(self.draw_pos.x, self.draw_pos.y, self.width, self.height);
+    }
 }
 
 pub enum Object {
@@ -94,6 +103,7 @@ pub enum Object {
 }
 
 impl Object {
+    #[inline]
     pub fn get_data(&self) -> &ObjectData {
         match self {
             TreeObj(tree) => &tree.data,
@@ -102,6 +112,7 @@ impl Object {
         }
     }
 
+    #[inline]
     pub fn get_mut_data(&mut self) -> &mut ObjectData {
         match self {
             TreeObj(tree) => &mut tree.data,
@@ -134,7 +145,7 @@ impl Object {
             }
             ObjectState::Breaking => {
                 // only remove if out of camera view, otherwise, carry to completion
-                if !camera_utils::is_in_camera_view(&data.hover_rect, game_context) {
+                if !camera_utils::is_in_camera_view(&self.hover_rect(), game_context) {
                     self.delete(map_dimensions, cells);
                     *self = Self::NoObject;
                     return;
@@ -149,13 +160,14 @@ impl Object {
                 }
             }
             ObjectState::GettingHit => {
-                let timer = &mut self.get_mut_data().hit_timer;
+                let hit_timer = &mut self.get_mut_data().hit_timer;
 
-                timer.track(game_context.dt);
+                hit_timer.track(game_context.dt);
 
-                if timer.is_done() {
-                    timer.reset();
+                if hit_timer.is_done() {
+                    hit_timer.reset();
                     self.get_mut_data().state = ObjectState::Idle;
+                    self.on_out_of_hit();
                 }
             }
             ObjectState::WaitingForDeletion => {
@@ -171,7 +183,7 @@ impl Object {
     }
 
     pub fn is_point_intersecting(&self, p: Vector2) -> bool {
-        return self.get_data().hover_rect.check_collision_point_rec(p);
+        return self.hover_rect().check_collision_point_rec(p);
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
@@ -218,11 +230,10 @@ impl Object {
         return spr;
     }
 
-    pub fn take_hit(&mut self, damage: f32) {
-
+    pub fn take_hit(&mut self, damage: f32, game_context: &mut GameContext, facing_dir: FacingDirection) {
         let data = self.get_mut_data();
-        
         data.health -= damage;
+        let health = data.health;
 
         match data.state {
             GettingHit => {
@@ -232,9 +243,30 @@ impl Object {
                 data.state = GettingHit;
             }
         }
+        
+        self.on_hit(game_context, facing_dir);
 
-        if data.health <= 0.0 {
-            data.state = ObjectState::Breaking;
+        if health <= 0.0 {
+            self.get_mut_data().state = ObjectState::Breaking;
+        }
+
+    }
+
+    /// describes a one time action that should be taken the moment something is hit
+    fn on_hit(&mut self, game_context: &mut GameContext, facing_dir: FacingDirection) {
+        match self {
+            NoObject => (),
+            TreeObj(tree) => tree.on_hit(&mut game_context.rng),
+            GrassObj(grass) => grass.on_hit(game_context, facing_dir),
+        }
+    }
+
+    /// describes a one time action that should be taken the moment something comes out of the hit state 
+    fn on_out_of_hit(&mut self) {
+        match self {
+            NoObject => (),
+            TreeObj(tree) => tree.on_out_of_hit(),
+            GrassObj(grass) => (),
         }
     }
 
@@ -245,6 +277,11 @@ impl Object {
         let cell = get_cell_at_cord(cells, map_dimensions, cord).unwrap();
         cell.remove_obj(idx);
         *self = Self::NoObject
+    }
+
+    #[inline]
+    pub fn hover_rect(&self) -> Rectangle {
+        return self.get_data().hover_rect();
     }
 }
 

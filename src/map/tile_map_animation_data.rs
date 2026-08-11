@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use basic_raylib_core::graphics::{animation_data::AnimationData, sprite::Sprite};
 
-use crate::utils::directional_deltas::Direction;
+use crate::utils::direction_utils::Direction;
 
 pub const SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION: f32 = 0.4;
 pub const REGULAR_TILE_FRAME_DURATION: f32 = 0.2;

@@ -27,7 +27,7 @@ use crate::{
         },
     },
     utils::{
-        directional_deltas::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index,
+        direction_utils::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index,
         vector2_utils,
     },
 };

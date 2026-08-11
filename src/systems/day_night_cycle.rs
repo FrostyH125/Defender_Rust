@@ -166,17 +166,17 @@ impl DayNightCycle {
     }
 
     fn update_shadow_values(&mut self) {
-        const MAX_SHEAR: f32 = -10.0;
-        const MIN_SCALE_Y: f32 = 0.00;
+        const MAX_SHEAR: f32 = 10.0;
+        const MIN_SCALE_Y: f32 = 0.0;
         const MAX_SCALE_Y: f32 = 0.6;
 
         let (shear, scale) = match self.current_time {
             0.0..=90.0 => (
-                lerp_min_max(-MAX_SHEAR, 0.0, self.current_time, 0.0, 90.0),
+                lerp_min_max(MAX_SHEAR, 0.0, self.current_time, 0.0, 90.0),
                 lerp_min_max(MIN_SCALE_Y, MAX_SCALE_Y, self.current_time, 0.0, 90.0),
             ),
             90.0..=180.0 => (
-                lerp_min_max(0.0, MAX_SHEAR, self.current_time, 90.0, 180.0),
+                lerp_min_max(0.0, -MAX_SHEAR, self.current_time, 90.0, 180.0),
                 lerp_min_max(MAX_SCALE_Y, MIN_SCALE_Y, self.current_time, 90.0, 180.0),
             ),
             180.0..=360.0 => {
