@@ -28,8 +28,6 @@ pub struct CharacterData {
     target_pos: Option<Vector2>,
     width: f32,
     height: f32,
-    shadow_shear_x: f32,
-    shadow_scale_y: f32,
     move_speed: f32,
     pub facing_direction: FacingDirection,
     pub is_moving_to_pos: bool,
@@ -55,8 +53,6 @@ impl CharacterData {
             width,
             height,
             move_speed,
-            shadow_shear_x: 0.0,
-            shadow_scale_y: 0.0,
             facing_direction: FacingDirection::Right,
             is_hovering: false,
             is_hovering_for_move: false,
@@ -182,6 +178,7 @@ impl Character {
         }
     }
 
+    #[inline]
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
         match self {
             Character::GathererChar(gatherer) => {
@@ -205,48 +202,52 @@ impl Character {
 
         data.is_hovering = false;
         data.is_hovering_for_move = false;
-        data.shadow_scale_y = game_context.day_night_cycle.current_shadow_scale;
-        data.shadow_shear_x = game_context.day_night_cycle.current_shadow_shear;
     }
 
+    #[inline]
     pub fn is_point_intersecting(&self, p: Vector2) -> bool {
         return self.get_hover_rect().check_collision_point_rec(p);
     }
 
+    #[inline]
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         sprite.draw(d, self.get_draw_pos(), texture);
     }
 
+    #[inline]
     pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         draw_utils::draw_outline(d, sprite, self.get_draw_pos(), texture);
     }
 
+    #[inline]
     pub fn draw_selected(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         draw_utils::draw_with_extra_brightness(d, sprite, self.get_draw_pos(), texture);
     }
 
+    #[inline]
     pub fn draw_hover_for_move(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         draw_utils::draw_outline_for_move(d, sprite, self.get_draw_pos(), texture);
     }
-
-    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+    
+    #[inline]
+    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, shadow_shear: f32, shadow_scale: f32) {
         let sprite = self.current_sprite();
-        let data = self.get_data();
 
         draw_utils::draw_shadow(
             d,
             sprite,
             self.get_draw_pos(),
-            data.shadow_shear_x,
-            data.shadow_scale_y,
+            shadow_shear,
+            shadow_scale,
             texture,
         );
     }
 
+    
     pub fn current_sprite(&self) -> Sprite {
         let mut spr = match self {
             Character::GathererChar(gatherer) => gatherer.sprite(),
@@ -276,6 +277,7 @@ impl Character {
         return Rectangle::new(d_pos.x, d_pos.y, data.width, data.height);
     }
 
+    #[inline]
     pub fn get_tile_index(&self, map_dimensions: MapDimensions) -> usize {
         let pos = self.get_data().pos;
         let cord = MapCord::new(
@@ -295,6 +297,7 @@ impl Character {
         return idx + 1;
     }
 
+    #[inline]
     pub fn update_obj_if_out_of_update_range(
         object: &mut Object,
         game_context: &mut GameContext,

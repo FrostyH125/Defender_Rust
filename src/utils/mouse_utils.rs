@@ -5,6 +5,7 @@ use crate::GameContext;
 
 static MOUSE_SPRITE: Sprite = Sprite::new(104, 128, 8, 8);
 
+#[inline]
 pub fn mouse_world_coords(
     game_context: &GameContext
 ) -> Vector2 {

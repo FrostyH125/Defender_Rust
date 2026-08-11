@@ -16,15 +16,18 @@ impl MapCell {
         };
     }
 
+    #[inline]
     pub fn add_obj(&mut self, index: usize) {
         self.objects_in_cell.insert(index);
     }
 
+    #[inline]
     pub fn add_obj_from_cord(&mut self, map_dimensions: MapDimensions, cord: MapCord) {
         let idx = cords_to_index(map_dimensions, cord);
         self.add_obj(idx);
     }
 
+    #[inline]
     pub fn remove_obj(&mut self, index: usize) {
         self.objects_in_cell.remove(&index);
     }

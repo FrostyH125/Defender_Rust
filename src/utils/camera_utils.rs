@@ -3,6 +3,7 @@ use raylib::math::{Rectangle, Vector2};
 use crate::GameContext;
 
 /// checks if an object is within the visible view
+#[inline]
 pub fn is_in_camera_view(visual_rect: &Rectangle, game_context: &GameContext) -> bool {
 
     // draw_pos.x, draw_pos.y, w, h, which is what we need to see if obj is in view
@@ -20,6 +21,7 @@ pub fn is_in_camera_view(visual_rect: &Rectangle, game_context: &GameContext) ->
 }
 
 /// checks if an object is within the area being updated
+#[inline]
 pub fn is_in_update_area(object_pos: Vector2, game_context: &GameContext) -> bool {
     return game_context.update_rect.check_collision_point_rec(object_pos)
 }

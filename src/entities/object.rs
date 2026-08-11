@@ -35,8 +35,6 @@ pub struct ObjectData {
     height: f32,
     hit_timer: Timer,
     disappear_timer: Timer,
-    shadow_shear_x: f32,
-    shadow_scale_y: f32,
     health: f32,
     pub cord: MapCord,
     pub is_hovering: bool,
@@ -73,8 +71,6 @@ impl ObjectData {
             pos: true_pos,
             draw_pos,
             situational_draw_offset: Vector2::default(),
-            shadow_shear_x: 0.0,
-            shadow_scale_y: 0.0,
             width,
             height,
             health,
@@ -121,6 +117,7 @@ impl Object {
         }
     }
 
+    #[inline]
     pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool, cells: &mut [MapCell], map_dimensions: MapDimensions) {
         match self {
             TreeObj(tree) => tree.update(game_context),
@@ -140,8 +137,6 @@ impl Object {
         match data.state {
             ObjectState::Idle => {
                 data.is_hovering = false;
-                data.shadow_shear_x = game_context.day_night_cycle.current_shadow_shear;
-                data.shadow_scale_y = game_context.day_night_cycle.current_shadow_scale;
             }
             ObjectState::Breaking => {
                 // only remove if out of camera view, otherwise, carry to completion
@@ -182,27 +177,32 @@ impl Object {
         }
     }
 
+    #[inline]
     pub fn is_point_intersecting(&self, p: Vector2) -> bool {
         return self.hover_rect().check_collision_point_rec(p);
     }
 
+    #[inline]
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
 
         sprite.draw(d, self.get_data().draw_pos + self.get_data().situational_draw_offset, texture);
     }
 
+    #[inline]
     pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         draw_utils::draw_outline(d, sprite, self.get_data().draw_pos + self.get_data().situational_draw_offset, texture);
     }
 
+    #[inline]
     pub fn draw_selected(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
         draw_utils::draw_with_extra_brightness(d, sprite, self.get_data().draw_pos + self.get_data().situational_draw_offset, texture);
     }
 
-    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+    #[inline]
+    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, shadow_shear: f32, shadow_scale: f32) {
         let sprite = self.current_sprite();
         let data = self.get_data();
 
@@ -210,8 +210,8 @@ impl Object {
             d,
             sprite,
             data.draw_pos + data.situational_draw_offset,
-            data.shadow_shear_x,
-            data.shadow_scale_y,
+            shadow_shear,
+            shadow_scale,
             texture,
         );
     }

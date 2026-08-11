@@ -100,6 +100,7 @@ pub fn draw_outline_for_move(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vect
     sprite.draw(d, pos, texture);
 }
 
+#[inline]
 pub fn draw_with_extra_brightness(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, texture: &Texture2D) {
     const EXTRA_BRIGHTNESS_TRIGGER_COLOR: Color = Color::new(255, 0, 255, 255);
     

@@ -12,14 +12,19 @@ pub struct MapCord {
 }
 
 impl MapCord {
+
+    #[inline]
     pub const fn new(x: i16, y: i16) -> Self {
         MapCord { x, y }
     }
 
+    #[inline]
     pub fn map_pos(self) -> Vector2 {
         return Vector2::new(self.x as f32 * TILE_SIZE, self.y as f32 * TILE_SIZE);
     }
 
+
+    #[inline]
     pub fn dist_to(self, p2: MapCord) -> f32 {
         let dx = (p2.x - self.x) as f32;
         let dy = (p2.y - self.y) as f32;
@@ -27,6 +32,7 @@ impl MapCord {
         return (dx * dx + dy * dy).sqrt();
     }
 
+    #[inline]
     pub fn as_vec2(self) -> Vector2 {
         return Vector2::new(self.x as f32, self.y as f32);
     }

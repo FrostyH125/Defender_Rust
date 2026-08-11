@@ -284,6 +284,7 @@ fn reconstruct_path(
     return path;
 }
 
+#[inline]
 fn octile_dist(p1: MapCord, p2: MapCord) -> f32 {
     let dx = (p1.x - p2.x).abs() as f32;
     let dy = (p1.y - p2.y).abs() as f32;

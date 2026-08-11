@@ -29,6 +29,7 @@ pub fn cords_to_index(map_dimensions: MapDimensions, cord: MapCord) -> usize {
     return y_u * map_dimensions.width as usize + x_u;
 }
 
+#[inline]
 pub fn get_cell_at_cord(cells: &mut [MapCell], map_dimensions: MapDimensions, cord: MapCord) -> Option<&mut MapCell> {
 
     if !is_tile_in_bounds(map_dimensions, cord) {

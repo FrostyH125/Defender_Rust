@@ -325,7 +325,7 @@ impl EntityManager {
         self.characters.sort_by_key(|c| c.render_index);
     }
 
-    pub fn draw(&self, object_grid: &MapObjectGrid, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+    pub fn draw(&self, object_grid: &MapObjectGrid, d: &mut RaylibDrawHandle, texture: &Texture2D, shear_x: f32, scale_y: f32) {
         let mut current_char_list_index = 0;
         let mut last_row_final_char_index = current_char_list_index;
 
@@ -349,7 +349,7 @@ impl EntityManager {
 
                 match object_grid[current_tile_index] {
                     Object::NoObject => (),
-                    _ => object_grid[current_tile_index].draw_shadow(d, texture),
+                    _ => object_grid[current_tile_index].draw_shadow(d, texture, shear_x, scale_y),
                 }
 
                 while current_char_list_index < self.characters.len() {
@@ -369,7 +369,7 @@ impl EntityManager {
                     if next_char_tile_index == current_tile_index {
                         self.characters[current_char_list_index]
                             .character
-                            .draw_shadow(d, texture);
+                            .draw_shadow(d, texture, shear_x, scale_y);
                     }
 
                     // inc the list index so that in the next iteration, the next char is being compared

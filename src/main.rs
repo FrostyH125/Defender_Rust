@@ -303,6 +303,8 @@ fn main() {
                             &map.map_object_grid,
                             &mut shader_handle,
                             &game_context.texture,
+                            game_context.day_night_cycle.current_shadow_shear,
+                            game_context.day_night_cycle.current_shadow_scale
                         );
                         select_rect.draw(&mut shader_handle);
                         action_button_manager.draw(&mut shader_handle, &game_context);
