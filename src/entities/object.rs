@@ -1,6 +1,4 @@
-
 use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
-use rand::rngs::ThreadRng;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
@@ -8,13 +6,18 @@ use raylib::{
 };
 
 use crate::{
-    GameContext, entities::{
-        object::{Object::*, ObjectState::GettingHit}, objects::{grass::Grass, tree::Tree},
-    }, map::{
-        map_cell::MapCell,
-        tile_map::MapDimensions,
-    }, utils::{
-        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils::{cords_to_index, get_cell_at_cord}, vector2_utils::v2_to_cord,
+    GameContext,
+    entities::{
+        object::{Object::*, ObjectState::GettingHit},
+        objects::{grass::Grass, tree::Tree},
+    },
+    map::{map_cell::MapCell, tile_map::MapDimensions},
+    utils::{
+        camera_utils,
+        direction_utils::FacingDirection,
+        draw_utils,
+        map_cord::MapCord,
+        map_utils::{cords_to_index, get_cell_at_cord},
     },
 };
 
@@ -57,13 +60,13 @@ impl ObjectData {
         height: f32,
         health: f32,
         hit_timer_duration: f32,
-        disappear_timer_duration: f32
+        disappear_timer_duration: f32,
     ) -> Self {
         let true_pos = pos + randomized_offset;
         let draw_pos = true_pos + draw_offset;
 
         // add current index of object to appropriate cell
-        let map_cord = v2_to_cord(pos);
+        let map_cord = MapCord::from_vec2(pos);
         let cell = get_cell_at_cord(map_cells, map_dimensions, map_cord).unwrap();
         cell.add_obj_from_cord(map_dimensions, map_cord);
 
@@ -82,7 +85,7 @@ impl ObjectData {
             is_occupied: false,
             is_marked_for_gathering: false,
             state: ObjectState::Idle,
-            sprite_flip: false
+            sprite_flip: false,
         };
     }
 
@@ -118,14 +121,20 @@ impl Object {
     }
 
     #[inline]
-    pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool, cells: &mut [MapCell], map_dimensions: MapDimensions) {
+    pub fn update(
+        &mut self,
+        game_context: &mut GameContext,
+        should_deselect: bool,
+        cells: &mut [MapCell],
+        map_dimensions: MapDimensions,
+    ) {
         match self {
             TreeObj(tree) => tree.update(game_context),
             GrassObj(grass) => grass.update(game_context),
             // pass if none
             NoObject => return,
         }
-        
+
         self.get_mut_data().is_occupied = false;
 
         let data = self.get_mut_data();
@@ -133,7 +142,7 @@ impl Object {
         if should_deselect {
             data.is_selected = false;
         }
-        
+
         match data.state {
             ObjectState::Idle => {
                 data.is_hovering = false;
@@ -186,23 +195,43 @@ impl Object {
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
 
-        sprite.draw(d, self.get_data().draw_pos + self.get_data().situational_draw_offset, texture);
+        sprite.draw(
+            d,
+            self.get_data().draw_pos + self.get_data().situational_draw_offset,
+            texture,
+        );
     }
 
     #[inline]
     pub fn draw_hover(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
-        draw_utils::draw_outline(d, sprite, self.get_data().draw_pos + self.get_data().situational_draw_offset, texture);
+        draw_utils::draw_outline(
+            d,
+            sprite,
+            self.get_data().draw_pos + self.get_data().situational_draw_offset,
+            texture,
+        );
     }
 
     #[inline]
     pub fn draw_selected(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
         let sprite = self.current_sprite();
-        draw_utils::draw_with_extra_brightness(d, sprite, self.get_data().draw_pos + self.get_data().situational_draw_offset, texture);
+        draw_utils::draw_with_extra_brightness(
+            d,
+            sprite,
+            self.get_data().draw_pos + self.get_data().situational_draw_offset,
+            texture,
+        );
     }
 
     #[inline]
-    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, shadow_shear: f32, shadow_scale: f32) {
+    pub fn draw_shadow(
+        &self,
+        d: &mut RaylibDrawHandle,
+        texture: &Texture2D,
+        shadow_shear: f32,
+        shadow_scale: f32,
+    ) {
         let sprite = self.current_sprite();
         let data = self.get_data();
 
@@ -230,7 +259,12 @@ impl Object {
         return spr;
     }
 
-    pub fn take_hit(&mut self, damage: f32, game_context: &mut GameContext, facing_dir: FacingDirection) {
+    pub fn take_hit(
+        &mut self,
+        damage: f32,
+        game_context: &mut GameContext,
+        facing_dir: FacingDirection,
+    ) {
         let data = self.get_mut_data();
         data.health -= damage;
         let health = data.health;
@@ -243,13 +277,12 @@ impl Object {
                 data.state = GettingHit;
             }
         }
-        
+
         self.on_hit(game_context, facing_dir);
 
         if health <= 0.0 {
             self.get_mut_data().state = ObjectState::Breaking;
         }
-
     }
 
     /// describes a one time action that should be taken the moment something is hit
@@ -261,7 +294,7 @@ impl Object {
         }
     }
 
-    /// describes a one time action that should be taken the moment something comes out of the hit state 
+    /// describes a one time action that should be taken the moment something comes out of the hit state
     fn on_out_of_hit(&mut self) {
         match self {
             NoObject => (),
@@ -271,9 +304,9 @@ impl Object {
     }
 
     fn delete(&mut self, map_dimensions: MapDimensions, cells: &mut [MapCell]) {
-        let cord = v2_to_cord(self.get_data().pos);
+        let cord = MapCord::from_vec2(self.get_data().pos);
         let idx = cords_to_index(map_dimensions, cord);
-        
+
         let cell = get_cell_at_cord(cells, map_dimensions, cord).unwrap();
         cell.remove_obj(idx);
         *self = Self::NoObject
@@ -284,5 +317,3 @@ impl Object {
         return self.get_data().hover_rect();
     }
 }
-
-

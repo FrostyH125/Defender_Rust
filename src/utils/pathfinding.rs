@@ -274,7 +274,7 @@ fn reconstruct_path(
     let mut current = goal;
 
     while current != start {
-        path.push_front(vector2_utils::cord_to_v2(current));
+        path.push_front(current.map_pos());
 
         let index = cords_to_index(map_dimensions, current);
 

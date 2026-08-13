@@ -10,7 +10,7 @@ use crate::{
         characters::gatherer::{Gatherer, GathererState},
         object::Object,
     }, map::tile_map::{MapDimensions, TileMap}, utils::{
-        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath}, vector2_utils,
+        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath},
     },
 };
 
@@ -72,8 +72,8 @@ impl CharacterData {
         if self.target_pos != Some(target) || matches!(self.path, PathResult::NoPath) {
             self.target_pos = Some(target);
             self.path = game_context.path_finder.a_star(
-                vector2_utils::v2_to_cord(self.pos),
-                vector2_utils::v2_to_cord(target),
+                MapCord::from_vec2(self.pos),
+                MapCord::from_vec2(target),
                 map,
                 100.0,
             );

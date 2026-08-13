@@ -1,18 +1,17 @@
-use basic_raylib_core::{
-    graphics::{
-        animation_data::AnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
-        sprite_particle::SpriteParticle,
-    },
-    system::sprite_particle_system::SpriteParticleSystem,
+use basic_raylib_core::graphics::{
+    animation_data::AnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
 };
 use rand::{RngExt, rngs::ThreadRng};
 use raylib::math::Vector2;
 
 use crate::{
-    GameContext, entities::{
+    GameContext,
+    entities::{
         object::{Object, ObjectData},
         objects::grass::GrassType::Wheaty,
-    }, map::{map_cell::MapCell, tile_map::MapDimensions}, utils::{direction_utils::FacingDirection, map_cord::MapCord, vector2_utils},
+    },
+    map::{map_cell::MapCell, tile_map::MapDimensions},
+    utils::{direction_utils::FacingDirection, map_cord::MapCord, vector2_utils},
 };
 
 const SMALL_GRASS_HEIGHT: i32 = 8;
@@ -358,12 +357,11 @@ impl Grass {
     }
 
     pub fn on_hit(&mut self, game_context: &mut GameContext, facing_dir: FacingDirection) {
-
         static GRASS_EMIT_PARTICLES: [Sprite; 4] = [
             Sprite::new(51, 0, 1, 1),
             Sprite::new(52, 0, 1, 1),
             Sprite::new(53, 0, 1, 1),
-            Sprite::new(54, 0, 1, 1)
+            Sprite::new(54, 0, 1, 1),
         ];
 
         let rect = self.data.hover_rect();
@@ -377,8 +375,11 @@ impl Grass {
                         ..=rect.y + half_height + half_height / 4.0,
                 ),
             );
-            
-            let mut vel = Vector2::new(game_context.rng.random_range(15.0..=30.0), game_context.rng.random_range(-10.0..=3.0));
+
+            let mut vel = Vector2::new(
+                game_context.rng.random_range(15.0..=30.0),
+                game_context.rng.random_range(-10.0..=3.0),
+            );
 
             if facing_dir == FacingDirection::Left {
                 vel.x = -vel.x;
@@ -390,7 +391,9 @@ impl Grass {
 
             let sprite = &GRASS_EMIT_PARTICLES[game_context.rng.random_range(0..=3)];
 
-            game_context.particle_system.emit(sprite, pos, vel, acc, life_span);
+            game_context
+                .particle_system
+                .emit(sprite, pos, vel, acc, life_span);
         }
     }
 

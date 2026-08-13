@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use basic_raylib_core::graphics::sprite_animation::SpriteAnimationInstance;
-use rand::rngs::ThreadRng;
 use raylib::{
     color::Color,
     drawing::{RaylibDraw, RaylibDrawHandle},
@@ -369,7 +368,7 @@ impl TileMap {
                 }
             }
         }
-        self.dbg_cells(d);
+        //self.dbg_cells(d);
     }
 
     fn dbg_cells(&self, d: &mut RaylibDrawHandle<'_>) {
@@ -399,7 +398,7 @@ impl TileMap {
             );
 
             // REMOVE &MUT SELF
-            let cell = self.get_cell_at_cord(vector2_utils::v2_to_cord(pos));
+            let cell = self.get_cell_at_cord(MapCord::from_vec2(pos));
             d.draw_text(
                 &format!("{}", cell.unwrap().objects_in_cell.len()),
                 pos.x as i32 + 5,

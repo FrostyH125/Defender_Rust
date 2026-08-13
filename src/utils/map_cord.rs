@@ -19,10 +19,22 @@ impl MapCord {
     }
 
     #[inline]
+    /// gives the vector2 position on the map from a map coordinate.
     pub fn map_pos(self) -> Vector2 {
         return Vector2::new(self.x as f32 * TILE_SIZE, self.y as f32 * TILE_SIZE);
     }
 
+    #[inline]
+    /// gives the map coordinate from a position on the map.
+    pub fn from_vec2(v: Vector2) -> Self {
+        return MapCord::new((v.x / TILE_SIZE) as i16, (v.y / TILE_SIZE) as i16);
+    }
+
+    #[inline]
+    /// returns a direct conversion, rather than adjusting for map cord -> vec pos on map
+    pub fn as_vec2(self) -> Vector2 {
+        return Vector2::new(self.x as f32, self.y as f32);
+    }
 
     #[inline]
     pub fn dist_to(self, p2: MapCord) -> f32 {
@@ -32,10 +44,6 @@ impl MapCord {
         return (dx * dx + dy * dy).sqrt();
     }
 
-    #[inline]
-    pub fn as_vec2(self) -> Vector2 {
-        return Vector2::new(self.x as f32, self.y as f32);
-    }
 }
 
 impl Add for MapCord {

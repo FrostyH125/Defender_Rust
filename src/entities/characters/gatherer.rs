@@ -1,5 +1,4 @@
 use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
-use rand::rngs::ThreadRng;
 use raylib::math::Vector2;
 
 use crate::{
@@ -10,7 +9,6 @@ use crate::{
         object::{Object, ObjectState},
     },
     map::tile_map::{MapObjectGrid, TileMap},
-    utils::vector2_utils::v2_to_cord,
 };
 
 pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
