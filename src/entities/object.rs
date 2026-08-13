@@ -6,13 +6,10 @@ use raylib::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
+    GameContext, entities::{
         object::{Object::*, ObjectState::GettingHit},
         objects::{grass::Grass, tree::Tree},
-    },
-    map::{map_cell::MapCell, tile_map::MapDimensions},
-    utils::{
+    }, map::{map_cell::MapCell, tile_map::MapDimensions}, systems::action_button_manager::ActionButtonManager, utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
@@ -21,12 +18,11 @@ use crate::{
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum ObjectState {
     Idle,
     GettingHit,
     Breaking,
-    WaitingForDeletion,
 }
 
 /// This houses data that all objects share, as to not repeat fields between objects
@@ -135,8 +131,6 @@ impl Object {
             NoObject => return,
         }
 
-        self.get_mut_data().is_occupied = false;
-
         let data = self.get_mut_data();
 
         if should_deselect {
@@ -151,7 +145,6 @@ impl Object {
                 // only remove if out of camera view, otherwise, carry to completion
                 if !camera_utils::is_in_camera_view(&self.hover_rect(), game_context) {
                     self.delete(map_dimensions, cells);
-                    *self = Self::NoObject;
                     return;
                 }
 
@@ -173,15 +166,6 @@ impl Object {
                     self.get_mut_data().state = ObjectState::Idle;
                     self.on_out_of_hit();
                 }
-            }
-            ObjectState::WaitingForDeletion => {
-                // remove no matter what, this object is ready to go
-                // can be removed on same frame as set for deletion, so, no
-                // worry about going out of bounds in this state (which would be a 1 frame window otherwise)
-
-                self.delete(map_dimensions, cells);
-                *self = Self::NoObject;
-                return;
             }
         }
     }
@@ -282,6 +266,7 @@ impl Object {
 
         if health <= 0.0 {
             self.get_mut_data().state = ObjectState::Breaking;
+            self.get_mut_data().is_marked_for_gathering = false;
         }
     }
 
@@ -310,6 +295,11 @@ impl Object {
         let cell = get_cell_at_cord(cells, map_dimensions, cord).unwrap();
         cell.remove_obj(idx);
         *self = Self::NoObject
+    }
+
+    pub fn should_not_be_used_again_by_anything(&self) -> bool {
+        let state = self.get_data().state;
+        return state == ObjectState::Breaking;
     }
 
     #[inline]

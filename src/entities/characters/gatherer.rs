@@ -2,13 +2,14 @@ use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
 use raylib::math::Vector2;
 
 use crate::{
-    GameContext,
-    entities::{
+    GameContext, entities::{
         character::{Character, CharacterData, CharacterMovementResult},
         characters::gatherer::GathererState::MovingToObject,
-        object::{Object, ObjectState},
-    },
-    map::tile_map::{MapObjectGrid, TileMap},
+        object::{
+            Object::{self, NoObject},
+            ObjectState,
+        },
+    }, map::tile_map::{MapObjectGrid, TileMap}, utils::pathfinding::PathResult::NoPath,
 };
 
 pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
@@ -32,11 +33,9 @@ pub enum GathererState {
     },
     MovingToObject {
         target_pos: Vector2,
-        object_index: usize,
         gather_target: GatherTarget,
     },
     GatheringObject {
-        object_index: usize,
         gather_target: GatherTarget,
     },
 }
@@ -57,7 +56,9 @@ pub struct Gatherer {
     pub state: GathererState,
     gathering_power: f32,
     gather_timer: Timer,
-    pub object_indices: Vec<usize>
+    pub object_indices: Vec<usize>,
+    current_index: Option<usize>,
+    pub should_unoccupy_current_obj: bool
 }
 
 impl Gatherer {
@@ -67,13 +68,25 @@ impl Gatherer {
             state: GathererState::Idle,
             gathering_power: 20.0,
             gather_timer: Timer::new(2.0),
-            object_indices: Vec::new()
+            object_indices: Vec::new(),
+            current_index: None,
+            should_unoccupy_current_obj: false
         };
 
         return Character::GathererChar(gatherer);
     }
 
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
+
+        if self.should_unoccupy_current_obj {
+            self.should_unoccupy_current_obj = false;
+
+            if let Some(o_idx) = self.current_index {
+                map.map_object_grid[o_idx].get_mut_data().is_occupied = false;
+                self.current_index = None;
+            }
+        }
+        
         match self.state {
             GathererState::Idle => (),
             GathererState::LookingForObject { gather_target } => {
@@ -82,16 +95,15 @@ impl Gatherer {
 
             GathererState::MovingToObject {
                 target_pos,
-                object_index,
                 gather_target,
             } => {
-                self.moving_to_object(game_context, map, target_pos, object_index, gather_target);
+                self.moving_to_object(game_context, map, target_pos, gather_target);
             }
             GathererState::GatheringObject {
-                object_index,
+
                 gather_target,
             } => {
-                self.gathering_object(game_context, map, object_index, gather_target);
+                self.gathering_object(game_context, map, gather_target);
             }
         }
     }
@@ -100,7 +112,6 @@ impl Gatherer {
         &mut self,
         game_context: &mut GameContext,
         map: &mut TileMap,
-        object_index: usize,
         gather_target: GatherTarget,
     ) {
         self.gather_timer.track(game_context.dt);
@@ -108,10 +119,8 @@ impl Gatherer {
         if self.gather_timer.is_done() {
             self.gather_timer.reset();
 
-            if self.gather(&mut map.map_object_grid[object_index], game_context) {
-                self.state = GathererState::LookingForObject {
-                    gather_target,
-                };
+            if self.gather(&mut map.map_object_grid[self.current_index.unwrap()], game_context) {
+                self.state = GathererState::LookingForObject { gather_target };
             }
         }
     }
@@ -121,48 +130,51 @@ impl Gatherer {
         game_context: &mut GameContext,
         map: &mut TileMap,
         target_pos: Vector2,
-        object_index: usize,
         gather_target: GatherTarget,
     ) {
-        map.map_object_grid[object_index].get_mut_data().is_occupied = true;
+        //map.map_object_grid[object_index].get_mut_data().is_occupied = true;
 
         match self.data.move_to(target_pos, game_context, map) {
             CharacterMovementResult::Success => {
                 self.state = GathererState::GatheringObject {
-                    object_index: object_index,
                     gather_target: gather_target,
                 };
             }
             CharacterMovementResult::NotArrivedYet => (),
             CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {
+                self.object_indices.clear();
+                map.map_object_grid[self.current_index.unwrap()].get_mut_data().is_occupied = false;
+                self.current_index = None;
                 self.state = GathererState::Idle;
             }
         }
     }
 
-    fn looking_for_object(
-        &mut self,
-        map: &mut TileMap,
-        gather_target: GatherTarget,
-    ) {
+    fn looking_for_object(&mut self, map: &mut TileMap, gather_target: GatherTarget) {
         // reset this here because if an object that is currently being gathered is reselected, then
         // i need it to reset the timer so it doesnt just continue off from where it stopped.
         // this also just acts as a nice safeguard
         self.gather_timer.reset();
+        self.data.path = NoPath;
+        self.data.target_pos = None;
 
         let closest_obj: Option<ObjectEntry> =
             self.find_closest_target(&map.map_object_grid, &self.object_indices, gather_target);
 
         match closest_obj {
-            Some(t) => {
-                map.map_object_grid[t.idx].get_mut_data().is_occupied = true;
+            Some(o) => {
+                map.map_object_grid[o.idx].get_mut_data().is_occupied = true;
+                self.current_index = Some(o.idx);
                 self.state = MovingToObject {
-                    target_pos: t.pos,
-                    object_index: t.idx,
+                    target_pos: o.pos,
                     gather_target: gather_target,
                 };
             }
-            None => self.state = GathererState::Idle,
+            None => {
+                self.current_index = None;
+                self.object_indices.clear();
+                self.state = GathererState::Idle
+            }
         }
     }
 
@@ -172,8 +184,13 @@ impl Gatherer {
             game_context,
             self.data.facing_direction,
         );
-        obj.get_mut_data().is_occupied = true;
-        return obj.get_data().state == ObjectState::Breaking;
+
+        if obj.should_not_be_used_again_by_anything() {
+            obj.get_mut_data().is_marked_for_gathering = false;
+            return true;
+        }
+
+        return false;
     }
 
     fn find_closest_target(
@@ -190,22 +207,16 @@ impl Gatherer {
             if let Object::NoObject = obj {
                 continue;
             }
-            
+
+            if obj.should_not_be_used_again_by_anything() {
+                continue;
+            }
+
             if !Gatherer::obj_matches_target(obj, target_obj) {
                 continue;
             }
 
             let obj_data = obj.get_data();
-
-            // since objects reset their is_occupied variable each frame
-            // the object its looking at could potentially fit the
-            // requirements even though its breaking and would turn to NoObject
-            // soon
-            // this would crash the game since the character would then
-            // try to get the data from the NoObject
-            if let ObjectState::Breaking = obj_data.state {
-                continue;
-            }
 
             match &closest_obj {
                 Some(obj_entry) => {

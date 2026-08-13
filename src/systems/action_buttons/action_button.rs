@@ -137,6 +137,7 @@ impl ActionButton {
                 gatherer.object_indices.clear();
                 gatherer.object_indices = object_ids_with_correct_type.clone();
                 gatherer.state = GathererState::LookingForObject {gather_target: obj_kind };
+                gatherer.should_unoccupy_current_obj = true;
             }
         }
     }

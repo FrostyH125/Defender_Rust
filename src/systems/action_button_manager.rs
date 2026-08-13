@@ -19,12 +19,14 @@ use crate::{
 
 pub struct ActionButtonManager {
     action_buttons: Vec<ActionButton>,
+    pub button_clicked: bool
 }
 
 impl ActionButtonManager {
     pub fn new() -> Self {
         return Self {
             action_buttons: Vec::new(),
+            button_clicked: false
         };
     }
 
@@ -123,6 +125,7 @@ impl ActionButtonManager {
             if b.is_hovering && game_context.input_state.left_clicked_once {
                 b.on_click(&selector.selected_objects, &selector.selected_characters, object_grid, chars);
                 b.make_pop_particles(&mut game_context.particle_system);
+                self.button_clicked = true;
             }
         }
     }

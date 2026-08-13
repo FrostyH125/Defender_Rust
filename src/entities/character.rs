@@ -9,7 +9,7 @@ use crate::{
     GameContext, TILE_SIZE, entities::{
         characters::gatherer::{Gatherer, GathererState},
         object::Object,
-    }, map::tile_map::{MapDimensions, TileMap}, utils::{
+    }, map::tile_map::{MapDimensions, TileMap}, systems::{action_button_manager::{self, ActionButtonManager}, action_buttons::action_button::ActionButton}, utils::{
         camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath},
     },
 };
@@ -22,10 +22,10 @@ pub enum CharacterMovementResult {
 }
 
 pub struct CharacterData {
-    path: PathResult,
+    pub path: PathResult,
     pub pos: Vector2,
     draw_offset: Vector2,
-    target_pos: Option<Vector2>,
+    pub target_pos: Option<Vector2>,
     width: f32,
     height: f32,
     move_speed: f32,
@@ -302,6 +302,7 @@ impl Character {
         object: &mut Object,
         game_context: &mut GameContext,
         map: &mut TileMap,
+        action_button_manager: &ActionButtonManager
     ) {
         let object_pos = object.get_data().pos;
 

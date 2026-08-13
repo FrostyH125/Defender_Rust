@@ -35,6 +35,7 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
+//      gather all button
 //      wobble shader effect on the action buttons (will later be used on building buttons too)
 //      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo
@@ -180,7 +181,9 @@ fn main() {
     // DEBUG START
     //
 
-    entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
+    for _ in 0..10 {
+        entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
+    }
 
     //
     // DEBUG END
@@ -304,7 +307,7 @@ fn main() {
                             &mut shader_handle,
                             &game_context.texture,
                             game_context.day_night_cycle.current_shadow_shear,
-                            game_context.day_night_cycle.current_shadow_scale
+                            game_context.day_night_cycle.current_shadow_scale,
                         );
                         select_rect.draw(&mut shader_handle);
                         action_button_manager.draw(&mut shader_handle, &game_context);
