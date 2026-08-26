@@ -131,7 +131,7 @@ impl EntityManager {
 
             if right_clicked {
                 if character.character.get_mut_data().is_selected_for_move {
-                    character.character.start_moving_to(mouse_pos);
+                    character.character.set_move_to(mouse_pos);
                     moved_anyone = true;
                 }
             }

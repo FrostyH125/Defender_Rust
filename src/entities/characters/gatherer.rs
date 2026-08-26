@@ -2,9 +2,14 @@ use raylib::math::Vector2;
 use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
 
 use crate::{
-    GameContext, entities::{
-        character::{Character, CharacterData, CharacterMovementResult}, characters::gatherer::GathererState::MovingToObject, object::Object,
-    }, map::tile_map::{MapObjectGrid, TileMap}, utils::pathfinding::PathResult::NoPath,
+    GameContext,
+    entities::{
+        character::{Character, CharacterData, CharacterMovementResult},
+        characters::gatherer::GathererState::MovingToObject,
+        object::Object,
+    },
+    map::tile_map::{MapObjectGrid, TileMap},
+    utils::pathfinding::PathResult::NoPath,
 };
 
 pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
@@ -23,6 +28,9 @@ pub enum GatherTarget {
 
 pub enum GathererState {
     Idle,
+    MovingWithoutObject {
+        target: Vector2,
+    },
     LookingForObject {
         gather_target: GatherTarget,
     },
@@ -39,6 +47,7 @@ impl std::fmt::Debug for GathererState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Idle => write!(f, "Idle"),
+            Self::MovingWithoutObject { .. } => write!(f,  "Moving with no object"),
             Self::LookingForObject { .. } => write!(f, "Looking for Object"),
             Self::MovingToObject { .. } => write!(f, "Moving to Object"),
             Self::GatheringObject { .. } => write!(f, "Gathering"),
@@ -83,6 +92,12 @@ impl Gatherer {
 
         match self.state {
             GathererState::Idle => (),
+            GathererState::MovingWithoutObject { target } => {
+                match self.data.move_to(target, game_context, map) {
+                    CharacterMovementResult::NotArrivedYet => (),
+                    _ => self.state = GathererState::Idle
+                }
+            }
             GathererState::LookingForObject { gather_target } => {
                 self.looking_for_object(map, gather_target);
             }

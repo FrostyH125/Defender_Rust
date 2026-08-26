@@ -38,7 +38,6 @@ pub struct CharacterData {
     height: f32,
     move_speed: f32,
     pub facing_direction: FacingDirection,
-    pub is_moving_to_pos: bool,
     pub is_hovering: bool,
     pub is_hovering_for_move: bool,
     pub is_selected: bool,
@@ -66,7 +65,6 @@ impl CharacterData {
             is_hovering_for_move: false,
             is_selected: false,
             is_selected_for_move: false,
-            is_moving_to_pos: false,
         };
     }
 
@@ -156,18 +154,10 @@ pub enum Character {
 }
 
 impl Character {
-    pub fn start_moving_to(&mut self, pos: Vector2) {
-        self.reset_state();
-
-        let data = self.get_mut_data();
-        data.is_moving_to_pos = true;
-
-        // need to manually clear the path because the algorithm wont actually
-        // make a new path when i manually set the target pos. I would have to
-        // call 'move_to()' manually and theres just not really any reason
-        // to do that since id have to pass game_context and map and i dont want to
-        data.path = NoPath;
-        data.target_pos = Some(pos)
+    pub fn set_move_to(&mut self, target: Vector2) {
+        match self {
+            Character::GathererChar(gatherer) => gatherer.state = GathererState::MovingWithoutObject { target },
+        }
     }
 
     #[inline]
@@ -188,23 +178,11 @@ impl Character {
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
         match self {
             Character::GathererChar(gatherer) => {
-                if let GathererState::MovingToObject { .. } = gatherer.state {
-                    gatherer.data.is_moving_to_pos = false;
-                }
                 gatherer.update(game_context, map)
             }
         }
+        
         let data = self.get_mut_data();
-
-        if data.is_moving_to_pos {
-            match data.move_to(data.target_pos.unwrap(), game_context, map) {
-                CharacterMovementResult::NotArrivedYet => (),
-                _ => {
-                    data.is_moving_to_pos = false;
-                    data.target_pos = None;
-                }
-            }
-        }
 
         data.is_hovering = false;
         data.is_hovering_for_move = false;

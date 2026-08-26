@@ -28,7 +28,6 @@ use crate::{
     },
     utils::{
         direction_utils::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index,
-        vector2_utils,
     },
 };
 
@@ -47,6 +46,9 @@ impl MapDimensions {
     }
 }
 
+// this struct is a convenient way to have the tile animations all run off of one instance (as to not update n number of tile anims separately)
+// otherwise there would need to be at least one tile anim instance per individual tile animation and even dispatching that would be a 
+// massive headache. This is actually based off of the old super loose coupled animation API i had in my library before changing it
 struct TileAnimationInstance {
     number_of_frames: usize,
     current_index: usize,
@@ -292,7 +294,7 @@ impl TileMap {
                             }
                             if lake_data.corner_animation_index != 0 {
                                 self.lake_shore_corner_tile_anim_instance.draw(
-                                    &LAKE_TILE_SHORE_ANIMATION_REFERENCE
+                                    &LAKE_TILE_CORNER_ANIMATION_REFERENCE
                                         [lake_data.corner_animation_index as usize - 1],
                                     pos,
                                     d,
