@@ -1,8 +1,8 @@
-use basic_raylib_core::graphics::{
-    animation_data::AnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
-};
 use rand::{RngExt, rngs::ThreadRng};
 use raylib::math::Vector2;
+use zander_game_core_rs::raylib::{
+    animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
+};
 
 use crate::{
     GameContext, TILE_SIZE,
@@ -18,7 +18,7 @@ enum TreeVariant {
 
 static TREE_SPRITE_ONE: Sprite = Sprite::new(144, 24, 8, 16);
 
-static TREE_FALL_ANIM_ONE: AnimationData = AnimationData {
+static TREE_FALL_ANIM_ONE: SpriteAnimationData = SpriteAnimationData {
     frames: &[
         Sprite::new(152, 24, 16, 16),
         Sprite::new(168, 24, 16, 16),
@@ -35,7 +35,7 @@ static TREE_FALL_ANIM_ONE: AnimationData = AnimationData {
 
 static TREE_SPRITE_TWO: Sprite = Sprite::new(144, 152, 8, 16);
 
-static TREE_FALL_ANIM_TWO: AnimationData = AnimationData {
+static TREE_FALL_ANIM_TWO: SpriteAnimationData = SpriteAnimationData {
     frames: &[
         Sprite::new(152, 152, 16, 16),
         Sprite::new(168, 152, 16, 16),
@@ -63,6 +63,17 @@ impl Tree {
         map_dimensions: MapDimensions,
         cells: &mut Vec<MapCell>,
     ) -> Object {
+        let variant = match rng.random_range(0..=1) {
+            0 => TreeVariant::One,
+            1 => TreeVariant::Two,
+            _ => TreeVariant::One,
+        };
+
+        let anim = match variant {
+            TreeVariant::One => &TREE_FALL_ANIM_ONE,
+            TreeVariant::Two => &TREE_FALL_ANIM_TWO,
+        };
+
         let mut tree = Tree {
             data: ObjectData::new(
                 cord.map_pos(),
@@ -75,15 +86,11 @@ impl Tree {
                 16.0,
                 100.0,
                 0.1,
-                TREE_FALL_ANIM_ONE.frame_duration
-                    * TREE_FALL_ANIM_ONE.frames.len() as f32,
+                TREE_FALL_ANIM_ONE.frame_duration * TREE_FALL_ANIM_ONE.frames.len() as f32,
             ),
-            falling_anim: SpriteAnimationInstance::new(),
-            variant: match rng.random_range(0..=1) {
-                0 => TreeVariant::One,
-                1 => TreeVariant::Two,
-                _ => TreeVariant::One,
-            }
+            variant,
+
+            falling_anim: SpriteAnimationInstance::new(anim),
         };
 
         if rng.random_bool(0.5) {
@@ -96,8 +103,8 @@ impl Tree {
     pub fn update(&mut self, game_context: &mut GameContext) {
         if let ObjectState::Breaking = self.data.state {
             // doesnt matter which one to use because update data is same
-            TREE_FALL_ANIM_ONE.update(&mut self.falling_anim, game_context.dt);
-            
+            self.falling_anim.update(game_context.dt);
+
             if self.data.sprite_flip {
                 self.data.situational_draw_offset.x = -8.0;
             }
@@ -117,10 +124,7 @@ impl Tree {
 
     pub fn sprite(&self) -> Sprite {
         return match self.data.state {
-            ObjectState::Breaking => match self.variant {
-                TreeVariant::One => TREE_FALL_ANIM_ONE.frames[self.falling_anim.current_frame_index as usize],
-                TreeVariant::Two => TREE_FALL_ANIM_TWO.frames[self.falling_anim.current_frame_index as usize],
-            }
+            ObjectState::Breaking => self.falling_anim.current_sprite(),
             _ => match self.variant {
                 TreeVariant::One => TREE_SPRITE_ONE,
                 TreeVariant::Two => TREE_SPRITE_TWO,

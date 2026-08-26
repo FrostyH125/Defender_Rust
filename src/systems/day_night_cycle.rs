@@ -1,7 +1,8 @@
-use basic_raylib_core::utils::math_utils::lerp_min_max;
+
 use raylib::{
     RaylibHandle, color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, ffi::KeyboardKey,
 };
+use zander_game_core_rs::utils::math_utils::lerp;
 
 use crate::systems::day_night_cycle::MoonPhase::{FirstQuarter, FullMoon, LastQuarter, NewMoon, WaningCrescent, WaningGibbous, WaxingCrescent, WaxingGibbous};
 

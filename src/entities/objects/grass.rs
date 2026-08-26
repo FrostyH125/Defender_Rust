@@ -1,8 +1,6 @@
-use basic_raylib_core::graphics::{
-    animation_data::AnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
-};
 use rand::{RngExt, rngs::ThreadRng};
 use raylib::math::Vector2;
+use zander_game_core_rs::raylib::{animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance};
 
 use crate::{
     GameContext,
@@ -21,8 +19,8 @@ const GRASS_ANIM_SPEED: f32 = 0.75;
 const MINIMUM_LEVEL_UP_TIME: f32 = 80.0;
 const MAXIMUM_LEVEL_UP_TIME: f32 = 120.0;
 
-static WHEATY_GRASS_ANIMS: [AnimationData; 3] = [
-    AnimationData {
+static WHEATY_GRASS_ANIMS: [SpriteAnimationData; 3] = [
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 8, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 8, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -30,7 +28,7 @@ static WHEATY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 16, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 16, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -38,7 +36,7 @@ static WHEATY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 24, GRASS_WIDTH, TALL_GRASS_HEIGHT),
             Sprite::new(8, 24, GRASS_WIDTH, TALL_GRASS_HEIGHT),
@@ -48,8 +46,8 @@ static WHEATY_GRASS_ANIMS: [AnimationData; 3] = [
     },
 ];
 
-static FLOWERY_GRASS_ANIMS: [AnimationData; 3] = [
-    AnimationData {
+static FLOWERY_GRASS_ANIMS: [SpriteAnimationData; 3] = [
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 40, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 40, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -57,7 +55,7 @@ static FLOWERY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 48, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 48, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -65,7 +63,7 @@ static FLOWERY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 56, GRASS_WIDTH, TALL_GRASS_HEIGHT),
             Sprite::new(8, 56, GRASS_WIDTH, TALL_GRASS_HEIGHT),
@@ -75,8 +73,8 @@ static FLOWERY_GRASS_ANIMS: [AnimationData; 3] = [
     },
 ];
 
-static BUSHY_GRASS_ANIMS: [AnimationData; 3] = [
-    AnimationData {
+static BUSHY_GRASS_ANIMS: [SpriteAnimationData; 3] = [
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 72, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 72, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -84,7 +82,7 @@ static BUSHY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 80, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 80, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -92,7 +90,7 @@ static BUSHY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 88, GRASS_WIDTH, TALL_GRASS_HEIGHT),
             Sprite::new(8, 88, GRASS_WIDTH, TALL_GRASS_HEIGHT),
@@ -102,8 +100,8 @@ static BUSHY_GRASS_ANIMS: [AnimationData; 3] = [
     },
 ];
 
-static STALKY_GRASS_ANIMS: [AnimationData; 3] = [
-    AnimationData {
+static STALKY_GRASS_ANIMS: [SpriteAnimationData; 3] = [
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 104, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 104, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -111,7 +109,7 @@ static STALKY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 112, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
             Sprite::new(8, 112, GRASS_WIDTH, SMALL_GRASS_HEIGHT),
@@ -119,7 +117,7 @@ static STALKY_GRASS_ANIMS: [AnimationData; 3] = [
         frame_duration: GRASS_ANIM_SPEED,
         should_loop: true,
     },
-    AnimationData {
+    SpriteAnimationData {
         frames: &[
             Sprite::new(0, 120, GRASS_WIDTH, TALL_GRASS_HEIGHT),
             Sprite::new(8, 120, GRASS_WIDTH, TALL_GRASS_HEIGHT),
@@ -129,6 +127,7 @@ static STALKY_GRASS_ANIMS: [AnimationData; 3] = [
     },
 ];
 
+#[derive(Copy, Clone)]
 enum GrassType {
     Wheaty,
     Flowery,
@@ -195,7 +194,8 @@ impl Grass {
                 + game_context.total_game_time,
             grass_level,
             grass_type,
-            anim_instance: SpriteAnimationInstance {
+            anim_instance: SpriteAnimationInstance {   
+                sprite_animation: Self::get_grass_anim(grass_type, grass_level),
                 current_frame_time: game_context.rng.random_range(0.0..=GRASS_ANIM_SPEED),
                 current_frame_index: game_context
                     .rng
@@ -254,6 +254,7 @@ impl Grass {
             grass_level,
             grass_type,
             anim_instance: SpriteAnimationInstance {
+                sprite_animation: Self::get_grass_anim(grass_type, grass_level),              
                 current_frame_time: game_context.rng.random_range(0.0..=GRASS_ANIM_SPEED),
                 current_frame_index: game_context
                     .rng
@@ -312,6 +313,7 @@ impl Grass {
             grass_level,
             grass_type,
             anim_instance: SpriteAnimationInstance {
+                sprite_animation: Self::get_grass_anim(grass_type, grass_level),
                 current_frame_time: game_context.rng.random_range(0.0..=GRASS_ANIM_SPEED),
                 current_frame_index: game_context
                     .rng
@@ -326,7 +328,7 @@ impl Grass {
 
     pub fn update(&mut self, game_context: &mut GameContext) {
         // all anims have exact same properties so its simply not necessary to distinguish them
-        WHEATY_GRASS_ANIMS[0].update(&mut self.anim_instance, game_context.dt);
+        self.anim_instance.update(game_context.dt);
 
         // while loop, because if offscreen for extended period of time, may level up multiple times
         while game_context.total_game_time > self.level_up_time {
@@ -354,6 +356,8 @@ impl Grass {
             // this just adjusts for the increased height of the tall grass
             self.data.draw_pos += Vector2::new(0.0, -8.0);
         }
+
+        self.anim_instance.sprite_animation = Self::get_grass_anim(self.grass_type, self.grass_level);
     }
 
     pub fn on_hit(&mut self, game_context: &mut GameContext, facing_dir: FacingDirection) {
@@ -416,5 +420,14 @@ impl Grass {
                     [self.anim_instance.current_frame_index as usize]
             }
         };
+    }
+
+    pub fn get_grass_anim(grass_type: GrassType, level: u8) -> &'static SpriteAnimationData {
+        match grass_type {
+            Wheaty => &WHEATY_GRASS_ANIMS[level as usize],
+            GrassType::Flowery => &FLOWERY_GRASS_ANIMS[level as usize],
+            GrassType::Bushy => &BUSHY_GRASS_ANIMS[level as usize],
+            GrassType::Stalky => &STALKY_GRASS_ANIMS[level as usize],
+        }
     }
 }

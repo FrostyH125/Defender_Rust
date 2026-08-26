@@ -1,14 +1,9 @@
-use basic_raylib_core::{graphics::sprite::Sprite, system::timer::Timer};
 use raylib::math::Vector2;
+use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
 
 use crate::{
     GameContext, entities::{
-        character::{Character, CharacterData, CharacterMovementResult},
-        characters::gatherer::GathererState::MovingToObject,
-        object::{
-            Object::{self, NoObject},
-            ObjectState,
-        },
+        character::{Character, CharacterData, CharacterMovementResult}, characters::gatherer::GathererState::MovingToObject, object::Object,
     }, map::tile_map::{MapObjectGrid, TileMap}, utils::pathfinding::PathResult::NoPath,
 };
 
@@ -58,7 +53,7 @@ pub struct Gatherer {
     gather_timer: Timer,
     pub object_indices: Vec<usize>,
     current_index: Option<usize>,
-    pub should_unoccupy_current_obj: bool
+    pub should_unoccupy_current_obj: bool,
 }
 
 impl Gatherer {
@@ -70,14 +65,13 @@ impl Gatherer {
             gather_timer: Timer::new(2.0),
             object_indices: Vec::new(),
             current_index: None,
-            should_unoccupy_current_obj: false
+            should_unoccupy_current_obj: false,
         };
 
         return Character::GathererChar(gatherer);
     }
 
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
-
         if self.should_unoccupy_current_obj {
             self.should_unoccupy_current_obj = false;
 
@@ -86,7 +80,7 @@ impl Gatherer {
                 self.current_index = None;
             }
         }
-        
+
         match self.state {
             GathererState::Idle => (),
             GathererState::LookingForObject { gather_target } => {
@@ -99,10 +93,7 @@ impl Gatherer {
             } => {
                 self.moving_to_object(game_context, map, target_pos, gather_target);
             }
-            GathererState::GatheringObject {
-
-                gather_target,
-            } => {
+            GathererState::GatheringObject { gather_target } => {
                 self.gathering_object(game_context, map, gather_target);
             }
         }
@@ -119,7 +110,10 @@ impl Gatherer {
         if self.gather_timer.is_done() {
             self.gather_timer.reset();
 
-            if self.gather(&mut map.map_object_grid[self.current_index.unwrap()], game_context) {
+            if self.gather(
+                &mut map.map_object_grid[self.current_index.unwrap()],
+                game_context,
+            ) {
                 self.state = GathererState::LookingForObject { gather_target };
             }
         }
@@ -143,7 +137,9 @@ impl Gatherer {
             CharacterMovementResult::NotArrivedYet => (),
             CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {
                 self.object_indices.clear();
-                map.map_object_grid[self.current_index.unwrap()].get_mut_data().is_occupied = false;
+                map.map_object_grid[self.current_index.unwrap()]
+                    .get_mut_data()
+                    .is_occupied = false;
                 self.current_index = None;
                 self.state = GathererState::Idle;
             }

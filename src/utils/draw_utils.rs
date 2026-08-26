@@ -1,10 +1,10 @@
-use basic_raylib_core::graphics::sprite::Sprite;
 use raylib::{
     color::Color,
     drawing::{RaylibDraw, RaylibDrawHandle},
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
+use zander_game_core_rs::raylib::sprite::Sprite;
 
 use crate::utils::direction_utils::CARDINAL_DELTAS;
 
@@ -18,9 +18,8 @@ pub fn draw_shadow(
     scale_y: f32,
     texture: &Texture2D,
 ) {
-
     const SHADOW_TRIGGER_COLOR: Color = Color::new(255, 255, 0, 255);
-    
+
     let sprite_pivot_x = pos.x + sprite.src_rect.width / 2.0;
     let sprite_pivot_y = pos.y + sprite.src_rect.height;
 
@@ -32,11 +31,26 @@ pub fn draw_shadow(
     if shadow_in_front {
         final_shear_x = -final_shear_x;
     }
-    
+
     let shear_matrix = [
-        1.0, 0.0, 0.0, 0.0, -final_shear_x, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -final_shear_x,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
     ];
-    
+
     let mut dest_rect = Rectangle {
         x: pos.x,
         y: pos.y + scale_pixels_y,
@@ -52,7 +66,7 @@ pub fn draw_shadow(
         dest_rect.y = pos.y + src_rect.height;
         src_rect.height = -src_rect.height;
     }
-    
+
     unsafe {
         raylib::ffi::rlPushMatrix();
 
@@ -63,14 +77,13 @@ pub fn draw_shadow(
         raylib::ffi::rlTranslatef(-sprite_pivot_x, -sprite_pivot_y, 0.0);
     }
 
-
     d.draw_texture_pro(
         texture,
         src_rect,
         dest_rect,
         Vector2::zero(),
         0.0,
-        SHADOW_TRIGGER_COLOR
+        SHADOW_TRIGGER_COLOR,
     );
 
     unsafe {
@@ -80,7 +93,7 @@ pub fn draw_shadow(
 
 pub fn draw_outline(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, texture: &Texture2D) {
     const OUTLINE_TRIGGER_COLOR: Color = Color::new(255, 255, 255, 0);
-    
+
     for dir in CARDINAL_DELTAS {
         let draw_pos = Vector2::new(pos.x + dir.x as f32, pos.y + dir.y as f32);
         sprite.draw_col(d, draw_pos, texture, OUTLINE_TRIGGER_COLOR);
@@ -89,9 +102,14 @@ pub fn draw_outline(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, text
     sprite.draw(d, pos, texture);
 }
 
-pub fn draw_outline_for_move(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, texture: &Texture2D) {
+pub fn draw_outline_for_move(
+    d: &mut RaylibDrawHandle,
+    sprite: Sprite,
+    pos: Vector2,
+    texture: &Texture2D,
+) {
     const MOVE_OUTLINE_TRIGGER_COLOR: Color = Color::new(0, 255, 255, 255);
-    
+
     for dir in CARDINAL_DELTAS {
         let draw_pos = Vector2::new(pos.x + dir.x as f32, pos.y + dir.y as f32);
         sprite.draw_col(d, draw_pos, texture, MOVE_OUTLINE_TRIGGER_COLOR);
@@ -101,8 +119,13 @@ pub fn draw_outline_for_move(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vect
 }
 
 #[inline]
-pub fn draw_with_extra_brightness(d: &mut RaylibDrawHandle, sprite: Sprite, pos: Vector2, texture: &Texture2D) {
+pub fn draw_with_extra_brightness(
+    d: &mut RaylibDrawHandle,
+    sprite: Sprite,
+    pos: Vector2,
+    texture: &Texture2D,
+) {
     const EXTRA_BRIGHTNESS_TRIGGER_COLOR: Color = Color::new(255, 0, 255, 255);
-    
+
     sprite.draw_col(d, pos, texture, EXTRA_BRIGHTNESS_TRIGGER_COLOR);
 }

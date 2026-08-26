@@ -1,12 +1,11 @@
-use basic_raylib_core::{
-    graphics::sprite::Sprite, system::sprite_particle_system::SpriteParticleSystem,
-};
+
 use rand::RngExt;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
+use zander_game_core_rs::{raylib::sprite::Sprite, system::sprite_particle_system::SpriteParticleSystem};
 
 use crate::{
     GameContext, entities::{

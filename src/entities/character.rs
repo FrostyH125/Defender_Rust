@@ -1,16 +1,24 @@
-use basic_raylib_core::graphics::sprite::Sprite;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
+use zander_game_core_rs::raylib::sprite::Sprite;
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{
+    GameContext, TILE_SIZE,
+    entities::{
         characters::gatherer::{Gatherer, GathererState},
         object::Object,
-    }, map::tile_map::{MapDimensions, TileMap}, systems::{action_button_manager::{self, ActionButtonManager}, action_buttons::action_button::ActionButton}, utils::{
-        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils, pathfinding::PathResult::{self, NoPath},
+    },
+    map::tile_map::{MapDimensions, TileMap},
+    utils::{
+        camera_utils,
+        direction_utils::FacingDirection,
+        draw_utils,
+        map_cord::MapCord,
+        map_utils,
+        pathfinding::PathResult::{self, NoPath},
     },
 };
 
@@ -83,13 +91,12 @@ impl CharacterData {
                 // if the target path entry is more than or equal to an eigth of a block away from the last
                 // real final path entry, remove the real final path entry
                 // this reduces backtracking
-                 
+
                 if path.len() > 1 {
                     if path[0].distance_to(path[1]) >= 2.0 {
                         path.remove(1);
-                    }                  
+                    }
                 }
-                
             }
         }
 
@@ -150,14 +157,13 @@ pub enum Character {
 
 impl Character {
     pub fn start_moving_to(&mut self, pos: Vector2) {
-
         self.reset_state();
-        
+
         let data = self.get_mut_data();
         data.is_moving_to_pos = true;
 
         // need to manually clear the path because the algorithm wont actually
-        // make a new path when i manually set the target pos. I would have to 
+        // make a new path when i manually set the target pos. I would have to
         // call 'move_to()' manually and theres just not really any reason
         // to do that since id have to pass game_context and map and i dont want to
         data.path = NoPath;
@@ -232,9 +238,15 @@ impl Character {
         let sprite = self.current_sprite();
         draw_utils::draw_outline_for_move(d, sprite, self.get_draw_pos(), texture);
     }
-    
+
     #[inline]
-    pub fn draw_shadow(&self, d: &mut RaylibDrawHandle, texture: &Texture2D, shadow_shear: f32, shadow_scale: f32) {
+    pub fn draw_shadow(
+        &self,
+        d: &mut RaylibDrawHandle,
+        texture: &Texture2D,
+        shadow_shear: f32,
+        shadow_scale: f32,
+    ) {
         let sprite = self.current_sprite();
 
         draw_utils::draw_shadow(
@@ -247,20 +259,18 @@ impl Character {
         );
     }
 
-    
     pub fn current_sprite(&self) -> Sprite {
         let mut spr = match self {
             Character::GathererChar(gatherer) => gatherer.sprite(),
         };
 
         if self.get_data().facing_direction == FacingDirection::Left {
-
             // if i dont -0.1 then the width will apparently be less than the width due
-            // to floating point shenanigans, since its drawn to a low res grid its 
+            // to floating point shenanigans, since its drawn to a low res grid its
             // rounded down, i have to add to the width essentially
-            spr.src_rect.width = -spr.src_rect.width -0.1;
+            spr.src_rect.width = -spr.src_rect.width - 0.1;
         }
-        
+
         return spr;
     }
 
@@ -302,7 +312,6 @@ impl Character {
         object: &mut Object,
         game_context: &mut GameContext,
         map: &mut TileMap,
-        action_button_manager: &ActionButtonManager
     ) {
         let object_pos = object.get_data().pos;
 

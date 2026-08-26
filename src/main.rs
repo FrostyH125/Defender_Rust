@@ -1,7 +1,3 @@
-use basic_raylib_core::{
-    graphics::sprite::Sprite,
-    system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem},
-};
 use rand::rngs::ThreadRng;
 use raylib::{
     RaylibHandle, RaylibThread,
@@ -13,6 +9,7 @@ use raylib::{
     shaders::RaylibShader,
     texture::{RenderTexture2D, Texture2D},
 };
+use zander_game_core_rs::{raylib::sprite::Sprite, system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem}};
 
 use crate::{
     ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX},
