@@ -172,12 +172,12 @@ impl DayNightCycle {
 
         let (shear, scale) = match self.current_time {
             0.0..=90.0 => (
-                lerp_min_max(MAX_SHEAR, 0.0, self.current_time, 0.0, 90.0),
-                lerp_min_max(MIN_SCALE_Y, MAX_SCALE_Y, self.current_time, 0.0, 90.0),
+                lerp(MAX_SHEAR, 0.0, self.current_time, 0.0, 90.0),
+                lerp(MIN_SCALE_Y, MAX_SCALE_Y, self.current_time, 0.0, 90.0),
             ),
             90.0..=180.0 => (
-                lerp_min_max(0.0, -MAX_SHEAR, self.current_time, 90.0, 180.0),
-                lerp_min_max(MAX_SCALE_Y, MIN_SCALE_Y, self.current_time, 90.0, 180.0),
+                lerp(0.0, -MAX_SHEAR, self.current_time, 90.0, 180.0),
+                lerp(MAX_SCALE_Y, MIN_SCALE_Y, self.current_time, 90.0, 180.0),
             ),
             180.0..=360.0 => {
                 let current_night = &NIGHTS[self.current_night];
@@ -198,15 +198,15 @@ impl DayNightCycle {
 
         let (blue, red, light) = match self.current_time {
             0.0..=35.0 => (
-                lerp_min_max(MAX_BLUE, 0.0, self.current_time, 0.0, 30.0),
-                lerp_min_max(MAX_RED, 0.0, self.current_time, 0.0, 30.0),
-                lerp_min_max(current_night_brightness_modifier, 0.0, self.current_time, 0.0, 30.0),
+                lerp(MAX_BLUE, 0.0, self.current_time, 0.0, 30.0),
+                lerp(MAX_RED, 0.0, self.current_time, 0.0, 30.0),
+                lerp(current_night_brightness_modifier, 0.0, self.current_time, 0.0, 30.0),
             ),
             30.0..=150.0 => (0.0, 0.0, 0.0),
             145.0..=180.0 => (
-                lerp_min_max(0.0, MAX_BLUE, self.current_time, 150.0, 180.0),
-                lerp_min_max(0.0, MAX_RED, self.current_time, 150.0, 180.0),
-                lerp_min_max(0.0, current_night_brightness_modifier, self.current_time, 150.0, 180.0),
+                lerp(0.0, MAX_BLUE, self.current_time, 150.0, 180.0),
+                lerp(0.0, MAX_RED, self.current_time, 150.0, 180.0),
+                lerp(0.0, current_night_brightness_modifier, self.current_time, 150.0, 180.0),
             ),
             180.0..=360.0 => {
                 let current_night = &NIGHTS[self.current_night];

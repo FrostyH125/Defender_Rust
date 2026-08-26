@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-use basic_raylib_core::graphics::sprite_animation::SpriteAnimationInstance;
 use raylib::{
     color::Color,
     drawing::{RaylibDraw, RaylibDrawHandle},
     math::{Rectangle, Vector2},
+    texture::Texture2D,
 };
+use zander_game_core_rs::raylib::animation_data::SpriteAnimationData;
 
 use crate::{
     GameContext, TILE_SIZE,
@@ -19,7 +20,7 @@ use crate::{
         },
         tile_map_animation_data::{
             GRASS_TILE, INLET_ANIMS, LAKE_TILE_ANIM, LAKE_TILE_CORNER_ANIMATION_REFERENCE,
-            LAKE_TILE_SHORE_ANIMATION_REFERENCE, OUTLETS_ANIMS, REGULAR_TILE_FRAME_DURATION,
+            LAKE_TILE_FRAME_DURATION, LAKE_TILE_SHORE_ANIMATION_REFERENCE, OUTLETS_ANIMS,
             RIVER_TILE_CORNER_ANIMS, RIVER_TILE_STRAIGHT_ANIMS, RIVER_TILE_T_SECTION_ANIMS,
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
@@ -46,6 +47,58 @@ impl MapDimensions {
     }
 }
 
+struct TileAnimationInstance {
+    number_of_frames: usize,
+    current_index: usize,
+    current_frame_time: f32,
+    time_per_frame: f32,
+}
+
+impl TileAnimationInstance {
+    pub fn new(number_of_frames: usize, time_per_frame: f32) -> Self {
+        return Self {
+            number_of_frames,
+            current_index: 0,
+            current_frame_time: 0.0,
+            time_per_frame,
+        };
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        self.current_frame_time += dt;
+
+        while self.current_frame_time >= self.time_per_frame {
+            self.current_frame_time -= self.time_per_frame;
+            self.current_index += 1;
+            if self.current_index >= self.number_of_frames {
+                self.current_index = 0;
+            }
+        }
+    }
+
+    pub fn draw(
+        &self,
+        anim: &SpriteAnimationData,
+        pos: Vector2,
+        d: &mut RaylibDrawHandle,
+        texture: &Texture2D,
+    ) {
+        anim.frames[self.current_index].draw(d, pos, texture);
+    }
+
+    pub fn draw_flp(
+        &self,
+        anim: &SpriteAnimationData,
+        pos: Vector2,
+        d: &mut RaylibDrawHandle,
+        texture: &Texture2D,
+        flp_h: bool,
+        flp_v: bool,
+    ) {
+        anim.frames[self.current_index].draw_flp(d, pos, texture, flp_h, flp_v, Color::WHITE);
+    }
+}
+
 pub struct TileMap {
     pub map_tile_grid: MapTileGrid,
     pub map_object_grid: MapObjectGrid,
@@ -53,9 +106,9 @@ pub struct TileMap {
     pub map_dimensions: MapDimensions,
     lake_sprite_data: HashMap<MapCord, LakeSpriteData>,
     river_sprite_data: HashMap<MapCord, RiverSpriteData>,
-    lake_shore_corner_tile_anim_instance: SpriteAnimationInstance,
-    default_tile_anim_instance: SpriteAnimationInstance,
-    river_tile_anim_instance: SpriteAnimationInstance,
+    lake_shore_corner_tile_anim_instance: TileAnimationInstance,
+    lake_tile_anim_instance: TileAnimationInstance,
+    river_tile_anim_instance: TileAnimationInstance,
 }
 
 impl TileMap {
@@ -172,39 +225,22 @@ impl TileMap {
             map_dimensions,
             lake_sprite_data,
             river_sprite_data: river_sprite_data,
-            lake_shore_corner_tile_anim_instance: SpriteAnimationInstance::new(),
-            default_tile_anim_instance: SpriteAnimationInstance::new(),
-            river_tile_anim_instance: SpriteAnimationInstance::new(),
+            lake_shore_corner_tile_anim_instance: TileAnimationInstance::new(
+                2,
+                SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION,
+            ),
+            lake_tile_anim_instance: TileAnimationInstance::new(4, LAKE_TILE_FRAME_DURATION),
+            river_tile_anim_instance: TileAnimationInstance::new(
+                4,
+                SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION,
+            ),
         };
     }
 
     pub fn update(&mut self, dt: f32) {
-        self.lake_shore_corner_tile_anim_instance.current_frame_time += dt;
-        if self.lake_shore_corner_tile_anim_instance.current_frame_time
-            >= SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION
-        {
-            self.lake_shore_corner_tile_anim_instance
-                .current_frame_index += 1;
-            self.lake_shore_corner_tile_anim_instance
-                .current_frame_index %= 2;
-            self.lake_shore_corner_tile_anim_instance.current_frame_time = 0.0;
-        }
-
-        self.default_tile_anim_instance.current_frame_time += dt;
-        if self.default_tile_anim_instance.current_frame_time >= REGULAR_TILE_FRAME_DURATION {
-            self.default_tile_anim_instance.current_frame_index += 1;
-            self.default_tile_anim_instance.current_frame_index %= 4;
-            self.default_tile_anim_instance.current_frame_time = 0.0;
-        }
-
-        self.river_tile_anim_instance.current_frame_time += dt;
-        if self.river_tile_anim_instance.current_frame_time
-            >= SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION
-        {
-            self.river_tile_anim_instance.current_frame_index += 1;
-            self.river_tile_anim_instance.current_frame_index %= 4;
-            self.river_tile_anim_instance.current_frame_time = 0.0;
-        }
+        self.lake_tile_anim_instance.update(dt);
+        self.lake_shore_corner_tile_anim_instance.update(dt);
+        self.river_tile_anim_instance.update(dt);
 
         // spawn grass randomly over time
     }
@@ -237,33 +273,31 @@ impl TileMap {
                     TileType::Grass => GRASS_TILE.draw(d, pos, &game_context.texture),
                     TileType::Lake => {
                         // draw base
-                        LAKE_TILE_ANIM.draw(
-                            &self.default_tile_anim_instance,
-                            d,
+                        self.lake_tile_anim_instance.draw(
+                            &LAKE_TILE_ANIM,
                             pos,
+                            d,
                             &game_context.texture,
                         );
 
                         if let Some(lake_data) = self.lake_sprite_data.get(&cord) {
                             if lake_data.shore_animation_index != 0 {
-                                LAKE_TILE_SHORE_ANIMATION_REFERENCE
-                                    [lake_data.shore_animation_index as usize - 1]
-                                    .draw(
-                                        &self.lake_shore_corner_tile_anim_instance,
-                                        d,
-                                        pos,
-                                        &game_context.texture,
-                                    );
+                                self.lake_shore_corner_tile_anim_instance.draw(
+                                    &LAKE_TILE_SHORE_ANIMATION_REFERENCE
+                                        [lake_data.shore_animation_index as usize - 1],
+                                    pos,
+                                    d,
+                                    &game_context.texture,
+                                );
                             }
                             if lake_data.corner_animation_index != 0 {
-                                LAKE_TILE_CORNER_ANIMATION_REFERENCE
-                                    [lake_data.corner_animation_index as usize - 1]
-                                    .draw(
-                                        &self.lake_shore_corner_tile_anim_instance,
-                                        d,
-                                        pos,
-                                        &game_context.texture,
-                                    );
+                                self.lake_shore_corner_tile_anim_instance.draw(
+                                    &LAKE_TILE_SHORE_ANIMATION_REFERENCE
+                                        [lake_data.corner_animation_index as usize - 1],
+                                    pos,
+                                    d,
+                                    &game_context.texture,
+                                );
                             }
                         }
                     }
@@ -281,10 +315,10 @@ impl TileMap {
                                     SpriteFlip::Vertical => (false, true),
                                 };
 
-                                anim.0.draw_flp(
-                                    &self.river_tile_anim_instance,
-                                    d,
+                                self.river_tile_anim_instance.draw_flp(
+                                    &anim.0,
                                     pos,
+                                    d,
                                     &game_context.texture,
                                     flp_h,
                                     flp_v,
@@ -300,10 +334,10 @@ impl TileMap {
                                     SpriteFlip::Vertical => (false, true),
                                 };
 
-                                anim.0.draw_flp(
-                                    &self.river_tile_anim_instance,
-                                    d,
+                                self.river_tile_anim_instance.draw_flp(
+                                    &anim.0,
                                     pos,
+                                    d,
                                     &game_context.texture,
                                     flp_h,
                                     flp_v,
@@ -318,10 +352,10 @@ impl TileMap {
                                     SpriteFlip::Horizontal => (true, false),
                                     SpriteFlip::Vertical => (false, true),
                                 };
-                                anim.0.draw_flp(
-                                    &self.river_tile_anim_instance,
-                                    d,
+                                self.river_tile_anim_instance.draw_flp(
+                                    &anim.0,
                                     pos,
+                                    d,
                                     &game_context.texture,
                                     flp_h,
                                     flp_v,
@@ -336,10 +370,10 @@ impl TileMap {
                                     SpriteFlip::Vertical => (false, true),
                                 };
 
-                                anim.0.draw_flp(
-                                    &self.river_tile_anim_instance,
-                                    d,
+                                self.river_tile_anim_instance.draw_flp(
+                                    &anim.0,
                                     pos,
+                                    d,
                                     &game_context.texture,
                                     flp_h,
                                     flp_v,
@@ -354,10 +388,10 @@ impl TileMap {
                                     SpriteFlip::Vertical => (false, true),
                                 };
 
-                                anim.0.draw_flp(
-                                    &self.river_tile_anim_instance,
-                                    d,
+                                self.river_tile_anim_instance.draw_flp(
+                                    &anim.0,
                                     pos,
+                                    d,
                                     &game_context.texture,
                                     flp_h,
                                     flp_v,
