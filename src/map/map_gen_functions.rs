@@ -115,7 +115,7 @@ pub fn create_lakes(
 }
 
 pub fn set_lake_shore_and_corner_sprites(
-    map: &MapTileGrid,
+    tile_grid: &MapTileGrid,
     map_dimensions: MapDimensions,
 ) -> HashMap<MapCord, LakeSpriteData> {
     let mut lake_sprite_data: HashMap<MapCord, LakeSpriteData> = HashMap::new();
@@ -125,7 +125,7 @@ pub fn set_lake_shore_and_corner_sprites(
         for x in 0..map_dimensions.width as i16 {
             let current = MapCord::new(x, y);
 
-            if map_utils::get_tile_at_cord(map, map_dimensions, current) != TileType::Lake {
+            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, current) != TileType::Lake {
                 continue;
             }
 
@@ -134,11 +134,7 @@ pub fn set_lake_shore_and_corner_sprites(
             for i in 0..CARDINAL_DELTAS.len() {
                 let neighbor = current + CARDINAL_DELTAS[i];
 
-                if !map_utils::is_tile_in_bounds(map_dimensions, neighbor) {
-                    continue;
-                }
-
-                if map_utils::get_tile_at_cord(map, map_dimensions, neighbor) == TileType::Lake {
+                if map_utils::tile_not_in_bounds_or_matches(tile_grid, map_dimensions, neighbor, TileType::Lake) {
                     continue;
                 }
 
@@ -160,22 +156,17 @@ pub fn set_lake_shore_and_corner_sprites(
                 let diag_x = x + corner.0;
                 let diag_y = y + corner.1;
 
-                if !map_utils::is_tile_in_bounds(map_dimensions, MapCord::new(diag_x, diag_y)) {
-                    continue;
-                }
+                let check = MapCord::new(diag_x, diag_y);
 
-                // tile at the diagonal does not allow for a corner, stop checking RIGHT NOWWWWWW
-                if map_utils::get_tile_from_x_y(map, map_dimensions, diag_x, diag_y)
-                    == TileType::Lake
-                {
+                if map_utils::tile_not_in_bounds_or_matches(tile_grid, map_dimensions, check, TileType::Lake) {
                     continue;
                 }
 
                 // check if should be shore on these specific edges, because that would mean no
                 // corner on those edges
-                if map_utils::get_tile_from_x_y(map, map_dimensions, diag_x, current.y)
+                if map_utils::get_tile_from_x_y(tile_grid, map_dimensions, diag_x, current.y)
                     != TileType::Lake
-                    || map_utils::get_tile_from_x_y(map, map_dimensions, current.x, diag_y)
+                    || map_utils::get_tile_from_x_y(tile_grid, map_dimensions, current.x, diag_y)
                         != TileType::Lake
                 {
                     continue;

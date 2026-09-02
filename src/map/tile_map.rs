@@ -263,13 +263,13 @@ impl TileMap {
                     (y as f32 * TILE_SIZE).floor(),
                 );
 
-                if !self.is_tile_in_bounds(x, y) {
+                if !self.tile_is_in_bounds(x, y) {
                     continue;
                 }
 
                 let cord = MapCord::new(x, y);
 
-                let tile_type = self.get_tile_from_x_y(x as u16, y as u16);
+                let tile_type = self.get_tile_from_x_y(x, y);
 
                 match tile_type {
                     TileType::Grass => GRASS_TILE.draw(d, pos, &game_context.texture),
@@ -445,26 +445,38 @@ impl TileMap {
         }
     }
 
-    pub fn get_tile_from_x_y(&self, x: u16, y: u16) -> TileType {
+    pub fn get_tile_from_x_y(&self, x: i16, y: i16) -> TileType {
         let index = y as usize * self.map_dimensions.width as usize + x as usize;
         return self.map_tile_grid[index as usize];
     }
 
-    pub fn is_tile_in_bounds(&self, x: i16, y: i16) -> bool {
+    pub fn tile_is_in_bounds(&self, x: i16, y: i16) -> bool {
         let x_in_bounds = x >= 0 && x < self.map_dimensions.width as i16;
         let y_in_bounds = y >= 0 && y < self.map_dimensions.height as i16;
         return x_in_bounds && y_in_bounds;
     }
 
-    pub fn is_cord_in_bounds(&self, cord: MapCord) -> bool {
+    pub fn cord_is_in_bounds(&self, cord: MapCord) -> bool {
         let x_in_bounds = cord.x >= 0 && cord.x < self.map_dimensions.width as i16;
         let y_in_bounds = cord.y >= 0 && cord.y < self.map_dimensions.height as i16;
         return x_in_bounds && y_in_bounds;
     }
 
+    pub fn tile_is_in_bounds_and_matches(&self, x: i16, y: i16, tile_type: TileType) -> bool {
+        if !self.tile_is_in_bounds(x, y) {
+            return false;
+        }
+
+        if self.get_tile_from_x_y(x, y) == tile_type {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /// returns an optional mutable reference to the cell at the cord, if oob, returns None
     pub fn get_mut_cell_at_cord(&mut self, cord: MapCord) -> Option<&mut MapCell> {
-        if !self.is_cord_in_bounds(cord) {
+        if !self.cord_is_in_bounds(cord) {
             return None;
         }
 
@@ -476,7 +488,7 @@ impl TileMap {
     }
 
     pub fn get_cell_at_cord(&self, cord: MapCord) -> Option<&MapCell> {
-        if !self.is_cord_in_bounds(cord) {
+        if !self.cord_is_in_bounds(cord) {
             return None;
         }
 

@@ -1,10 +1,10 @@
 use crate::{map::{map_cell::{CELL_SIZE, MapCell}, tile::TileType, tile_map::{MapDimensions, MapTileGrid}}, utils::map_cord::MapCord};
 
 #[inline]
-pub fn get_tile_from_x_y(map: &MapTileGrid, map_dimensions: MapDimensions, x: i16, y: i16) -> TileType {
+pub fn get_tile_from_x_y(tile_grid: &MapTileGrid, map_dimensions: MapDimensions, x: i16, y: i16) -> TileType {
     let idx = y as usize * map_dimensions.width as usize + x as usize;
 
-    return map[idx];
+    return tile_grid[idx];
 }
 
 #[inline]
@@ -16,10 +16,34 @@ pub fn is_tile_in_bounds(map_dimensions: MapDimensions, cord: MapCord) -> bool {
 }
 
 #[inline]
-pub fn get_tile_at_cord(map: &MapTileGrid, map_dimensions: MapDimensions, cord: MapCord) -> TileType {
+pub fn get_tile_at_cord(tile_grid: &MapTileGrid, map_dimensions: MapDimensions, cord: MapCord) -> TileType {
     let idx = cord.y as usize * map_dimensions.width as usize + cord.x as usize;
 
-    return map[idx];
+    return tile_grid[idx];
+}
+
+#[inline]
+pub fn tile_is_in_bounds_and_matches(tile_grid: &MapTileGrid, map_dimensions: MapDimensions, cord: MapCord, tile_type: TileType) -> bool {
+    if !is_tile_in_bounds(map_dimensions, cord) {
+        return false;
+    }
+    if get_tile_at_cord(tile_grid, map_dimensions, cord) == tile_type {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+#[inline]
+pub fn tile_not_in_bounds_or_matches(tile_grid: &MapTileGrid, map_dimensions: MapDimensions, cord: MapCord, tile_type: TileType) -> bool {
+    if !is_tile_in_bounds(map_dimensions, cord) {
+        return true;
+    }
+    if get_tile_at_cord(tile_grid, map_dimensions, cord) == tile_type {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 #[inline]
