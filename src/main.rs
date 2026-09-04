@@ -34,14 +34,15 @@ pub mod utils;
 // any of these can be done in any order:
 //      remove unsigned variables when unneccessary
 //      gather all button
-//          -- this will need to check on a per gatherer basis when multiple
-//              --gatherer levels or kinds exist
+//      gather_levels: only affect things like gather speed, walk speed, and maybe even extra resources
 //      wobble shader effect on the action buttons (will later be used on building buttons too)
 //      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo
 //      fighter struct sprint
-//          -- enemy
-//          -- fighter
+//          -- enemy: enum { EnemyKindOne, EnemyKindTwo, etc }
+//              -- Affiliation enum { Good, Bad }
+//          -- fighter: enum { FighterKindOne, FighterKindTwo, etc..}
+//          -- fighter_data: struct
 //          -- FighterState::Idle
 //          -- FighterState::LookingForEnemy
 //          -- FighterState::MovingToEnemy

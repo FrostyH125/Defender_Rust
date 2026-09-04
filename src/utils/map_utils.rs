@@ -47,6 +47,18 @@ pub fn tile_not_in_bounds_or_matches(tile_grid: &MapTileGrid, map_dimensions: Ma
 }
 
 #[inline]
+pub fn tile_not_in_bounds_or_doesnt_match(tile_grid: &MapTileGrid, map_dimensions: MapDimensions, cord: MapCord, tile_type: TileType) -> bool {
+    if !is_tile_in_bounds(map_dimensions, cord) {
+        return true;
+    }
+    if get_tile_at_cord(tile_grid, map_dimensions, cord) != tile_type {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+#[inline]
 pub fn cords_to_index(map_dimensions: MapDimensions, cord: MapCord) -> usize {
     let y_u = cord.y as usize;
     let x_u = cord.x as usize;
