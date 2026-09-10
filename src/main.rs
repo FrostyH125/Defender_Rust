@@ -9,7 +9,10 @@ use raylib::{
     shaders::RaylibShader,
     texture::{RenderTexture2D, Texture2D},
 };
-use zander_game_core_rs::{raylib::sprite::Sprite, system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem}};
+use zander_game_core_rs::{
+    raylib::sprite::Sprite,
+    system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem},
+};
 
 use crate::{
     ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX},
@@ -32,6 +35,7 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
+//      add clouds
 //      remove unsigned variables when unneccessary
 //      gather all button
 //      gather_levels: only affect things like gather speed, walk speed, and maybe even extra resources
@@ -111,7 +115,7 @@ fn main() {
 
     let (mut rl, thread) = raylib::init()
         .size(actual_window_width as i32, actual_window_height as i32)
-        .title("Rust Raylib Starter")
+        .title("Defender_Rust")
         .build();
 
     let path_finder = PathFinder::new(map_width, map_height);
@@ -137,12 +141,47 @@ fn main() {
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
 
-    let mut shader = rl.load_shader(&thread, None, Some("base_shader.frag"));
-    let red_tint_loc = shader.get_shader_location("red_tint");
-    let blue_tint_loc = shader.get_shader_location("blue_tint");
-    let brightness_modifier_loc = shader.get_shader_location("brightness_modifier");
+    let mut char_and_object_multi_shader = rl.load_shader(&thread, None, Some("base_shader.frag"));
+    let mut shadow_fix_shader = rl.load_shader(&thread, None, Some("object_rt_shadow_fix.frag"));
+    let red_tint_loc = char_and_object_multi_shader.get_shader_location("red_tint");
+    let blue_tint_loc = char_and_object_multi_shader.get_shader_location("blue_tint");
+    let brightness_modifier_loc =
+        char_and_object_multi_shader.get_shader_location("brightness_modifier");
 
-    let mut render_textures: [RenderTexture2D; 5] = [
+    let mut ground_render_textures: [RenderTexture2D; 5] = [
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 2,
+            window_height_target as u32 / 2,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 3,
+            window_height_target as u32 / 3,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 4,
+            window_height_target as u32 / 4,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 5,
+            window_height_target as u32 / 5,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 6,
+            window_height_target as u32 / 6,
+        )
+        .unwrap(),
+    ];
+
+    let mut object_and_character_render_textures: [RenderTexture2D; 5] = [
         rl.load_render_texture(
             &thread,
             window_width_target as u32 / 2,
@@ -279,72 +318,108 @@ fn main() {
             .day_night_cycle
             .update(game_context.dt, &mut rl);
 
-        shader.set_shader_value(red_tint_loc, game_context.day_night_cycle.red_tint);
-        shader.set_shader_value(blue_tint_loc, game_context.day_night_cycle.blue_tint);
-        shader.set_shader_value(
+        char_and_object_multi_shader
+            .set_shader_value(red_tint_loc, game_context.day_night_cycle.red_tint);
+        char_and_object_multi_shader
+            .set_shader_value(blue_tint_loc, game_context.day_night_cycle.blue_tint);
+        char_and_object_multi_shader.set_shader_value(
             brightness_modifier_loc,
             game_context.day_night_cycle.brightness_modifier,
         );
 
-        let current_rt = &mut render_textures[current_zoom as usize];
+        let current_ground_rt = &mut ground_render_textures[current_zoom as usize];
+        let current_object_and_character_rt =
+            &mut object_and_character_render_textures[current_zoom as usize];
         //--UPDATE ENDS HERE--//
 
         //--DRAWING BEINGS HERE--//
+        let mut d = rl.begin_drawing(&thread);
+
         {
-            let mut d = rl.begin_drawing(&thread);
+            let mut ground_rt = d.begin_texture_mode(&thread, current_ground_rt);
+            ground_rt.clear_background(Color::DARKCYAN);
+
             {
-                let mut render_texture_handle = d.begin_texture_mode(&thread, current_rt);
-                render_texture_handle.clear_background(Color::DARKCYAN);
-                {
-                    let mut cam_handle = render_texture_handle.begin_mode2D(game_context.camera);
+                let mut cam = ground_rt.begin_mode2D(game_context.camera);
 
-                    {
-                        let mut shader_handle = cam_handle.begin_shader_mode(&mut shader);
+                map.draw(&mut cam, &game_context);
 
-                        map.draw(&mut shader_handle, &game_context);
+                game_context
+                    .particle_system
+                    .draw(&mut cam, &game_context.texture);
+            } // end camera drawing
+        } // end ground rt drawing
 
-                        entity_manager.draw(
-                            &map.map_object_grid,
-                            &mut shader_handle,
-                            &game_context.texture,
-                            game_context.day_night_cycle.current_shadow_shear,
-                            game_context.day_night_cycle.current_shadow_scale,
-                        );
-                        select_rect.draw(&mut shader_handle);
-                        action_button_manager.draw(&mut shader_handle, &game_context);
-                        game_context
-                            .particle_system
-                            .draw(&mut shader_handle, &game_context.texture);
-                        mouse_utils::draw_mouse(
-                            &mut shader_handle,
-                            mouse_utils::mouse_world_coords(&game_context),
-                            &game_context.texture,
-                        );
-                    } // end shader mode - nothing drawn will pass through shader beyond here
-                } // end camera mode - nothing drawn will be drawn in world space beyond here
-            } // end rt mode - nothing drawn will be drawn on the render texture beyond here
+        {
+            let mut object_rt = d.begin_texture_mode(&thread, current_object_and_character_rt);
 
-            let source_rec = Rectangle::new(
+            object_rt.clear_background(Color::BLANK);
+
+            {
+                let mut cam = object_rt.begin_mode2D(game_context.camera);
+
+                let mut shader = cam.begin_shader_mode(&mut char_and_object_multi_shader);
+
+                entity_manager.draw(
+                    &map.map_object_grid,
+                    &mut shader,
+                    &game_context.texture,
+                    game_context.day_night_cycle.current_shadow_shear,
+                    game_context.day_night_cycle.current_shadow_scale,
+                );
+
+                select_rect.draw(&mut shader);
+                action_button_manager.draw(&mut shader, &game_context);
+
+                mouse_utils::draw_mouse(
+                    &mut shader,
+                    mouse_utils::mouse_world_coords(&game_context),
+                    &game_context.texture,
+                );
+            } // end camera and shader drawing
+        } // end object rt drawing
+
+        let source_rec = Rectangle::new(
+            0.0,
+            0.0,
+            current_ground_rt.texture.width as f32,
+            -current_ground_rt.texture.height as f32, // Negative height flips it right-side up
+        );
+
+        let dest_rec = Rectangle::new(
+            0.0,
+            0.0,
+            actual_window_width as f32,
+            actual_window_height as f32,
+        );
+        let origin = Vector2::new(0.0, 0.0);
+
+        d.draw_texture_pro(
+            current_ground_rt,
+            source_rec,
+            dest_rec,
+            origin,
+            0.0,
+            Color::WHITE,
+        );
+
+        {
+            let mut shadow_fix_shader_handle = d.begin_shader_mode(&mut shadow_fix_shader);
+
+            shadow_fix_shader_handle.draw_texture_pro(
+                current_object_and_character_rt,
+                source_rec,
+                dest_rec,
+                origin,
                 0.0,
-                0.0,
-                current_rt.texture.width as f32,
-                -current_rt.texture.height as f32, // Negative height flips it right-side up
+                Color::WHITE,
             );
-
-            let dest_rec = Rectangle::new(
-                0.0,
-                0.0,
-                actual_window_width as f32,
-                actual_window_height as f32,
-            );
-            let origin = Vector2::new(0.0, 0.0);
-
-            d.draw_texture_pro(current_rt, source_rec, dest_rec, origin, 0.0, Color::WHITE);
-            game_context.day_night_cycle.draw_dbg(&mut d);
-            entity_selecting_manager.draw(&mut d);
         }
-        //--DRAWING ENDS HERE--//
+
+        game_context.day_night_cycle.draw_dbg(&mut d);
+        entity_selecting_manager.draw(&mut d);
     }
+    //--DRAWING ENDS HERE--//
 }
 
 #[repr(usize)]
