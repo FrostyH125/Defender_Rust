@@ -1,7 +1,3 @@
-use std::collections::{HashSet};
-
-use crate::{map::tile_map::MapDimensions, utils::{map_cord::MapCord, map_utils::cords_to_index}};
-
 pub const CELL_SIZE: u16 = 50;
 
 pub struct MapCell {

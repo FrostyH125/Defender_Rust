@@ -15,14 +15,9 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX},
-    entities::{characters::gatherer::Gatherer, entity_manager::EntityManager},
-    map::tile_map::TileMap,
-    systems::{
-        action_button_manager::ActionButtonManager, day_night_cycle::DayNightCycle,
-        entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
-    },
-    utils::{
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
+        action_button_manager::ActionButtonManager, character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
+    }, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -38,6 +33,8 @@ pub mod utils;
 //      add clouds
 //      make characters add themselves to the map cells every frame, this should be done before updating but after chars.sort()
 //      make map cells clear themselves every frame
+//          after that, now every character has not only a master list of all relevant character data, but ALSO
+//          has access to character indices in cells near them, so they can look up in that list using the indices and then make decisions from the data there
 //      gather all button
 //      gather_levels: only affect things like gather speed, walk speed, and maybe even extra resources
 //      wobble shader effect on the action buttons (will later be used on building buttons too)
@@ -61,6 +58,7 @@ pub struct GameContext {
     logical_window_height: u32,
     v_width: u32,
     v_height: u32,
+    dt: f32,
     camera: Camera2D,
     day_night_cycle: DayNightCycle,
     input_state: InputState,
@@ -69,7 +67,7 @@ pub struct GameContext {
     path_finder: PathFinder,
     update_rect: Rectangle,
     particle_system: SpriteParticleSystem,
-    dt: f32,
+    character_action_manager: CharacterActionManager,
 }
 
 fn main() {
@@ -85,6 +83,11 @@ fn main() {
     let mut current_zoom = ZoomSizes::FiveX;
     let v_width = current_zoom.v_width(window_width_target);
     let v_height = current_zoom.v_height(window_height_target);
+    
+    let (mut rl, thread) = raylib::init()
+        .size(actual_window_width as i32, actual_window_height as i32)
+        .title("Defender_Rust")
+        .build();
 
     let camera = Camera2D {
         offset: Vector2 {
@@ -101,27 +104,19 @@ fn main() {
 
     let mut select_rect = SelectRect::new();
     let sprite_particle_system = SpriteParticleSystem::new(1000);
-
     let rng = rand::rng();
-
     let mut camera_pos = camera.target;
     let input_state = InputState::new();
     let mut entity_selecting_manager = EntitySelectingManager::new();
     let mut action_button_manager = ActionButtonManager::new();
-
     let map_width = 500;
     let map_height = 500;
-
     let day_night_cycle = DayNightCycle::new();
-
-    let (mut rl, thread) = raylib::init()
-        .size(actual_window_width as i32, actual_window_height as i32)
-        .title("Defender_Rust")
-        .build();
-
     let path_finder = PathFinder::new(map_width, map_height);
-
+    let character_action_manager = CharacterActionManager::new();
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
+
+    
     let mut game_context = GameContext {
         total_game_time: 0.0,
         logical_window_width: window_width_target,
@@ -136,6 +131,7 @@ fn main() {
         path_finder,
         particle_system: sprite_particle_system,
         update_rect: Rectangle::default(),
+        character_action_manager,
         dt: 0.0,
     };
 
