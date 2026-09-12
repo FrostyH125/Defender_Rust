@@ -432,16 +432,6 @@ impl TileMap {
                 10,
                 Color::WHITE,
             );
-
-            // REMOVE &MUT SELF
-            let cell = self.get_cell_at_cord(MapCord::from_vec2(pos));
-            d.draw_text(
-                &format!("{}", cell.unwrap().objects_in_cell.len()),
-                pos.x as i32 + 5,
-                pos.y as i32 + 20,
-                10,
-                Color::BLACK,
-            );
         }
     }
 
@@ -513,13 +503,5 @@ impl TileMap {
         }
 
         return cells;
-    }
-
-    /// adds the objects index (where it is on the map) to the cell's array of indices
-    pub fn add_obj_to_cell(&mut self, cord_of_obj: MapCord) {
-        let m_d = self.map_dimensions;
-        let map_cell = self.get_mut_cell_at_cord(cord_of_obj).unwrap();
-        let idx = cords_to_index(m_d, cord_of_obj);
-        map_cell.add_obj(idx);
     }
 }

@@ -7,11 +7,21 @@ use raylib::{
 use zander_game_core_rs::raylib::sprite::Sprite;
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{character::Character, object::Object}, map::tile_map::{MapDimensions, MapObjectGrid, TileMap}, systems::{
+    GameContext, TILE_SIZE,
+    entities::{
+        character::{Affiliation, Character},
+        object::Object,
+    },
+    map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
+    systems::{
         action_button_manager::ActionButtonManager,
         entity_selecting_manager::{EntitySelectingManager, SelectingMode},
         select_rect::SelectRect,
-    }, utils::{map_cord::MapCord, map_utils, mouse_utils::mouse_world_coords, rectangle_utils::center_of_rect},
+    },
+    utils::{
+        map_cord::MapCord, map_utils, mouse_utils::mouse_world_coords,
+        rectangle_utils::center_of_rect,
+    },
 };
 
 /// num of tiles to the left and top of the cam view where objects are still being updated and drawn
@@ -26,6 +36,12 @@ pub struct CharacterEntry {
     pub character: Character,
     pub unique_id: usize,
     render_index: usize,
+}
+
+pub struct CharacterInfo {
+    char_id: usize,
+    position: Vector2,
+    affiliation: Affiliation,
 }
 
 pub struct EntityManager {
@@ -122,6 +138,17 @@ impl EntityManager {
         let mut hover_chars_for_move: Vec<&mut CharacterEntry> = Vec::new();
 
         let mut moved_anyone = false;
+
+        let character_info: Vec<CharacterInfo> = self
+            .characters
+            .iter()
+            .map(|c| CharacterInfo {
+                affiliation: c.character.get_data().affiliation,
+                position: c.character.get_data().pos,
+                char_id: c.unique_id
+            })
+            .collect();
+
         for character in &mut self.characters {
             let hover_rect = character.character.get_hover_rect();
 
@@ -142,7 +169,9 @@ impl EntityManager {
                 character.character.get_mut_data().is_selected_for_move = false;
             }
 
-            character.character.update(game_context, map);
+            character
+                .character
+                .update(game_context, map, &character_info);
 
             let should_spawn_new_selected_for_move_particle =
                 character.character.get_data().is_selected_for_move
@@ -218,8 +247,6 @@ impl EntityManager {
                 obj.update(
                     game_context,
                     selector.is_deselecting_objs,
-                    &mut map.map_cell_grid,
-                    map.map_dimensions,
                 );
 
                 if let Object::NoObject = obj {
@@ -321,7 +348,14 @@ impl EntityManager {
         self.characters.sort_by_key(|c| c.render_index);
     }
 
-    pub fn draw(&self, object_grid: &MapObjectGrid, d: &mut RaylibDrawHandle, texture: &Texture2D, shear_x: f32, scale_y: f32) {
+    pub fn draw(
+        &self,
+        object_grid: &MapObjectGrid,
+        d: &mut RaylibDrawHandle,
+        texture: &Texture2D,
+        shear_x: f32,
+        scale_y: f32,
+    ) {
         let mut current_char_list_index = 0;
         let mut last_row_final_char_index = current_char_list_index;
 

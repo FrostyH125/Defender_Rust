@@ -65,7 +65,6 @@ impl ObjectData {
         // add current index of object to appropriate cell
         let map_cord = MapCord::from_vec2(pos);
         let cell = get_cell_at_cord(map_cells, map_dimensions, map_cord).unwrap();
-        cell.add_obj_from_cord(map_dimensions, map_cord);
 
         return ObjectData {
             pos: true_pos,
@@ -122,8 +121,6 @@ impl Object {
         &mut self,
         game_context: &mut GameContext,
         should_deselect: bool,
-        cells: &mut [MapCell],
-        map_dimensions: MapDimensions,
     ) {
         match self {
             TreeObj(tree) => tree.update(game_context),
@@ -145,7 +142,7 @@ impl Object {
             ObjectState::Breaking => {
                 // only remove if out of camera view, otherwise, carry to completion
                 if !camera_utils::is_in_camera_view(&self.hover_rect(), game_context) {
-                    self.delete(map_dimensions, cells);
+                    self.delete();
                     return;
                 }
 
@@ -153,7 +150,7 @@ impl Object {
 
                 disappear_timer.track(game_context.dt);
                 if disappear_timer.is_done() {
-                    self.delete(map_dimensions, cells);
+                    self.delete();
                     return;
                 }
             }
@@ -289,12 +286,7 @@ impl Object {
         }
     }
 
-    fn delete(&mut self, map_dimensions: MapDimensions, cells: &mut [MapCell]) {
-        let cord = MapCord::from_vec2(self.get_data().pos);
-        let idx = cords_to_index(map_dimensions, cord);
-
-        let cell = get_cell_at_cord(cells, map_dimensions, cord).unwrap();
-        cell.remove_obj(idx);
+    fn delete(&mut self) {
         *self = Self::NoObject
     }
 

@@ -36,7 +36,8 @@ pub mod utils;
 
 // any of these can be done in any order:
 //      add clouds
-//      remove unsigned variables when unneccessary
+//      make characters add themselves to the map cells every frame, this should be done before updating but after chars.sort()
+//      make map cells clear themselves every frame
 //      gather all button
 //      gather_levels: only affect things like gather speed, walk speed, and maybe even extra resources
 //      wobble shader effect on the action buttons (will later be used on building buttons too)

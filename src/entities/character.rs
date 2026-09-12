@@ -6,13 +6,9 @@ use raylib::{
 use zander_game_core_rs::raylib::sprite::Sprite;
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::{
-        characters::gatherer::{Gatherer, GathererState},
-        object::Object,
-    },
-    map::tile_map::{MapDimensions, TileMap},
-    utils::{
+    GameContext, TILE_SIZE, entities::{
+        characters::gatherer::{Gatherer, GathererState}, entity_manager::CharacterInfo, object::Object,
+    }, map::tile_map::{MapDimensions, TileMap}, utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
@@ -21,6 +17,12 @@ use crate::{
         pathfinding::PathResult::{self, NoPath},
     },
 };
+
+#[derive(Clone, Copy)]
+pub enum Affiliation {
+    Good,
+    Evil
+}
 
 pub enum CharacterMovementResult {
     Success,
@@ -37,6 +39,7 @@ pub struct CharacterData {
     width: f32,
     height: f32,
     move_speed: f32,
+    pub affiliation: Affiliation,
     pub facing_direction: FacingDirection,
     pub is_hovering: bool,
     pub is_hovering_for_move: bool,
@@ -46,6 +49,7 @@ pub struct CharacterData {
 
 impl CharacterData {
     pub fn new(
+        affiliation: Affiliation,
         pos: Vector2,
         draw_offset: Vector2,
         width: f32,
@@ -53,6 +57,7 @@ impl CharacterData {
         move_speed: f32,
     ) -> CharacterData {
         return CharacterData {
+            affiliation,
             pos,
             draw_offset,
             target_pos: None,
@@ -175,7 +180,7 @@ impl Character {
     }
 
     #[inline]
-    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
+    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap, character_info: &[CharacterInfo]) {
         match self {
             Character::GathererChar(gatherer) => {
                 gatherer.update(game_context, map)
@@ -289,7 +294,6 @@ impl Character {
     pub fn update_obj_if_out_of_update_range(
         object: &mut Object,
         game_context: &mut GameContext,
-        map: &mut TileMap,
     ) {
         let object_pos = object.get_data().pos;
 
@@ -300,8 +304,6 @@ impl Character {
         object.update(
             game_context,
             false,
-            &mut map.map_cell_grid,
-            map.map_dimensions,
         );
     }
 
