@@ -31,45 +31,68 @@ pub enum CharacterMovementResult {
     TooLong,
 }
 
+#[derive(Clone, Copy)]
+pub enum CharacterState {
+    None,
+    Moving {
+        target: Vector2
+    },
+    InCombat
+}
+
 pub struct CharacterData {
+    pub character_values: CharacterSpecificValues,
     pub path: PathResult,
+    pub opponents: Vec<usize>,
     pub pos: Vector2,
-    draw_offset: Vector2,
     pub target_pos: Option<Vector2>,
-    width: f32,
-    height: f32,
-    move_speed: f32,
-    pub affiliation: Affiliation,
     pub facing_direction: FacingDirection,
     pub is_hovering: bool,
     pub is_hovering_for_move: bool,
     pub is_selected: bool,
     pub is_selected_for_move: bool,
+    pub state: CharacterState,
+    pub char_idx: usize
+    // move_anim
+    // attack_anim
+    // attack_speed
+    // attack_power
+}
+
+/// this struct is for things that are based on T type character, not characters as a whole and not things managed by the code specifically
+/// basically just things that are solely dependent on the type of character holding it (ex: position doesnt count, since that isnt based
+/// on the character type)
+pub struct CharacterSpecificValues {
+    pub draw_offset: Vector2,
+    pub move_speed: f32,
+    pub health: f32,
+    pub width: f32,
+    pub height: f32,
+    pub affiliation: Affiliation,
+    // move_anim,
+    // attack_anim,
+    // attack_speed,
+    // attack_power
 }
 
 impl CharacterData {
     pub fn new(
-        affiliation: Affiliation,
         pos: Vector2,
-        draw_offset: Vector2,
-        width: f32,
-        height: f32,
-        move_speed: f32,
+        character_values: CharacterSpecificValues
     ) -> CharacterData {
         return CharacterData {
-            affiliation,
+            state: CharacterState::None,
             pos,
-            draw_offset,
             target_pos: None,
             path: NoPath,
-            width,
-            height,
-            move_speed,
             facing_direction: FacingDirection::Right,
             is_hovering: false,
             is_hovering_for_move: false,
             is_selected: false,
             is_selected_for_move: false,
+            opponents: Vec::new(),
+            char_idx: 0,
+            character_values
         };
     }
 
@@ -141,7 +164,7 @@ impl CharacterData {
                 delta.normalize();
             }
 
-            self.pos += delta * self.move_speed * game_context.dt;
+            self.pos += delta * self.character_values.move_speed * game_context.dt;
 
             if delta.x < 0.0 {
                 self.facing_direction = FacingDirection::Left;
@@ -160,8 +183,13 @@ pub enum Character {
 
 impl Character {
     pub fn set_move_to(&mut self, target: Vector2) {
+        self.set_idle();
+        self.get_mut_data().state = CharacterState::Moving { target };
+    }
+
+    pub fn set_idle(&mut self) {
         match self {
-            Character::GathererChar(gatherer) => gatherer.state = GathererState::MovingWithoutObject { target },
+            Character::GathererChar(gatherer) => gatherer.state = GathererState::Idle,
         }
     }
 
@@ -181,10 +209,32 @@ impl Character {
 
     #[inline]
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap, character_info: &[CharacterInfo]) {
-        match self {
-            Character::GathererChar(gatherer) => {
-                gatherer.update(game_context, map)
-            }
+
+        match self.get_data().state {
+            CharacterState::None => {
+                match self {
+                    Character::GathererChar(gatherer) => {
+                        gatherer.update(game_context, map)
+                    }
+                }
+            },
+            CharacterState::Moving { target } => {
+                match self.get_mut_data().move_to(target, game_context, map) {
+                    CharacterMovementResult::NotArrivedYet => (),
+                    _ => self.get_mut_data().state = CharacterState::None,
+                }
+            },
+            CharacterState::InCombat => {
+                let enemy_hp = character_info[self.get_data().opponents[0]].health;
+
+                // only switches state when opponents are gone
+                if enemy_hp <= 0.0 {
+                    self.get_mut_data().opponents.remove(0);
+                    if self.get_mut_data().opponents.is_empty() {
+                        self.get_mut_data().state = CharacterState::None;
+                    }
+                }
+            },
         }
         
         let data = self.get_mut_data();
@@ -260,14 +310,14 @@ impl Character {
     #[inline]
     pub fn get_draw_pos(&self) -> Vector2 {
         let data = self.get_data();
-        return data.pos + data.draw_offset;
+        return data.pos + data.character_values.draw_offset;
     }
 
     #[inline]
     pub fn get_hover_rect(&self) -> Rectangle {
         let data = self.get_data();
         let d_pos = self.get_draw_pos();
-        return Rectangle::new(d_pos.x, d_pos.y, data.width, data.height);
+        return Rectangle::new(d_pos.x, d_pos.y, data.character_values.width, data.character_values.height);
     }
 
     #[inline]

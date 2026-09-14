@@ -39,9 +39,10 @@ pub struct CharacterEntry {
 }
 
 pub struct CharacterInfo {
-    char_id: usize,
-    position: Vector2,
-    affiliation: Affiliation,
+    pub health: f32,
+    pub char_id: usize,
+    pub position: Vector2,
+    pub affiliation: Affiliation,
 }
 
 pub struct EntityManager {
@@ -67,8 +68,10 @@ impl EntityManager {
         };
     }
 
-    pub fn add_character(&mut self, character: Character) {
+    pub fn add_character(&mut self, mut character: Character) {
         let render_index = character.get_render_tile_index(self.map_dimensions);
+
+        character.get_mut_data().char_idx = self.next_character_id;
 
         self.characters.push(CharacterEntry {
             character,
@@ -143,7 +146,8 @@ impl EntityManager {
             .characters
             .iter()
             .map(|c| CharacterInfo {
-                affiliation: c.character.get_data().affiliation,
+                health: c.character.get_data().character_values.health,
+                affiliation: c.character.get_data().character_values.affiliation,
                 position: c.character.get_data().pos,
                 char_id: c.unique_id
             })

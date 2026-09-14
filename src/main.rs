@@ -42,13 +42,18 @@ pub mod utils;
 //      ALL the sounds from the github repo
 //      fighter struct sprint
 //          -- enemy: enum { EnemyKindOne, EnemyKindTwo, etc }
-//              -- Affiliation enum { Good, Bad }
 //          -- fighter: enum { FighterKindOne, FighterKindTwo, etc..}
+//              -- Affiliation enum { Good, Bad }
 //          -- fighter_data: struct
 //          -- FighterState::Idle
 //          -- FighterState::LookingForEnemy
 //          -- FighterState::MovingToEnemy
 //          -- FighterState::AttackingEnemy
+//          After all of this is added, i need to test the new combat system in place.
+//          have a fighter request engaging in combat with an enemy after moving toward it
+//          have them hit eachother (draw hp over each one to see),
+//          then print the state of the fighter, and see if it switches back to none
+//          print as well the count of its opponent list
 
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -412,6 +417,8 @@ fn main() {
                 Color::WHITE,
             );
         }
+
+        
 
         game_context.day_night_cycle.draw_dbg(&mut d);
         entity_selecting_manager.draw(&mut d);
