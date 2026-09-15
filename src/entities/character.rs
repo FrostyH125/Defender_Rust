@@ -18,7 +18,7 @@ use crate::{
         object::Object,
     },
     map::tile_map::{MapDimensions, TileMap},
-    systems::character_action_manager::{self, CharacterActionManager},
+    systems::character_action_manager::CharacterActionManager,
     utils::{
         camera_utils,
         direction_utils::FacingDirection,

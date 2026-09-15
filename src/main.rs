@@ -15,9 +15,15 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
-        action_button_manager::ActionButtonManager, character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
-    }, utils::{
+    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX},
+    entities::{characters::gatherer::Gatherer, entity_manager::EntityManager},
+    map::tile_map::TileMap,
+    systems::{
+        action_button_manager::ActionButtonManager,
+        character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle,
+        entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
+    },
+    utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -30,6 +36,8 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
+//      draw grass with a shear when its hit
+//      add a type alias for usize : CharID
 //      add a vfx manager for adding things like slashes in a fire and forget kind of way
 //      tile nighttime shader necessary for fixing night time
 //      add clouds
@@ -90,7 +98,7 @@ fn main() {
     let mut current_zoom = ZoomSizes::FiveX;
     let v_width = current_zoom.v_width(window_width_target);
     let v_height = current_zoom.v_height(window_height_target);
-    
+
     let (mut rl, thread) = raylib::init()
         .size(actual_window_width as i32, actual_window_height as i32)
         .title("Defender_Rust")
@@ -123,7 +131,6 @@ fn main() {
     let character_action_manager = CharacterActionManager::new();
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
 
-    
     let mut game_context = GameContext {
         total_game_time: 0.0,
         logical_window_width: window_width_target,
@@ -225,9 +232,7 @@ fn main() {
     // DEBUG START
     //
 
-
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
-    
 
     //
     // DEBUG END
@@ -420,8 +425,6 @@ fn main() {
             );
         }
 
-        
-
         game_context.day_night_cycle.draw_dbg(&mut d);
         entity_selecting_manager.draw(&mut d);
     }
@@ -484,6 +487,8 @@ impl ZoomSizes {
     }
 }
 
+// if you change window to a new aspect ratio, youll need to set_render_textures to accomodate the new
+// aspect ratio otherwise it will shrink or stretch
 fn change_window_size(
     rl: &mut RaylibHandle,
     window_width: &mut f32,
@@ -501,17 +506,23 @@ fn change_window_size(
 fn set_render_textures(
     rl: &mut RaylibHandle,
     thread: &RaylibThread,
-    rt_array: &mut [RenderTexture2D],
+    ground_rt_array: &mut [RenderTexture2D],
+    obj_rt_array: &mut [RenderTexture2D],
     window_width_target: f32,
     window_height_target: f32,
 ) {
     let w_u32 = window_width_target as u32;
     let h_u32 = window_height_target as u32;
 
-    let rt_count = rt_array.len();
+    let rt_count = ground_rt_array.len();
 
     for i in 0..rt_count {
-        rt_array[i] = rl
+        ground_rt_array[i] = rl
+            .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))
+            .unwrap();
+    }
+    for i in 0..rt_count {
+        obj_rt_array[i] = rl
             .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))
             .unwrap();
     }

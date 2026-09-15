@@ -7,7 +7,6 @@ use zander_game_core_rs::raylib::{
 use crate::{
     GameContext, TILE_SIZE,
     entities::object::{Object, ObjectData, ObjectState},
-    map::{map_cell::MapCell, tile_map::MapDimensions},
     utils::{map_cord::MapCord, vector2_utils},
 };
 
@@ -60,8 +59,6 @@ impl Tree {
     pub fn new(
         cord: MapCord,
         rng: &mut ThreadRng,
-        map_dimensions: MapDimensions,
-        cells: &mut Vec<MapCell>,
     ) -> Object {
         let variant = match rng.random_range(0..=1) {
             0 => TreeVariant::One,
@@ -80,8 +77,6 @@ impl Tree {
                 Vector2::new(0.0, -TILE_SIZE),
                 vector2_utils::random_offset_by_one(rng),
                 cord,
-                cells,
-                map_dimensions,
                 8.0,
                 16.0,
                 100.0,

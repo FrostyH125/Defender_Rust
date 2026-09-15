@@ -7,31 +7,15 @@ use crate::{
         object::Object::{self},
         objects::{grass::Grass, tree::Tree},
     }, map::{
-        map_cell::{CELL_SIZE, MapCell},
         tile::{LakeSpriteData, RiverSpriteData, TileType},
         tile_map::{MapDimensions, MapObjectGrid, MapTileGrid},
         tile_map_animation_data::{
             FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType,
         },
     }, utils::{
-        direction_utils::{CARDINAL_DELTAS, Direction, ORTHOGONAL_DELTAS}, map_cord::MapCord, map_utils::{self, get_tile_at_cord, is_tile_in_bounds, tile_not_in_bounds_or_doesnt_match, tile_not_in_bounds_or_matches},
+        direction_utils::{CARDINAL_DELTAS, Direction, ORTHOGONAL_DELTAS}, map_cord::MapCord, map_utils::{self, get_tile_at_cord, is_tile_in_bounds, tile_not_in_bounds_or_doesnt_match},
     },
 };
-
-pub fn generate_cell_grid(map_dimensions: MapDimensions) -> Vec<MapCell> {
-    let mut map_cells: Vec<MapCell> = Vec::new();
-
-    let num_of_cells_wide = map_dimensions.width / CELL_SIZE;
-    let num_of_cells_tall = map_dimensions.height / CELL_SIZE;
-
-    for _ in 0..num_of_cells_tall {
-        for _ in 0..num_of_cells_wide {
-            map_cells.push(MapCell::new());
-        }
-    }
-
-    return map_cells;
-}
 
 pub fn create_lakes(
     tile_grid: &mut MapTileGrid,
@@ -609,7 +593,6 @@ pub fn spawn_forests_around_lakes(
     object_grid: &mut MapObjectGrid,
     lake_tiles: Vec<MapCord>,
     map_dimensions: MapDimensions,
-    map_cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     for lake_tile in lake_tiles {
@@ -632,7 +615,7 @@ pub fn spawn_forests_around_lakes(
 
                 if let Object::NoObject = object_grid[index] {
                     object_grid[index] =
-                        Tree::new(try_tree_tile, rng, map_dimensions, map_cells);
+                        Tree::new(try_tree_tile, rng);
                 }
             }
         }
@@ -643,7 +626,6 @@ pub fn spawn_standalone_forests(
     tile_grid: &MapTileGrid,
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
-    map_cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     let total_tiles = map_dimensions.total_tiles();
@@ -689,7 +671,7 @@ pub fn spawn_standalone_forests(
                 let idx = map_utils::cords_to_index(map_dimensions, try_tree_tile);
 
                 if let Object::NoObject = object_grid[idx] {
-                    object_grid[idx] = Tree::new(try_tree_tile, rng, map_dimensions, map_cells);
+                    object_grid[idx] = Tree::new(try_tree_tile, rng);
                 }
             }
 
@@ -742,7 +724,6 @@ pub fn spawn_standalone_trees(
     tile_grid: &MapTileGrid,
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
-    map_cells: &mut Vec<MapCell>,
     rng: &mut ThreadRng,
 ) {
     let num_of_trees =
@@ -763,7 +744,7 @@ pub fn spawn_standalone_trees(
             let idx = map_utils::cords_to_index(map_dimensions, try_tree_tile);
 
             if let Object::NoObject = object_grid[idx] {
-                object_grid[idx] = Tree::new(try_tree_tile, rng, map_dimensions, map_cells);
+                object_grid[idx] = Tree::new(try_tree_tile, rng);
                 break;
             }
         }
@@ -774,7 +755,6 @@ pub fn spawn_standalone_grass(
     tile_grid: &MapTileGrid,
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
-    cells: &mut Vec<MapCell>,
     game_context: &mut GameContext,
 ) {
     let num_of_grass =
@@ -795,7 +775,7 @@ pub fn spawn_standalone_grass(
             let idx = map_utils::cords_to_index(map_dimensions, try_grass_tile);
 
             if let Object::NoObject = object_grid[idx] {
-                object_grid[idx] = Grass::new(try_grass_tile, game_context, map_dimensions, cells);
+                object_grid[idx] = Grass::new(try_grass_tile, game_context);
                 break;
             }
         }
@@ -807,7 +787,6 @@ pub fn spawn_grass_around_lakes(
     object_grid: &mut MapObjectGrid,
     lake_tiles: Vec<MapCord>,
     map_dimensions: MapDimensions,
-    cells: &mut Vec<MapCell>,
     game_context: &mut GameContext,
 ) {
     for lake_tile in lake_tiles {
@@ -844,19 +823,15 @@ pub fn spawn_grass_around_lakes(
                             *obj = Grass::new_large_likely(
                                 try_grass_tile,
                                 game_context,
-                                map_dimensions,
-                                cells,
                             )
                         }
                         0.7..=1.0 => {
                             *obj = Grass::new_small_likely(
                                 try_grass_tile,
                                 game_context,
-                                map_dimensions,
-                                cells,
                             )
                         }
-                        _ => *obj = Grass::new(try_grass_tile, game_context, map_dimensions, cells),
+                        _ => *obj = Grass::new(try_grass_tile, game_context),
                     }
                 }
             }
@@ -869,7 +844,6 @@ pub fn spawn_grass_around_rivers(
     object_grid: &mut MapObjectGrid,
     river_tiles: &HashMap<MapCord, RiverSpriteData>,
     map_dimensions: MapDimensions,
-    cells: &mut Vec<MapCell>,
     game_context: &mut GameContext,
 ) {
     for (cord, _) in river_tiles {
@@ -904,19 +878,15 @@ pub fn spawn_grass_around_rivers(
                             *obj = Grass::new_large_likely(
                                 try_grass_tile,
                                 game_context,
-                                map_dimensions,
-                                cells,
                             )
                         }
                         0.7..=1.0 => {
                             *obj = Grass::new_small_likely(
                                 try_grass_tile,
                                 game_context,
-                                map_dimensions,
-                                cells,
                             )
                         }
-                        _ => *obj = Grass::new(try_grass_tile, game_context, map_dimensions, cells),
+                        _ => *obj = Grass::new(try_grass_tile, game_context),
                     }
                 }
             }
@@ -928,7 +898,6 @@ pub fn spawn_fields_of_grass(
     tile_grid: &MapTileGrid,
     object_grid: &mut MapObjectGrid,
     map_dimensions: MapDimensions,
-    map_cells: &mut Vec<MapCell>,
     game_context: &mut GameContext,
 ) {
     let total_tiles = map_dimensions.total_tiles();
@@ -995,8 +964,6 @@ pub fn spawn_fields_of_grass(
                         *obj = Grass::new_small_likely(
                             try_grass_tile,
                             game_context,
-                            map_dimensions,
-                            map_cells,
                         )
                     } else {
                         // if its on the edges of the field, make it likely to be small, if in middle, its likely to be large, else, random size
@@ -1009,24 +976,18 @@ pub fn spawn_fields_of_grass(
                                 *obj = Grass::new_small_likely(
                                     try_grass_tile,
                                     game_context,
-                                    map_dimensions,
-                                    map_cells,
                                 )
                             }
                             0.4..=0.6 => {
                                 *obj = Grass::new_large_likely(
                                     try_grass_tile,
                                     game_context,
-                                    map_dimensions,
-                                    map_cells,
                                 )
                             }
                             _ => {
                                 *obj = Grass::new(
                                     try_grass_tile,
                                     game_context,
-                                    map_dimensions,
-                                    map_cells,
                                 )
                             }
                         }

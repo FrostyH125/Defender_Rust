@@ -10,12 +10,11 @@ use crate::{
     GameContext, entities::{
         object::{Object::*, ObjectState::GettingHit},
         objects::{grass::Grass, tree::Tree},
-    }, map::{map_cell::MapCell, tile_map::MapDimensions}, utils::{
+    }, utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
         map_cord::MapCord,
-        map_utils::{cords_to_index, get_cell_at_cord},
     },
 };
 
@@ -51,8 +50,6 @@ impl ObjectData {
         draw_offset: Vector2,
         randomized_offset: Vector2,
         cord: MapCord,
-        map_cells: &mut Vec<MapCell>,
-        map_dimensions: MapDimensions,
         width: f32,
         height: f32,
         health: f32,
@@ -62,9 +59,6 @@ impl ObjectData {
         let true_pos = pos + randomized_offset;
         let draw_pos = true_pos + draw_offset;
 
-        // add current index of object to appropriate cell
-        let map_cord = MapCord::from_vec2(pos);
-        let cell = get_cell_at_cord(map_cells, map_dimensions, map_cord).unwrap();
 
         return ObjectData {
             pos: true_pos,

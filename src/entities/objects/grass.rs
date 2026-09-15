@@ -8,7 +8,6 @@ use crate::{
         object::{Object, ObjectData},
         objects::grass::GrassType::Wheaty,
     },
-    map::{map_cell::MapCell, tile_map::MapDimensions},
     utils::{direction_utils::FacingDirection, map_cord::MapCord, vector2_utils},
 };
 
@@ -128,7 +127,7 @@ static STALKY_GRASS_ANIMS: [SpriteAnimationData; 3] = [
 ];
 
 #[derive(Copy, Clone)]
-enum GrassType {
+pub enum GrassType {
     Wheaty,
     Flowery,
     Bushy,
@@ -160,8 +159,6 @@ impl Grass {
     pub fn new(
         cord: MapCord,
         game_context: &mut GameContext,
-        map_dimensions: MapDimensions,
-        cells: &mut Vec<MapCell>,
     ) -> Object {
         let grass_level = game_context.rng.random_range(0..=2);
         let grass_type = GrassType::random_type(&mut game_context.rng);
@@ -177,8 +174,6 @@ impl Grass {
             Vector2::new(0.0, offset_y),
             vector2_utils::random_offset_by_one(&mut game_context.rng),
             cord,
-            cells,
-            map_dimensions,
             GRASS_WIDTH as f32,
             height as f32,
             100.0,
@@ -212,8 +207,6 @@ impl Grass {
     pub fn new_small_likely(
         cord: MapCord,
         game_context: &mut GameContext,
-        map_dimensions: MapDimensions,
-        cells: &mut Vec<MapCell>,
     ) -> Object {
         let grass_level = if game_context.rng.random_bool(0.9) {
             0
@@ -236,8 +229,6 @@ impl Grass {
             Vector2::new(0.0, offset_y),
             vector2_utils::random_offset_by_one(&mut game_context.rng),
             cord,
-            cells,
-            map_dimensions,
             GRASS_WIDTH as f32,
             height as f32,
             100.0,
@@ -271,8 +262,6 @@ impl Grass {
     pub fn new_large_likely(
         cord: MapCord,
         game_context: &mut GameContext,
-        map_dimensions: MapDimensions,
-        cells: &mut Vec<MapCell>,
     ) -> Object {
         let grass_level = if game_context.rng.random_bool(0.9) {
             2
@@ -295,8 +284,6 @@ impl Grass {
             Vector2::new(0.0, offset_y),
             vector2_utils::random_offset_by_one(&mut game_context.rng),
             cord,
-            cells,
-            map_dimensions,
             GRASS_WIDTH as f32,
             height as f32,
             100.0,

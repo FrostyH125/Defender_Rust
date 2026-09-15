@@ -1,18 +1,12 @@
 use std::collections::HashMap;
 
-use raylib::{
-    color::Color,
-    drawing::{RaylibDraw, RaylibDrawHandle},
-    math::{Rectangle, Vector2},
-    texture::Texture2D,
-};
+use raylib::{color::Color, drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
 use zander_game_core_rs::raylib::animation_data::SpriteAnimationData;
 
 use crate::{
     GameContext, TILE_SIZE,
     entities::object::Object,
     map::{
-        map_cell::{CELL_SIZE, MapCell},
         map_gen_functions,
         tile::{
             LakeSpriteData, RiverSpriteData,
@@ -26,9 +20,7 @@ use crate::{
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
     },
-    utils::{
-        direction_utils::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index,
-    },
+    utils::map_cord::MapCord,
 };
 
 pub type MapTileGrid = Vec<TileType>;
@@ -47,7 +39,7 @@ impl MapDimensions {
 }
 
 // this struct is a convenient way to have the tile animations all run off of one instance (as to not update n number of tile anims separately)
-// otherwise there would need to be at least one tile anim instance per individual tile animation and even dispatching that would be a 
+// otherwise there would need to be at least one tile anim instance per individual tile animation and even dispatching that would be a
 // massive headache. This is actually based off of the old super loose coupled animation API i had in my library before changing it
 struct TileAnimationInstance {
     number_of_frames: usize,
@@ -104,7 +96,6 @@ impl TileAnimationInstance {
 pub struct TileMap {
     pub map_tile_grid: MapTileGrid,
     pub map_object_grid: MapObjectGrid,
-    pub map_cell_grid: Vec<MapCell>,
     pub map_dimensions: MapDimensions,
     lake_sprite_data: HashMap<MapCord, LakeSpriteData>,
     river_sprite_data: HashMap<MapCord, RiverSpriteData>,
@@ -119,8 +110,6 @@ impl TileMap {
             width: map_width,
             height: map_height,
         };
-
-        let mut map_cell_grid = map_gen_functions::generate_cell_grid(map_dimensions);
 
         let total_map_length = map_dimensions.total_tiles();
 
@@ -157,7 +146,6 @@ impl TileMap {
             &mut object_grid,
             forest_lake_tiles,
             map_dimensions,
-            &mut map_cell_grid,
             &mut game_context.rng,
         );
         println!("Made forest lakes!");
@@ -166,7 +154,6 @@ impl TileMap {
             &tile_grid,
             &mut object_grid,
             map_dimensions,
-            &mut map_cell_grid,
             &mut game_context.rng,
         );
         println!("Forests created!");
@@ -175,7 +162,6 @@ impl TileMap {
             &tile_grid,
             &mut object_grid,
             map_dimensions,
-            &mut map_cell_grid,
             &mut game_context.rng,
         );
         println!("Standalone trees created!");
@@ -184,7 +170,6 @@ impl TileMap {
             &tile_grid,
             &mut object_grid,
             map_dimensions,
-            &mut map_cell_grid,
             game_context,
         );
         println!("Standalone grass created!");
@@ -194,7 +179,6 @@ impl TileMap {
             &mut object_grid,
             grass_lake_tiles,
             map_dimensions,
-            &mut map_cell_grid,
             game_context,
         );
         println!("Made grass around lakes!");
@@ -204,7 +188,6 @@ impl TileMap {
             &mut object_grid,
             &river_sprite_data,
             map_dimensions,
-            &mut map_cell_grid,
             game_context,
         );
         println!("Made grass around rivers!");
@@ -213,7 +196,6 @@ impl TileMap {
             &tile_grid,
             &mut object_grid,
             map_dimensions,
-            &mut map_cell_grid,
             game_context,
         );
         println!("Made fields of grass!");
@@ -223,7 +205,6 @@ impl TileMap {
         return TileMap {
             map_tile_grid: tile_grid,
             map_object_grid: object_grid,
-            map_cell_grid,
             map_dimensions,
             lake_sprite_data,
             river_sprite_data: river_sprite_data,
@@ -407,34 +388,6 @@ impl TileMap {
         //self.dbg_cells(d);
     }
 
-    fn dbg_cells(&self, d: &mut RaylibDrawHandle<'_>) {
-        for i in 0..self.map_cell_grid.len() {
-            let cells_wide = self.map_dimensions.width / CELL_SIZE;
-            let cell_y = i as u16 / cells_wide;
-            let cell_x = i as u16 % cells_wide;
-
-            let pos = Vector2::new(
-                (cell_x * CELL_SIZE) as f32 * TILE_SIZE,
-                (cell_y * CELL_SIZE) as f32 * TILE_SIZE,
-            );
-            let rect = Rectangle::new(
-                pos.x,
-                pos.y,
-                CELL_SIZE as f32 * TILE_SIZE,
-                CELL_SIZE as f32 * TILE_SIZE,
-            );
-
-            d.draw_rectangle_lines_ex(rect, 3.0, Color::WHITE);
-            d.draw_text(
-                &format!("{}", i),
-                pos.x as i32 + 5,
-                pos.y as i32 + 5,
-                10,
-                Color::WHITE,
-            );
-        }
-    }
-
     pub fn get_tile_from_x_y(&self, x: i16, y: i16) -> TileType {
         let index = y as usize * self.map_dimensions.width as usize + x as usize;
         return self.map_tile_grid[index as usize];
@@ -462,46 +415,5 @@ impl TileMap {
         } else {
             return false;
         }
-    }
-
-    /// returns an optional mutable reference to the cell at the cord, if oob, returns None
-    pub fn get_mut_cell_at_cord(&mut self, cord: MapCord) -> Option<&mut MapCell> {
-        if !self.cord_is_in_bounds(cord) {
-            return None;
-        }
-
-        let cell_x = cord.x as u16 / CELL_SIZE;
-        let cell_y = cord.y as u16 / CELL_SIZE;
-        let num_of_cells_wide = self.map_dimensions.width / CELL_SIZE;
-
-        return Some(&mut self.map_cell_grid[(cell_y * num_of_cells_wide + cell_x) as usize]);
-    }
-
-    pub fn get_cell_at_cord(&self, cord: MapCord) -> Option<&MapCell> {
-        if !self.cord_is_in_bounds(cord) {
-            return None;
-        }
-
-        let cell_x = cord.x as u16 / CELL_SIZE;
-        let cell_y = cord.y as u16 / CELL_SIZE;
-        let num_of_cells_wide = self.map_dimensions.width / CELL_SIZE;
-
-        return Some(&self.map_cell_grid[(cell_y * num_of_cells_wide + cell_x) as usize]);
-    }
-
-    pub fn get_3_x_3_cell_grid(&self, cord: MapCord) -> Vec<&MapCell> {
-        let mut cells: Vec<&MapCell> = Vec::new();
-
-        // add the current cell
-        cells.push(self.get_cell_at_cord(cord).unwrap());
-
-        for dir in ORTHOGONAL_DELTAS {
-            let check_cord = cord + (dir * CELL_SIZE as i32);
-            if let Some(c) = self.get_cell_at_cord(check_cord) {
-                cells.push(c);
-            }
-        }
-
-        return cells;
     }
 }

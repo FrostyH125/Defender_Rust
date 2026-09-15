@@ -3,7 +3,7 @@ use zander_game_core_rs::{raylib::{animation_data::SpriteAnimationData, sprite::
 
 use crate::{
     GameContext, entities::{
-        character::{self, Affiliation, Character, CharacterData, CharacterMovementResult, CharacterSpecificValues}, characters::gatherer::GathererState::MovingToObject, object::Object,
+        character::{Affiliation, Character, CharacterData, CharacterMovementResult, CharacterSpecificValues}, characters::gatherer::GathererState::MovingToObject, object::Object,
     }, map::tile_map::{MapObjectGrid, TileMap}, utils::pathfinding::PathResult::NoPath,
 };
 
