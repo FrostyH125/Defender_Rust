@@ -1,5 +1,5 @@
 use raylib::math::Vector2;
-use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
+use zander_game_core_rs::{raylib::{animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance}, system::timer::Timer};
 
 use crate::{
     GameContext, entities::{
@@ -7,7 +7,26 @@ use crate::{
     }, map::tile_map::{MapObjectGrid, TileMap}, utils::pathfinding::PathResult::NoPath,
 };
 
-pub static GATHERER_SPRITE: Sprite = Sprite::new(16, 72, 8, 8);
+pub static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &[
+        Sprite::new(16, 176, 8, 8),
+        Sprite::new(24, 176, 8, 8),
+        Sprite::new(32, 176, 8, 8),
+        Sprite::new(40, 176, 8, 8),
+    ],
+    frame_duration: 0.25,
+    should_loop: true,
+};
+
+pub static GATHERER_MOVE_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &[
+        Sprite::new(16, 184, 8, 8),
+        Sprite::new(24, 184, 8, 8),
+        Sprite::new(32, 184, 8, 8),
+    ],
+    frame_duration: 0.25,
+    should_loop: true,
+};
 
 struct ObjectEntry {
     idx: usize,
@@ -15,12 +34,13 @@ struct ObjectEntry {
     dist: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum GatherTarget {
     Tree,
     Grass,
 }
 
+#[derive(PartialEq)]
 pub enum GathererState {
     Idle,
     LookingForObject {
@@ -60,6 +80,8 @@ impl Gatherer {
     pub fn new(pos: Vector2) -> Character {
 
         let character_values = CharacterSpecificValues {
+            idle_anim: SpriteAnimationInstance::new(&GATHERER_IDLE_ANIM),
+            move_anim: SpriteAnimationInstance::new(&GATHERER_MOVE_ANIM),
             affiliation: Affiliation::Good,
             draw_offset: Vector2::zero(),
             width: 8.0,
@@ -269,7 +291,7 @@ impl Gatherer {
         return false;
     }
 
-    pub fn sprite(&self) -> Sprite {
-        return GATHERER_SPRITE;
+    pub fn current_sprite(&self) -> Sprite {
+        return GATHERER_IDLE_ANIM.frames[0];
     }
 }

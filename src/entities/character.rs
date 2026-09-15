@@ -1,14 +1,21 @@
+use std::collections::HashMap;
+
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
-use zander_game_core_rs::raylib::sprite::Sprite;
+use zander_game_core_rs::raylib::{sprite::Sprite, sprite_animation::SpriteAnimationInstance};
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{
-        characters::gatherer::{Gatherer, GathererState}, entity_manager::CharacterInfo, object::Object,
-    }, map::tile_map::{MapDimensions, TileMap}, utils::{
+    GameContext, TILE_SIZE,
+    entities::{
+        characters::gatherer::{Gatherer, GathererState},
+        entity_manager::CharacterInfo,
+        object::Object,
+    },
+    map::tile_map::{MapDimensions, TileMap},
+    utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
@@ -21,7 +28,7 @@ use crate::{
 #[derive(Clone, Copy)]
 pub enum Affiliation {
     Good,
-    Evil
+    Evil,
 }
 
 pub enum CharacterMovementResult {
@@ -34,10 +41,8 @@ pub enum CharacterMovementResult {
 #[derive(Clone, Copy)]
 pub enum CharacterState {
     None,
-    Moving {
-        target: Vector2
-    },
-    InCombat
+    Moving { target: Vector2 },
+    InCombat,
 }
 
 pub struct CharacterData {
@@ -52,17 +57,18 @@ pub struct CharacterData {
     pub is_selected: bool,
     pub is_selected_for_move: bool,
     pub state: CharacterState,
-    pub char_idx: usize
-    // move_anim
-    // attack_anim
-    // attack_speed
-    // attack_power
+    pub char_idx: usize, // move_anim
+                         // attack_anim
+                         // attack_speed
+                         // attack_power
 }
 
 /// this struct is for things that are based on T type character, not characters as a whole and not things managed by the code specifically
 /// basically just things that are solely dependent on the type of character holding it (ex: position doesnt count, since that isnt based
 /// on the character type)
 pub struct CharacterSpecificValues {
+    pub idle_anim: SpriteAnimationInstance,
+    pub move_anim: SpriteAnimationInstance,
     pub draw_offset: Vector2,
     pub move_speed: f32,
     pub health: f32,
@@ -76,10 +82,7 @@ pub struct CharacterSpecificValues {
 }
 
 impl CharacterData {
-    pub fn new(
-        pos: Vector2,
-        character_values: CharacterSpecificValues
-    ) -> CharacterData {
+    pub fn new(pos: Vector2, character_values: CharacterSpecificValues) -> CharacterData {
         return CharacterData {
             state: CharacterState::None,
             pos,
@@ -92,7 +95,7 @@ impl CharacterData {
             is_selected_for_move: false,
             opponents: Vec::new(),
             char_idx: 0,
-            character_values
+            character_values,
         };
     }
 
@@ -208,24 +211,56 @@ impl Character {
     }
 
     #[inline]
-    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap, character_info: &[CharacterInfo]) {
-
+    pub fn update(
+        &mut self,
+        game_context: &mut GameContext,
+        map: &mut TileMap,
+        character_info: &HashMap<usize, CharacterInfo>,
+    ) {
         match self.get_data().state {
             CharacterState::None => {
-                match self {
-                    Character::GathererChar(gatherer) => {
-                        gatherer.update(game_context, map)
-                    }
+                if self.is_idle() {
+                    self.get_mut_data()
+                        .character_values
+                        .idle_anim
+                        .update(game_context.dt);
                 }
-            },
+
+                match self {
+                    Character::GathererChar(gatherer) => gatherer.update(game_context, map),
+                }
+            }
             CharacterState::Moving { target } => {
                 match self.get_mut_data().move_to(target, game_context, map) {
-                    CharacterMovementResult::NotArrivedYet => (),
+                    CharacterMovementResult::NotArrivedYet => self
+                        .get_mut_data()
+                        .character_values
+                        .move_anim
+                        .update(game_context.dt),
                     _ => self.get_mut_data().state = CharacterState::None,
                 }
-            },
+            }
             CharacterState::InCombat => {
-                let enemy_hp = character_info[self.get_data().opponents[0]].health;
+                // for now just the first entry is important
+                // this grabs the enemy hp (current enemy) at the first opponents char id's key
+                // the reason i went with a hashmap is to make it easier for characters to look up this sort of thing
+                // especially later on when looking for pos and stuff
+                // and it also makes it easier to add a spoecific system (such as if i wanted to find the char with the lowest health, for example)
+                // i can simply loop through the opponents list plugging into the hashmap, rather than the obviously idiotic solution
+                // of looping through all characters and finding the ones that are contained within the opponents vec
+                let enemy_hp = character_info[&self.get_data().opponents[0]].health;
+
+                // attack_timer.track(dt)
+                //
+                // if attack_timer.is_finished()
+                //  attack_anim.track(dt)
+                //  if attack_anim.finished_playing
+                //   attack_anim.reset()
+                //   attack_timer.reset()
+                //   match self {
+                //    gatherer | builder => request_attack_enemy
+                //    fighter => fighter.attack(info, game_context.character_action_manager)
+                //   }
 
                 // only switches state when opponents are gone
                 if enemy_hp <= 0.0 {
@@ -234,9 +269,9 @@ impl Character {
                         self.get_mut_data().state = CharacterState::None;
                     }
                 }
-            },
+            }
         }
-        
+
         let data = self.get_mut_data();
 
         data.is_hovering = false;
@@ -292,9 +327,20 @@ impl Character {
         );
     }
 
+    /// the individual implementations per class of `current_sprite()` are
+    /// only used when the main character state is None and the character itself
+    /// is not idle, thus, unique actions can be implemented cleanly
     pub fn current_sprite(&self) -> Sprite {
-        let mut spr = match self {
-            Character::GathererChar(gatherer) => gatherer.sprite(),
+        let mut spr = match self.get_data().state {
+            CharacterState::None => {
+                if self.is_idle() {
+                    self.get_data().character_values.idle_anim.current_sprite()
+                } else {
+                    self.current_sprite()
+                }
+            }
+            CharacterState::Moving { .. } => self.get_data().character_values.move_anim.current_sprite(),
+            CharacterState::InCombat => todo!(),
         };
 
         if self.get_data().facing_direction == FacingDirection::Left {
@@ -317,7 +363,12 @@ impl Character {
     pub fn get_hover_rect(&self) -> Rectangle {
         let data = self.get_data();
         let d_pos = self.get_draw_pos();
-        return Rectangle::new(d_pos.x, d_pos.y, data.character_values.width, data.character_values.height);
+        return Rectangle::new(
+            d_pos.x,
+            d_pos.y,
+            data.character_values.width,
+            data.character_values.height,
+        );
     }
 
     #[inline]
@@ -341,20 +392,22 @@ impl Character {
     }
 
     #[inline]
-    pub fn update_obj_if_out_of_update_range(
-        object: &mut Object,
-        game_context: &mut GameContext,
-    ) {
+    pub fn update_obj_if_out_of_update_range(object: &mut Object, game_context: &mut GameContext) {
         let object_pos = object.get_data().pos;
 
         if !camera_utils::is_in_update_area(object_pos, game_context) {
             return;
         }
 
-        object.update(
-            game_context,
-            false,
-        );
+        object.update(game_context, false);
+    }
+
+    pub fn is_idle(&self) -> bool {
+        match self {
+            Character::GathererChar(gatherer) => {
+                return gatherer.state == GathererState::Idle;
+            }
+        }
     }
 
     pub fn reset_state(&mut self) {

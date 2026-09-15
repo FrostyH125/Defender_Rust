@@ -30,6 +30,7 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
+//      tile nighttime shader necessary for fixing night time
 //      add clouds
 //      make characters add themselves to the map cells every frame, this should be done before updating but after chars.sort()
 //      make map cells clear themselves every frame
@@ -48,7 +49,7 @@ pub mod utils;
 //          -- FighterState::Idle
 //          -- FighterState::LookingForEnemy
 //          -- FighterState::MovingToEnemy
-//          -- FighterState::AttackingEnemy
+//          -- FighterState::InCombat
 //          After all of this is added, i need to test the new combat system in place.
 //          have a fighter request engaging in combat with an enemy after moving toward it
 //          have them hit eachother (draw hp over each one to see),
@@ -223,9 +224,9 @@ fn main() {
     // DEBUG START
     //
 
-    for _ in 0..10 {
-        entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
-    }
+
+    entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
+    
 
     //
     // DEBUG END

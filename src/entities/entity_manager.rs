@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use rand::RngExt;
 use raylib::{
     drawing::RaylibDrawHandle,
@@ -142,14 +144,19 @@ impl EntityManager {
 
         let mut moved_anyone = false;
 
-        let character_info: Vec<CharacterInfo> = self
+        let character_info: HashMap<usize, CharacterInfo> = self
             .characters
             .iter()
-            .map(|c| CharacterInfo {
-                health: c.character.get_data().character_values.health,
-                affiliation: c.character.get_data().character_values.affiliation,
-                position: c.character.get_data().pos,
-                char_id: c.unique_id
+            .map(|c| {
+                (
+                    c.unique_id,
+                    CharacterInfo {
+                        health: c.character.get_data().character_values.health,
+                        affiliation: c.character.get_data().character_values.affiliation,
+                        position: c.character.get_data().pos,
+                        char_id: c.unique_id,
+                    },
+                )
             })
             .collect();
 
@@ -248,10 +255,7 @@ impl EntityManager {
 
                 let obj = &mut map.map_object_grid[index];
 
-                obj.update(
-                    game_context,
-                    selector.is_deselecting_objs,
-                );
+                obj.update(game_context, selector.is_deselecting_objs);
 
                 if let Object::NoObject = obj {
                     continue;
