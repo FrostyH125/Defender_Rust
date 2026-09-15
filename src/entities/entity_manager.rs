@@ -151,7 +151,7 @@ impl EntityManager {
                 (
                     c.unique_id,
                     CharacterInfo {
-                        health: c.character.get_data().character_values.health,
+                        health: c.character.get_data().health,
                         affiliation: c.character.get_data().character_values.affiliation,
                         position: c.character.get_data().pos,
                         char_id: c.unique_id,

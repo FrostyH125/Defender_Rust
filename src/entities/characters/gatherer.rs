@@ -28,6 +28,18 @@ pub static GATHERER_MOVE_ANIM: SpriteAnimationData = SpriteAnimationData {
     should_loop: true,
 };
 
+pub static GATHERER_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &[
+        Sprite::new(16, 192, 8, 8),
+        Sprite::new(24, 192, 8, 8),
+        Sprite::new(32, 192, 8, 8),
+        Sprite::new(40, 192, 8, 8),
+        Sprite::new(48, 192, 8, 8),
+    ],
+    frame_duration: 0.25,
+    should_loop: false
+};
+
 struct ObjectEntry {
     idx: usize,
     pos: Vector2,
@@ -82,12 +94,15 @@ impl Gatherer {
         let character_values = CharacterSpecificValues {
             idle_anim: SpriteAnimationInstance::new(&GATHERER_IDLE_ANIM),
             move_anim: SpriteAnimationInstance::new(&GATHERER_MOVE_ANIM),
+            attack_anim: SpriteAnimationInstance::new(&GATHERER_ATTACK_ANIM),
             affiliation: Affiliation::Good,
             draw_offset: Vector2::zero(),
+            time_between_attacks: 1.0,
+            attack_power: 5.0,
             width: 8.0,
             height: 8.0,
             move_speed: 30.0,
-            health: 100.0
+            max_health: 100.0,
         };
         
         let gatherer = Gatherer {
@@ -118,7 +133,6 @@ impl Gatherer {
             GathererState::LookingForObject { gather_target } => {
                 self.looking_for_object(map, gather_target);
             }
-
             GathererState::MovingToObject {
                 target_pos,
                 gather_target,
@@ -158,8 +172,6 @@ impl Gatherer {
         target_pos: Vector2,
         gather_target: GatherTarget,
     ) {
-        //map.map_object_grid[object_index].get_mut_data().is_occupied = true;
-
         match self.data.move_to(target_pos, game_context, map) {
             CharacterMovementResult::Success => {
                 self.state = GathererState::GatheringObject {
@@ -187,7 +199,7 @@ impl Gatherer {
         self.data.target_pos = None;
 
         let closest_obj: Option<ObjectEntry> =
-            self.find_closest_target(&map.map_object_grid, &self.object_indices, gather_target);
+            self.find_closest_target(&map.map_object_grid, gather_target);
 
         match closest_obj {
             Some(o) => {
@@ -224,12 +236,11 @@ impl Gatherer {
     fn find_closest_target(
         &self,
         object_grid: &MapObjectGrid,
-        idxs: &Vec<usize>,
         target_obj: GatherTarget,
     ) -> Option<ObjectEntry> {
         let mut closest_obj: Option<ObjectEntry> = None;
 
-        for idx in idxs {
+        for idx in &self.object_indices {
             let obj = &object_grid[*idx];
 
             if let Object::NoObject = obj {

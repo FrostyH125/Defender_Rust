@@ -1,20 +1,31 @@
-
 use rand::RngExt;
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
-use zander_game_core_rs::{raylib::sprite::Sprite, system::sprite_particle_system::SpriteParticleSystem};
+use zander_game_core_rs::{
+    raylib::sprite::Sprite, system::sprite_particle_system::SpriteParticleSystem,
+};
 
 use crate::{
-    GameContext, entities::{
-        character::Character, characters::gatherer::{GatherTarget, GathererState}, entity_manager::CharacterEntry, object::Object,
-    }, map::tile_map::MapObjectGrid, utils::{
+    GameContext,
+    entities::{
+        character::Character,
+        characters::gatherer::{GatherTarget, GathererState},
+        entity_manager::CharacterEntry,
+        object::Object,
+    },
+    map::tile_map::MapObjectGrid,
+    utils::{
         direction_utils::ORTHOGONAL_DELTAS, draw_utils, entity_utils::get_char_by_index,
         mouse_utils::mouse_world_coords,
     },
 };
+
+// what youre going to do here when you want to add attacking, you simply just need to switch the
+// fighters to moving to enemy and then add the enemies to their target list. enemies dont need
+// to know until they show up and actually request an engagement in battle
 
 pub const CHOP_TREE_BUTTON_SPRITE: Sprite = Sprite::new(144, 40, 16, 16);
 pub const CUT_GRASS_BUTTON_SPRITE: Sprite = Sprite::new(160, 40, 16, 16);
@@ -107,9 +118,8 @@ impl ActionButton {
         characters: &mut [CharacterEntry],
         obj_kind: GatherTarget,
     ) {
-
         let mut object_ids_with_correct_type: Vec<usize> = Vec::with_capacity(100);
-        
+
         for obj_id in obj_ids {
             let obj = &mut object_grid[*obj_id];
 
@@ -125,7 +135,7 @@ impl ActionButton {
                         grass.data.is_marked_for_gathering = true;
                         object_ids_with_correct_type.push(*obj_id);
                     }
-                },
+                }
             }
         }
 
@@ -135,7 +145,9 @@ impl ActionButton {
             if let Character::GathererChar(gatherer) = char {
                 gatherer.object_indices.clear();
                 gatherer.object_indices = object_ids_with_correct_type.clone();
-                gatherer.state = GathererState::LookingForObject {gather_target: obj_kind };
+                gatherer.state = GathererState::LookingForObject {
+                    gather_target: obj_kind,
+                };
                 gatherer.should_unoccupy_current_obj = true;
             }
         }

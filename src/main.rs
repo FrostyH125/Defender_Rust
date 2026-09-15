@@ -30,6 +30,7 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
+//      add a vfx manager for adding things like slashes in a fire and forget kind of way
 //      tile nighttime shader necessary for fixing night time
 //      add clouds
 //      make characters add themselves to the map cells every frame, this should be done before updating but after chars.sort()

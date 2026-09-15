@@ -5,7 +5,10 @@ use raylib::{
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
-use zander_game_core_rs::raylib::{sprite::Sprite, sprite_animation::SpriteAnimationInstance};
+use zander_game_core_rs::{
+    raylib::{sprite::Sprite, sprite_animation::SpriteAnimationInstance},
+    system::timer::Timer,
+};
 
 use crate::{
     GameContext, TILE_SIZE,
@@ -15,6 +18,7 @@ use crate::{
         object::Object,
     },
     map::tile_map::{MapDimensions, TileMap},
+    systems::character_action_manager::{self, CharacterActionManager},
     utils::{
         camera_utils,
         direction_utils::FacingDirection,
@@ -52,15 +56,14 @@ pub struct CharacterData {
     pub pos: Vector2,
     pub target_pos: Option<Vector2>,
     pub facing_direction: FacingDirection,
+    pub health: f32,
     pub is_hovering: bool,
     pub is_hovering_for_move: bool,
     pub is_selected: bool,
     pub is_selected_for_move: bool,
     pub state: CharacterState,
-    pub char_idx: usize, // move_anim
-                         // attack_anim
-                         // attack_speed
-                         // attack_power
+    pub char_idx: usize,
+    pub attack_timer: Timer,
 }
 
 /// this struct is for things that are based on T type character, not characters as a whole and not things managed by the code specifically
@@ -69,16 +72,15 @@ pub struct CharacterData {
 pub struct CharacterSpecificValues {
     pub idle_anim: SpriteAnimationInstance,
     pub move_anim: SpriteAnimationInstance,
+    pub attack_anim: SpriteAnimationInstance,
     pub draw_offset: Vector2,
+    pub max_health: f32,
+    pub time_between_attacks: f32,
+    pub attack_power: f32,
     pub move_speed: f32,
-    pub health: f32,
     pub width: f32,
     pub height: f32,
     pub affiliation: Affiliation,
-    // move_anim,
-    // attack_anim,
-    // attack_speed,
-    // attack_power
 }
 
 impl CharacterData {
@@ -89,12 +91,14 @@ impl CharacterData {
             target_pos: None,
             path: NoPath,
             facing_direction: FacingDirection::Right,
+            health: character_values.max_health,
             is_hovering: false,
             is_hovering_for_move: false,
             is_selected: false,
             is_selected_for_move: false,
             opponents: Vec::new(),
             char_idx: 0,
+            attack_timer: Timer::new(character_values.time_between_attacks),
             character_values,
         };
     }
@@ -250,17 +254,23 @@ impl Character {
                 // of looping through all characters and finding the ones that are contained within the opponents vec
                 let enemy_hp = character_info[&self.get_data().opponents[0]].health;
 
-                // attack_timer.track(dt)
-                //
-                // if attack_timer.is_finished()
-                //  attack_anim.track(dt)
-                //  if attack_anim.finished_playing
-                //   attack_anim.reset()
-                //   attack_timer.reset()
-                //   match self {
-                //    gatherer | builder => request_attack_enemy
-                //    fighter => fighter.attack(info, game_context.character_action_manager)
-                //   }
+                let data = self.get_mut_data();
+                let dt = game_context.dt;
+
+                data.attack_timer.track(dt);
+
+                if data.attack_timer.is_done() {
+                    data.character_values.attack_anim.update(dt);
+                    if data.character_values.attack_anim.finished_playing {
+                        data.character_values.attack_anim.reset();
+                        data.attack_timer.reset();
+                        self.attack(
+                            self.get_data().char_idx,
+                            self.get_data().opponents[0],
+                            &mut game_context.character_action_manager,
+                        );
+                    }
+                }
 
                 // only switches state when opponents are gone
                 if enemy_hp <= 0.0 {
@@ -336,10 +346,14 @@ impl Character {
                 if self.is_idle() {
                     self.get_data().character_values.idle_anim.current_sprite()
                 } else {
-                    self.current_sprite()
+                    match self {
+                        Character::GathererChar(gatherer) => gatherer.current_sprite(),
+                    }
                 }
             }
-            CharacterState::Moving { .. } => self.get_data().character_values.move_anim.current_sprite(),
+            CharacterState::Moving { .. } => {
+                self.get_data().character_values.move_anim.current_sprite()
+            }
             CharacterState::InCombat => todo!(),
         };
 
@@ -413,6 +427,31 @@ impl Character {
     pub fn reset_state(&mut self) {
         match self {
             Character::GathererChar(gatherer) => gatherer.state = GathererState::Idle,
+        }
+    }
+
+    pub fn level_up(&mut self) {
+        let data = self.get_mut_data();
+
+        data.character_values.move_speed += 0.05;
+        data.character_values.attack_power += 1.0;
+        data.character_values.max_health += 5.0;
+        data.character_values.time_between_attacks -= 0.01;
+        data.attack_timer = Timer::new(data.character_values.time_between_attacks);
+    }
+
+    pub fn attack(
+        &mut self,
+        self_id: usize,
+        target_id: usize,
+        character_action_manager: &mut CharacterActionManager,
+    ) {
+        match self {
+            Character::GathererChar(..) => character_action_manager.request_attack(
+                self_id,
+                target_id,
+                self.get_data().character_values.attack_power,
+            ),
         }
     }
 }
