@@ -14,7 +14,7 @@ pub static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
         Sprite::new(32, 176, 8, 8),
         Sprite::new(40, 176, 8, 8),
     ],
-    frame_duration: 0.25,
+    frame_duration: 0.5,
     should_loop: true,
 };
 
@@ -95,6 +95,7 @@ impl Gatherer {
             idle_anim: SpriteAnimationInstance::new(&GATHERER_IDLE_ANIM),
             move_anim: SpriteAnimationInstance::new(&GATHERER_MOVE_ANIM),
             attack_anim: SpriteAnimationInstance::new(&GATHERER_ATTACK_ANIM),
+            post_attack_anim: None,
             affiliation: Affiliation::Good,
             draw_offset: Vector2::zero(),
             time_between_attacks: 1.0,

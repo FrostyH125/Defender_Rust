@@ -36,6 +36,7 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
+//      make it so that the selectors never select or even hover enemies for movement
 //      draw grass with a shear when its hit
 //      add a type alias for usize : CharID
 //      add a vfx manager for adding things like slashes in a fire and forget kind of way
@@ -92,8 +93,8 @@ fn main() {
     let window_height_target = 1080;
 
     // what the game will stretch the render target to, to fill the screen
-    let actual_window_width = 2560;
-    let actual_window_height = 1440;
+    let actual_window_width = 1920;
+    let actual_window_height = 1080;
 
     let mut current_zoom = ZoomSizes::FiveX;
     let v_width = current_zoom.v_width(window_width_target);

@@ -49,6 +49,23 @@ pub enum CharacterState {
     InCombat,
 }
 
+#[derive(Clone, Copy)]
+pub enum CombatState {
+    None,
+
+    // for choosing whether to leave combat or move back into pre attack
+    EvaluatingState,
+
+    // for handling the attack animation
+    PreAttack,
+
+    // for handling the attack action itself
+    Attack,
+
+    // for handling an optional post attack cooldown animation
+    PostAttack,
+}
+
 pub struct CharacterData {
     pub character_values: CharacterSpecificValues,
     pub path: PathResult,
@@ -62,6 +79,7 @@ pub struct CharacterData {
     pub is_selected: bool,
     pub is_selected_for_move: bool,
     pub state: CharacterState,
+    pub combat_state: CombatState,
     pub char_idx: usize,
     pub attack_timer: Timer,
 }
@@ -73,6 +91,7 @@ pub struct CharacterSpecificValues {
     pub idle_anim: SpriteAnimationInstance,
     pub move_anim: SpriteAnimationInstance,
     pub attack_anim: SpriteAnimationInstance,
+    pub post_attack_anim: Option<SpriteAnimationInstance>,
     pub draw_offset: Vector2,
     pub max_health: f32,
     pub time_between_attacks: f32,
@@ -87,6 +106,7 @@ impl CharacterData {
     pub fn new(pos: Vector2, character_values: CharacterSpecificValues) -> CharacterData {
         return CharacterData {
             state: CharacterState::None,
+            combat_state: CombatState::None,
             pos,
             target_pos: None,
             path: NoPath,
@@ -245,38 +265,76 @@ impl Character {
                 }
             }
             CharacterState::InCombat => {
-                // for now just the first entry is important
-                // this grabs the enemy hp (current enemy) at the first opponents char id's key
-                // the reason i went with a hashmap is to make it easier for characters to look up this sort of thing
-                // especially later on when looking for pos and stuff
-                // and it also makes it easier to add a spoecific system (such as if i wanted to find the char with the lowest health, for example)
-                // i can simply loop through the opponents list plugging into the hashmap, rather than the obviously idiotic solution
-                // of looping through all characters and finding the ones that are contained within the opponents vec
-                let enemy_hp = character_info[&self.get_data().opponents[0]].health;
-
-                let data = self.get_mut_data();
                 let dt = game_context.dt;
 
-                data.attack_timer.track(dt);
-
-                if data.attack_timer.is_done() {
-                    data.character_values.attack_anim.update(dt);
-                    if data.character_values.attack_anim.finished_playing {
-                        data.character_values.attack_anim.reset();
-                        data.attack_timer.reset();
-                        self.attack(
-                            self.get_data().char_idx,
-                            self.get_data().opponents[0],
-                            &mut game_context.character_action_manager,
-                        );
-                    }
+                if let CombatState::None = self.get_data().combat_state {
+                    self.get_mut_data().combat_state = CombatState::EvaluatingState;
                 }
 
-                // only switches state when opponents are gone
-                if enemy_hp <= 0.0 {
-                    self.get_mut_data().opponents.remove(0);
-                    if self.get_mut_data().opponents.is_empty() {
-                        self.get_mut_data().state = CharacterState::None;
+                match self.get_data().combat_state {
+                    CombatState::None => panic!("should never happen"),
+                    CombatState::EvaluatingState => {
+                        let data = self.get_mut_data();
+                        // for now just the first entry is important
+                        // this grabs the enemy hp (current enemy) at the first opponents char id's key
+                        // the reason i went with a hashmap is to make it easier for characters to look up this sort of thing
+                        // especially later on when looking for pos and stuff
+                        // and it also makes it easier to add a spoecific system (such as if i wanted to find the char with the lowest health, for example)
+                        // i can simply loop through the opponents list plugging into the hashmap, rather than the obviously idiotic solution
+                        // of looping through all characters and finding the ones that are contained within the opponents vec
+                        let enemy_hp = character_info[&data.opponents[0]].health;
+
+                        // only switches state when opponents are gone
+                        if enemy_hp <= 0.0 {
+                            data.opponents.remove(0);
+                            if data.opponents.is_empty() {
+                                data.state = CharacterState::None;
+                                data.combat_state = CombatState::None;
+                            }
+                        }
+                    }
+                    CombatState::PreAttack => {
+                        let data = self.get_mut_data();
+                        if data.attack_timer.is_done() {
+                            data.character_values.attack_anim.update(dt);
+                            if data.character_values.attack_anim.finished_playing {
+                                data.character_values.attack_anim.reset();
+                                data.attack_timer.reset();
+                                data.combat_state = CombatState::Attack;
+                            }
+                        }
+                    }
+                    CombatState::Attack => {
+                        let self_idx = self.get_data().char_idx;
+                        let opponent_idx = self.get_data().opponents[0];
+
+                        self.attack(
+                            self_idx,
+                            opponent_idx,
+                            &mut game_context.character_action_manager,
+                        );
+
+                        let data = self.get_mut_data();
+
+                        match data.character_values.post_attack_anim {
+                            Some(_) => data.combat_state = CombatState::PostAttack,
+                            None => data.combat_state = CombatState::EvaluatingState,
+                        }
+                    }
+                    CombatState::PostAttack => {
+                        if let Some(anim) = self
+                            .get_mut_data()
+                            .character_values
+                            .post_attack_anim
+                            .as_mut()
+                        {
+                            anim.update(dt);
+
+                            if anim.finished_playing {
+                                anim.reset();
+                                self.get_mut_data().combat_state = CombatState::EvaluatingState;
+                            }
+                        }
                     }
                 }
             }
@@ -354,7 +412,15 @@ impl Character {
             CharacterState::Moving { .. } => {
                 self.get_data().character_values.move_anim.current_sprite()
             }
-            CharacterState::InCombat => todo!(),
+            CharacterState::InCombat => {
+                match self.get_data().combat_state {
+                    CombatState::None => panic!("should never happen"),
+                    CombatState::EvaluatingState => self.get_data().character_values.idle_anim.sprite_animation.frames[0],
+                    CombatState::PreAttack => self.get_data().character_values.attack_anim.current_sprite(),
+                    CombatState::Attack => *self.get_data().character_values.attack_anim.sprite_animation.frames.last().unwrap(),
+                    CombatState::PostAttack => self.get_data().character_values.post_attack_anim.as_ref().unwrap().current_sprite(),
+                }
+            },
         };
 
         if self.get_data().facing_direction == FacingDirection::Left {
