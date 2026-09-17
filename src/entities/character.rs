@@ -261,7 +261,10 @@ impl Character {
                         .character_values
                         .move_anim
                         .update(game_context.dt),
-                    _ => self.get_mut_data().state = CharacterState::None,
+                    _ => {
+                        self.get_mut_data().character_values.move_anim.reset();
+                        self.get_mut_data().state = CharacterState::None;
+                    },
                 }
             }
             CharacterState::InCombat => {
@@ -412,14 +415,35 @@ impl Character {
             CharacterState::Moving { .. } => {
                 self.get_data().character_values.move_anim.current_sprite()
             }
-            CharacterState::InCombat => {
-                match self.get_data().combat_state {
-                    CombatState::None => panic!("should never happen"),
-                    CombatState::EvaluatingState => self.get_data().character_values.idle_anim.sprite_animation.frames[0],
-                    CombatState::PreAttack => self.get_data().character_values.attack_anim.current_sprite(),
-                    CombatState::Attack => *self.get_data().character_values.attack_anim.sprite_animation.frames.last().unwrap(),
-                    CombatState::PostAttack => self.get_data().character_values.post_attack_anim.as_ref().unwrap().current_sprite(),
+            CharacterState::InCombat => match self.get_data().combat_state {
+                CombatState::None => panic!("should never happen"),
+                CombatState::EvaluatingState => {
+                    self.get_data()
+                        .character_values
+                        .idle_anim
+                        .sprite_animation
+                        .frames[0]
                 }
+                CombatState::PreAttack => self
+                    .get_data()
+                    .character_values
+                    .attack_anim
+                    .current_sprite(),
+                CombatState::Attack => *self
+                    .get_data()
+                    .character_values
+                    .attack_anim
+                    .sprite_animation
+                    .frames
+                    .last()
+                    .unwrap(),
+                CombatState::PostAttack => self
+                    .get_data()
+                    .character_values
+                    .post_attack_anim
+                    .as_ref()
+                    .unwrap()
+                    .current_sprite(),
             },
         };
 

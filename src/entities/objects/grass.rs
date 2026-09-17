@@ -1,6 +1,8 @@
 use rand::{RngExt, rngs::ThreadRng};
 use raylib::math::Vector2;
-use zander_game_core_rs::raylib::{animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance};
+use zander_game_core_rs::raylib::{
+    animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
+};
 
 use crate::{
     GameContext,
@@ -156,10 +158,7 @@ pub struct Grass {
 }
 
 impl Grass {
-    pub fn new(
-        cord: MapCord,
-        game_context: &mut GameContext,
-    ) -> Object {
+    pub fn new(cord: MapCord, game_context: &mut GameContext) -> Object {
         let grass_level = game_context.rng.random_range(0..=2);
         let grass_type = GrassType::random_type(&mut game_context.rng);
 
@@ -189,7 +188,7 @@ impl Grass {
                 + game_context.total_game_time,
             grass_level,
             grass_type,
-            anim_instance: SpriteAnimationInstance {   
+            anim_instance: SpriteAnimationInstance {
                 sprite_animation: Self::get_grass_anim(grass_type, grass_level),
                 current_frame_time: game_context.rng.random_range(0.0..=GRASS_ANIM_SPEED),
                 current_frame_index: game_context
@@ -197,6 +196,7 @@ impl Grass {
                     .random_range(0..WHEATY_GRASS_ANIMS[0].frames.len())
                     as u8,
                 finished_playing: false,
+                is_playing: false,
             },
         };
 
@@ -204,10 +204,7 @@ impl Grass {
     }
 
     /// has a 90% chance of being level 0 (small), and from the 10% of the other chance, it has an 80% chance of that to be 1 (medium), else its 2 (large)
-    pub fn new_small_likely(
-        cord: MapCord,
-        game_context: &mut GameContext,
-    ) -> Object {
+    pub fn new_small_likely(cord: MapCord, game_context: &mut GameContext) -> Object {
         let grass_level = if game_context.rng.random_bool(0.9) {
             0
         } else if game_context.rng.random_bool(0.8) {
@@ -245,13 +242,14 @@ impl Grass {
             grass_level,
             grass_type,
             anim_instance: SpriteAnimationInstance {
-                sprite_animation: Self::get_grass_anim(grass_type, grass_level),              
+                sprite_animation: Self::get_grass_anim(grass_type, grass_level),
                 current_frame_time: game_context.rng.random_range(0.0..=GRASS_ANIM_SPEED),
                 current_frame_index: game_context
                     .rng
                     .random_range(0..WHEATY_GRASS_ANIMS[0].frames.len())
                     as u8,
                 finished_playing: false,
+                is_playing: false,
             },
         };
 
@@ -259,10 +257,7 @@ impl Grass {
     }
 
     /// has a 90% chance of being level 2 (large), and from the 10% of the other chance, it has an 80% chance of that to be 1 (medium), else its 2 (small)
-    pub fn new_large_likely(
-        cord: MapCord,
-        game_context: &mut GameContext,
-    ) -> Object {
+    pub fn new_large_likely(cord: MapCord, game_context: &mut GameContext) -> Object {
         let grass_level = if game_context.rng.random_bool(0.9) {
             2
         } else if game_context.rng.random_bool(0.8) {
@@ -307,6 +302,7 @@ impl Grass {
                     .random_range(0..WHEATY_GRASS_ANIMS[0].frames.len())
                     as u8,
                 finished_playing: false,
+                is_playing: false,
             },
         };
 
@@ -344,7 +340,8 @@ impl Grass {
             self.data.draw_pos += Vector2::new(0.0, -8.0);
         }
 
-        self.anim_instance.sprite_animation = Self::get_grass_anim(self.grass_type, self.grass_level);
+        self.anim_instance.sprite_animation =
+            Self::get_grass_anim(self.grass_type, self.grass_level);
     }
 
     pub fn on_hit(&mut self, game_context: &mut GameContext, facing_dir: FacingDirection) {

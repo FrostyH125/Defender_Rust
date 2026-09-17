@@ -37,7 +37,6 @@ pub mod utils;
 
 // any of these can be done in any order:
 //      make it so that the selectors never select or even hover enemies for movement
-//      gatherer gather anim
 //      draw grass with a shear when its hit
 //      add a type alias for usize : CharID
 //      add a vfx manager for adding things like slashes in a fire and forget kind of way

@@ -1,10 +1,22 @@
 use raylib::math::Vector2;
-use zander_game_core_rs::{raylib::{animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance}, system::timer::Timer};
+use zander_game_core_rs::{
+    raylib::{
+        animation_data::SpriteAnimationData, sprite::Sprite,
+        sprite_animation::SpriteAnimationInstance,
+    },
+    system::timer::Timer,
+};
 
 use crate::{
-    GameContext, entities::{
-        character::{Affiliation, Character, CharacterData, CharacterMovementResult, CharacterSpecificValues}, characters::gatherer::GathererState::MovingToObject, object::Object,
-    }, map::tile_map::{MapObjectGrid, TileMap}, utils::pathfinding::PathResult::NoPath,
+    GameContext,
+    entities::{
+        character::{
+            Affiliation, Character, CharacterData, CharacterMovementResult, CharacterSpecificValues,
+        },
+        characters::gatherer::GathererState::MovingToObject,
+        object::Object,
+    },
+    map::tile_map::{MapObjectGrid, TileMap},
 };
 
 pub static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -37,7 +49,20 @@ pub static GATHERER_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
         Sprite::new(48, 192, 8, 8),
     ],
     frame_duration: 0.25,
-    should_loop: false
+    should_loop: false,
+};
+
+pub static GATHERER_GATHER_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &[
+        Sprite::new(16, 200, 8, 8),
+        Sprite::new(24, 200, 8, 8),
+        Sprite::new(32, 200, 8, 8),
+        Sprite::new(40, 200, 8, 8),
+        Sprite::new(48, 200, 8, 8),
+        Sprite::new(56, 200, 8, 8),
+    ],
+    frame_duration: 0.25,
+    should_loop: false,
 };
 
 struct ObjectEntry {
@@ -81,6 +106,7 @@ impl std::fmt::Debug for GathererState {
 pub struct Gatherer {
     pub data: CharacterData,
     pub state: GathererState,
+    gather_anim: SpriteAnimationInstance,
     gathering_power: f32,
     gather_timer: Timer,
     pub object_indices: Vec<usize>,
@@ -90,7 +116,6 @@ pub struct Gatherer {
 
 impl Gatherer {
     pub fn new(pos: Vector2) -> Character {
-
         let character_values = CharacterSpecificValues {
             idle_anim: SpriteAnimationInstance::new(&GATHERER_IDLE_ANIM),
             move_anim: SpriteAnimationInstance::new(&GATHERER_MOVE_ANIM),
@@ -105,10 +130,11 @@ impl Gatherer {
             move_speed: 30.0,
             max_health: 100.0,
         };
-        
+
         let gatherer = Gatherer {
             data: CharacterData::new(pos, character_values),
             state: GathererState::Idle,
+            gather_anim: SpriteAnimationInstance::new(&GATHERER_GATHER_ANIM),
             gathering_power: 20.0,
             gather_timer: Timer::new(2.0),
             object_indices: Vec::new(),
@@ -154,15 +180,24 @@ impl Gatherer {
     ) {
         self.gather_timer.track(game_context.dt);
 
-        if self.gather_timer.is_done() {
-            self.gather_timer.reset();
+        if !self.gather_timer.is_done() {
+            return;
+        }
 
-            if self.gather(
-                &mut map.map_object_grid[self.current_index.unwrap()],
-                game_context,
-            ) {
-                self.state = GathererState::LookingForObject { gather_target };
-            }
+        self.gather_anim.update(game_context.dt);
+
+        if !self.gather_anim.finished_playing {
+            return;
+        }
+
+        self.gather_timer.reset();
+        self.gather_anim.reset();
+
+        if self.gather(
+            &mut map.map_object_grid[self.current_index.unwrap()],
+            game_context,
+        ) {
+            self.state = GathererState::LookingForObject { gather_target };
         }
     }
 
@@ -173,14 +208,19 @@ impl Gatherer {
         target_pos: Vector2,
         gather_target: GatherTarget,
     ) {
+        self.data.character_values.move_anim.update(game_context.dt);
+
         match self.data.move_to(target_pos, game_context, map) {
             CharacterMovementResult::Success => {
+                self.data.character_values.move_anim.reset();
+
                 self.state = GathererState::GatheringObject {
                     gather_target: gather_target,
                 };
             }
             CharacterMovementResult::NotArrivedYet => (),
             CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {
+                self.data.character_values.move_anim.reset();
                 self.object_indices.clear();
                 map.map_object_grid[self.current_index.unwrap()]
                     .get_mut_data()
@@ -302,6 +342,17 @@ impl Gatherer {
     }
 
     pub fn current_sprite(&self) -> Sprite {
-        return GATHERER_IDLE_ANIM.frames[0];
+        match self.state {
+            GathererState::Idle => GATHERER_IDLE_ANIM.frames[0],
+            GathererState::LookingForObject { .. } => GATHERER_IDLE_ANIM.frames[0],
+            MovingToObject { .. } => self.data.character_values.move_anim.current_sprite(),
+            GathererState::GatheringObject { .. } => {
+                if self.gather_anim.is_playing {
+                    self.gather_anim.current_sprite()
+                } else {
+                    GATHERER_IDLE_ANIM.frames[0]
+                }
+            }
+        }
     }
 }
