@@ -196,8 +196,6 @@ impl Gatherer {
         // i need it to reset the timer so it doesnt just continue off from where it stopped.
         // this also just acts as a nice safeguard
         self.gather_timer.reset();
-        self.data.path = NoPath;
-        self.data.target_pos = None;
 
         let closest_obj: Option<ObjectEntry> =
             self.find_closest_target(&map.map_object_grid, gather_target);

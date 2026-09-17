@@ -37,17 +37,13 @@ pub mod utils;
 
 // any of these can be done in any order:
 //      make it so that the selectors never select or even hover enemies for movement
+//      gatherer gather anim
 //      draw grass with a shear when its hit
 //      add a type alias for usize : CharID
 //      add a vfx manager for adding things like slashes in a fire and forget kind of way
-//      tile nighttime shader necessary for fixing night time
+//      make shadows not appear so suddenly at night, even if they ease into the position quickly, would still be better
 //      add clouds
-//      make characters add themselves to the map cells every frame, this should be done before updating but after chars.sort()
-//      make map cells clear themselves every frame
-//          after that, now every character has not only a master list of all relevant character data, but ALSO
-//          has access to character indices in cells near them, so they can look up in that list using the indices and then make decisions from the data there
 //      gather all button
-//      gather_levels: only affect things like gather speed, walk speed, and maybe even extra resources
 //      wobble shader effect on the action buttons (will later be used on building buttons too)
 //      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo

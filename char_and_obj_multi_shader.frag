@@ -6,7 +6,6 @@ in vec4 fragColor;
 out vec4 finalColor;
 
 uniform sampler2D texture0;
-uniform vec4 colDiffuse;
 
 uniform float red_tint;
 uniform float blue_tint;
@@ -43,5 +42,5 @@ void main()
     vec4 time_of_day_tint = vec4(red_tint, 0.0, blue_tint, 0.0);
     time_of_day_tint.rgb += brightness_modifier;
 
-    finalColor = tex * fragColor * colDiffuse + time_of_day_tint;
+    finalColor = tex * fragColor + time_of_day_tint;
 }
