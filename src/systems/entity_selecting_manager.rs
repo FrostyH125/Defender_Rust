@@ -6,8 +6,7 @@ use raylib::{
 };
 
 use crate::{
-    entities::{entity_manager::CharacterEntry, object::Object},
-    map::tile_map::MapObjectGrid,
+    entities::{entity_manager::{CharID, CharacterEntry}, object::Object}, map::tile_map::MapObjectGrid,
 };
 
 #[derive(Debug)]
@@ -18,7 +17,7 @@ pub enum SelectingMode {
 
 pub struct EntitySelectingManager {
     pub selected_objects: Vec<usize>,
-    pub selected_characters: Vec<usize>,
+    pub selected_characters: Vec<CharID>,
     pub selecting_mode: SelectingMode,
     pub is_deselecting_chars: bool,
     pub is_deselecting_move: bool,

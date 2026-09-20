@@ -5,9 +5,7 @@ use zander_game_core_rs::raylib::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::object::{Object, ObjectData, ObjectState},
-    utils::{map_cord::MapCord, vector2_utils},
+    GameContext, TILE_SIZE, entities::object::{Object, ObjectData, ObjectKind, ObjectState}, utils::{map_cord::MapCord, vector2_utils},
 };
 
 enum TreeVariant {
@@ -82,6 +80,7 @@ impl Tree {
                 100.0,
                 0.1,
                 TREE_FALL_ANIM_ONE.frame_duration * TREE_FALL_ANIM_ONE.frames.len() as f32,
+                ObjectKind::Tree
             ),
             variant,
 

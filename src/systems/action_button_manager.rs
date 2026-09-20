@@ -7,14 +7,10 @@ use raylib::{
 };
 
 use crate::{
-    GameContext,
-    entities::{character::Character, entity_manager::CharacterEntry, object::Object},
-    map::tile_map::MapObjectGrid,
-    systems::{
+    GameContext, entities::{character::CharacterKind, entity_manager::{CharID, CharacterEntry}, object::{Object, ObjectKind}}, map::tile_map::MapObjectGrid, systems::{
         action_buttons::action_button::{ActionButton, ActionButtonKind},
         entity_selecting_manager::EntitySelectingManager,
-    },
-    utils::{entity_utils::get_char_by_index},
+    }, utils::entity_utils::get_char_by_unique_id,
 };
 
 pub struct ActionButtonManager {
@@ -152,20 +148,9 @@ impl ActionButtonManager {
 fn check_for_matches(
     object_grid: &MapObjectGrid,
     obj_ids: &[usize],
-    char_ids: &[usize],
+    char_ids: &[CharID],
     character_entries: &mut [CharacterEntry],
 ) -> Vec<ActionButton> {
-    #[derive(Hash, Eq, PartialEq, Clone, Copy)]
-    enum ObjectKind {
-        Tree,
-        Grass,
-    }
-
-    #[derive(Hash, Eq, PartialEq, Clone, Copy)]
-    enum CharacterKind {
-        Gatherer,
-    }
-
     let mut successful_matches = Vec::new();
     let mut obj_types: HashSet<ObjectKind> = HashSet::new();
     let mut char_types: HashSet<CharacterKind> = HashSet::new();
@@ -177,23 +162,17 @@ fn check_for_matches(
             continue;
         }
 
-        let value = match obj {
-            Object::NoObject => panic!("there should be no reason for you to be here"),
-            Object::TreeObj(_) => ObjectKind::Tree,
-            Object::GrassObj(_) => ObjectKind::Grass,
-        };
+        let obj_kind = obj.get_data().object_kind;
 
-        obj_types.insert(value);
+        obj_types.insert(obj_kind);
     }
 
     for c_id in char_ids {
-        let character = get_char_by_index(character_entries, *c_id);
+        let character = get_char_by_unique_id(character_entries, *c_id);
 
-        let value = match character.character {
-            Character::GathererChar(_) => CharacterKind::Gatherer,
-        };
+        let char_kind = character.character.get_data().character_values.character_kind;
 
-        char_types.insert(value);
+        char_types.insert(char_kind);
     }
 
     for o in &obj_types {

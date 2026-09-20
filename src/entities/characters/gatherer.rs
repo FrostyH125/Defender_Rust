@@ -8,15 +8,11 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
+    GameContext, entities::{
         character::{
-            Affiliation, Character, CharacterData, CharacterMovementResult, CharacterSpecificValues,
-        },
-        characters::gatherer::GathererState::MovingToObject,
-        object::Object,
-    },
-    map::tile_map::{MapObjectGrid, TileMap},
+            Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult, CharacterSpecificValues,
+        }, characters::gatherer::GathererState::MovingToObject, object::Object,
+    }, map::tile_map::{MapObjectGrid, TileMap},
 };
 
 pub static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -61,7 +57,7 @@ pub static GATHERER_GATHER_ANIM: SpriteAnimationData = SpriteAnimationData {
         Sprite::new(48, 200, 8, 8),
         Sprite::new(56, 200, 8, 8),
     ],
-    frame_duration: 0.25,
+    frame_duration: 0.15,
     should_loop: false,
 };
 
@@ -105,7 +101,7 @@ impl std::fmt::Debug for GathererState {
 
 pub struct Gatherer {
     pub data: CharacterData,
-    pub state: GathererState,
+    pub gatherer_state: GathererState,
     gather_anim: SpriteAnimationInstance,
     gathering_power: f32,
     gather_timer: Timer,
@@ -129,11 +125,12 @@ impl Gatherer {
             height: 8.0,
             move_speed: 30.0,
             max_health: 100.0,
+            character_kind: CharacterKind::Gatherer
         };
 
         let gatherer = Gatherer {
             data: CharacterData::new(pos, character_values),
-            state: GathererState::Idle,
+            gatherer_state: GathererState::Idle,
             gather_anim: SpriteAnimationInstance::new(&GATHERER_GATHER_ANIM),
             gathering_power: 20.0,
             gather_timer: Timer::new(2.0),
@@ -155,7 +152,7 @@ impl Gatherer {
             }
         }
 
-        match self.state {
+        match self.gatherer_state {
             GathererState::Idle => (),
             GathererState::LookingForObject { gather_target } => {
                 self.looking_for_object(map, gather_target);
@@ -197,7 +194,7 @@ impl Gatherer {
             &mut map.map_object_grid[self.current_index.unwrap()],
             game_context,
         ) {
-            self.state = GathererState::LookingForObject { gather_target };
+            self.gatherer_state = GathererState::LookingForObject { gather_target };
         }
     }
 
@@ -214,7 +211,7 @@ impl Gatherer {
             CharacterMovementResult::Success => {
                 self.data.character_values.move_anim.reset();
 
-                self.state = GathererState::GatheringObject {
+                self.gatherer_state = GathererState::GatheringObject {
                     gather_target: gather_target,
                 };
             }
@@ -226,7 +223,7 @@ impl Gatherer {
                     .get_mut_data()
                     .is_occupied = false;
                 self.current_index = None;
-                self.state = GathererState::Idle;
+                self.gatherer_state = GathererState::Idle;
             }
         }
     }
@@ -244,7 +241,7 @@ impl Gatherer {
             Some(o) => {
                 map.map_object_grid[o.idx].get_mut_data().is_occupied = true;
                 self.current_index = Some(o.idx);
-                self.state = MovingToObject {
+                self.gatherer_state = MovingToObject {
                     target_pos: o.pos,
                     gather_target: gather_target,
                 };
@@ -252,7 +249,7 @@ impl Gatherer {
             None => {
                 self.current_index = None;
                 self.object_indices.clear();
-                self.state = GathererState::Idle
+                self.gatherer_state = GathererState::Idle
             }
         }
     }
@@ -342,7 +339,7 @@ impl Gatherer {
     }
 
     pub fn current_sprite(&self) -> Sprite {
-        match self.state {
+        match self.gatherer_state {
             GathererState::Idle => GATHERER_IDLE_ANIM.frames[0],
             GathererState::LookingForObject { .. } => GATHERER_IDLE_ANIM.frames[0],
             MovingToObject { .. } => self.data.character_values.move_anim.current_sprite(),

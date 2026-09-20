@@ -1,18 +1,17 @@
 use crate::{
-    entities::{character::CharacterState, entity_manager::CharacterEntry},
-    utils::entity_utils::get_char_by_index,
+    entities::{character::CharacterState, entity_manager::{CharID, CharacterEntry}}, utils::entity_utils::get_char_by_unique_id,
 };
 
 pub enum CharacterAction {
     Attack {
         // even though its currently unused, attacker ID could eventually be used very easily, so im going to keep it for now
-        attacker_id: usize,
-        target_id: usize,
+        attacker_id: CharID,
+        target_id: CharID,
         damage: f32,
     },
     EngageInCombat {
-        attacker_id: usize,
-        target_id: usize,
+        attacker_id: CharID,
+        target_id: CharID,
     },
 }
 
@@ -29,7 +28,7 @@ impl CharacterActionManager {
         };
     }
 
-    pub fn request_attack(&mut self, attacker_id: usize, target_id: usize, damage: f32) {
+    pub fn request_attack(&mut self, attacker_id: CharID, target_id: CharID, damage: f32) {
         self.actions.push(CharacterAction::Attack {
             attacker_id,
             target_id,
@@ -37,7 +36,7 @@ impl CharacterActionManager {
         });
     }
 
-    pub fn request_engage_in_combat(&mut self, attacker_id: usize, target_id: usize) {
+    pub fn request_engage_in_combat(&mut self, attacker_id: CharID, target_id: CharID) {
         self.actions.push(CharacterAction::EngageInCombat {
             attacker_id,
             target_id,
@@ -52,8 +51,8 @@ impl CharacterActionManager {
                     target_id,
                     damage,
                 } => {
-                    let attacker = get_char_by_index(chars, *attacker_id);
-                    let target = get_char_by_index(chars, *target_id);
+                    let attacker = get_char_by_unique_id(chars, *attacker_id);
+                    let target = get_char_by_unique_id(chars, *target_id);
 
                     todo!("target.take_damage(damage)")
                 }
@@ -61,7 +60,7 @@ impl CharacterActionManager {
                     attacker_id,
                     target_id,
                 } => {
-                    let attacker = &mut get_char_by_index(chars, *attacker_id).character;
+                    let attacker = &mut get_char_by_unique_id(chars, *attacker_id).character;
 
                     // eventually you may encounter a bug where characters who are currently dying are added and then its not valid anymore or something
                     // either fix that here, or fix it when the character themselves go to resolve their state from incombat and check if the character is alive or exists
@@ -70,7 +69,7 @@ impl CharacterActionManager {
                     attacker.get_mut_data().opponents.push(*target_id);
                     attacker.get_mut_data().state = CharacterState::InCombat;
 
-                    let target = &mut get_char_by_index(chars, *target_id).character;
+                    let target = &mut get_char_by_unique_id(chars, *target_id).character;
 
                     target.get_mut_data().opponents.push(*attacker_id);
                     target.get_mut_data().state = CharacterState::InCombat;

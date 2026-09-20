@@ -9,16 +9,10 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
-        character::Character,
-        characters::gatherer::{GatherTarget, GathererState},
-        entity_manager::CharacterEntry,
-        object::Object,
-    },
-    map::tile_map::MapObjectGrid,
-    utils::{
-        direction_utils::ORTHOGONAL_DELTAS, draw_utils, entity_utils::get_char_by_index,
+    GameContext, entities::{
+        character::Character, characters::gatherer::{GatherTarget, GathererState}, entity_manager::{CharID, CharacterEntry}, object::Object,
+    }, map::tile_map::MapObjectGrid, utils::{
+        direction_utils::ORTHOGONAL_DELTAS, draw_utils, entity_utils::get_char_by_unique_id,
         mouse_utils::mouse_world_coords,
     },
 };
@@ -88,7 +82,7 @@ impl ActionButton {
     pub fn on_click(
         &mut self,
         obj_ids: &[usize],
-        char_ids: &[usize],
+        char_ids: &[CharID],
         object_grid: &mut MapObjectGrid,
         characters: &mut [CharacterEntry],
     ) {
@@ -113,7 +107,7 @@ impl ActionButton {
     /// sets the gatherers to gather the objects specified in the obj_kind parameter
     pub fn set_gatherers_to_gather(
         obj_ids: &[usize],
-        char_ids: &[usize],
+        char_ids: &[CharID],
         object_grid: &mut MapObjectGrid,
         characters: &mut [CharacterEntry],
         obj_kind: GatherTarget,
@@ -140,12 +134,12 @@ impl ActionButton {
         }
 
         for char_id in char_ids {
-            let char = &mut get_char_by_index(characters, *char_id).character;
+            let char = &mut get_char_by_unique_id(characters, *char_id).character;
 
             if let Character::GathererChar(gatherer) = char {
                 gatherer.object_indices.clear();
                 gatherer.object_indices = object_ids_with_correct_type.clone();
-                gatherer.state = GathererState::LookingForObject {
+                gatherer.gatherer_state = GathererState::LookingForObject {
                     gather_target: obj_kind,
                 };
                 gatherer.should_unoccupy_current_obj = true;

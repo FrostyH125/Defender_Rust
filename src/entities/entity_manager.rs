@@ -34,21 +34,24 @@ pub const DRAW_SHADOW_EXTRA_MARGIN: f32 = 2.0;
 
 static HOVER_SELECT_PARTICLE_SPRITE: Sprite = Sprite::new(64, 72, 1, 1);
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CharID(pub usize);
+
 pub struct CharacterEntry {
     pub character: Character,
-    pub unique_id: usize,
+    pub unique_id: CharID,
     render_index: usize,
 }
 
 pub struct CharacterInfo {
     pub health: f32,
-    pub char_id: usize,
+    pub char_id: CharID,
     pub position: Vector2,
     pub affiliation: Affiliation,
 }
 
 pub struct EntityManager {
-    next_character_id: usize,
+    next_unique_character_id: CharID,
     pub characters: Vec<CharacterEntry>,
     map_dimensions: MapDimensions,
     start_tile_x: i16,
@@ -60,7 +63,7 @@ pub struct EntityManager {
 impl EntityManager {
     pub fn new(map_dimensions: MapDimensions) -> Self {
         return EntityManager {
-            next_character_id: 0,
+            next_unique_character_id: CharID(0),
             characters: Vec::with_capacity(200),
             map_dimensions,
             start_tile_x: 0,
@@ -73,15 +76,15 @@ impl EntityManager {
     pub fn add_character(&mut self, mut character: Character) {
         let render_index = character.get_render_tile_index(self.map_dimensions);
 
-        character.get_mut_data().char_idx = self.next_character_id;
+        character.get_mut_data().unique_char_id = self.next_unique_character_id;
 
         self.characters.push(CharacterEntry {
             character,
             render_index,
-            unique_id: self.next_character_id,
+            unique_id: self.next_unique_character_id,
         });
 
-        self.next_character_id += 1;
+        self.next_unique_character_id.0 += 1;
     }
 
     pub fn update(
@@ -144,7 +147,7 @@ impl EntityManager {
 
         let mut moved_anyone = false;
 
-        let character_info: HashMap<usize, CharacterInfo> = self
+        let character_info: HashMap<CharID, CharacterInfo> = self
             .characters
             .iter()
             .map(|c| {

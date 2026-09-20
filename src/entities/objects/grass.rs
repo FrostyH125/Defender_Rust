@@ -5,12 +5,9 @@ use zander_game_core_rs::raylib::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
-        object::{Object, ObjectData},
-        objects::grass::GrassType::Wheaty,
-    },
-    utils::{direction_utils::FacingDirection, map_cord::MapCord, vector2_utils},
+    GameContext, entities::{
+        object::{Object, ObjectData, ObjectKind}, objects::grass::GrassType::Wheaty,
+    }, utils::{direction_utils::FacingDirection, map_cord::MapCord, vector2_utils},
 };
 
 const SMALL_GRASS_HEIGHT: i32 = 8;
@@ -178,6 +175,7 @@ impl Grass {
             100.0,
             0.5,
             0.0,
+            ObjectKind::Grass
         );
 
         let grass = Grass {
@@ -231,6 +229,7 @@ impl Grass {
             100.0,
             0.0,
             0.0,
+            ObjectKind::Grass
         );
 
         let grass = Grass {
@@ -284,6 +283,7 @@ impl Grass {
             100.0,
             0.0,
             0.0,
+            ObjectKind::Grass
         );
 
         let grass = Grass {

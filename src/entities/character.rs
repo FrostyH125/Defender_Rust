@@ -11,15 +11,9 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::{
-        characters::gatherer::{Gatherer, GathererState},
-        entity_manager::CharacterInfo,
-        object::Object,
-    },
-    map::tile_map::{MapDimensions, TileMap},
-    systems::character_action_manager::CharacterActionManager,
-    utils::{
+    GameContext, TILE_SIZE, entities::{
+        characters::gatherer::{Gatherer, GathererState}, entity_manager::{CharID, CharacterInfo}, object::Object,
+    }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::CharacterActionManager, utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
@@ -28,6 +22,12 @@ use crate::{
         pathfinding::PathResult::{self, NoPath},
     },
 };
+
+#[derive(Hash, Eq, PartialEq, Clone, Copy)]
+pub enum CharacterKind {
+    Gatherer,
+    Enemy
+}
 
 #[derive(Clone, Copy)]
 pub enum Affiliation {
@@ -69,7 +69,7 @@ pub enum CombatState {
 pub struct CharacterData {
     pub character_values: CharacterSpecificValues,
     pub path: PathResult,
-    pub opponents: Vec<usize>,
+    pub opponents: Vec<CharID>,
     pub pos: Vector2,
     pub target_pos: Option<Vector2>,
     pub facing_direction: FacingDirection,
@@ -80,7 +80,7 @@ pub struct CharacterData {
     pub is_selected_for_move: bool,
     pub state: CharacterState,
     pub combat_state: CombatState,
-    pub char_idx: usize,
+    pub unique_char_id: CharID,
     pub attack_timer: Timer,
 }
 
@@ -100,6 +100,7 @@ pub struct CharacterSpecificValues {
     pub width: f32,
     pub height: f32,
     pub affiliation: Affiliation,
+    pub character_kind: CharacterKind
 }
 
 impl CharacterData {
@@ -117,7 +118,7 @@ impl CharacterData {
             is_selected: false,
             is_selected_for_move: false,
             opponents: Vec::new(),
-            char_idx: 0,
+            unique_char_id: CharID(0),
             attack_timer: Timer::new(character_values.time_between_attacks),
             character_values,
         };
@@ -216,7 +217,7 @@ impl Character {
 
     pub fn set_idle(&mut self) {
         match self {
-            Character::GathererChar(gatherer) => gatherer.state = GathererState::Idle,
+            Character::GathererChar(gatherer) => gatherer.gatherer_state = GathererState::Idle,
         }
     }
 
@@ -239,7 +240,7 @@ impl Character {
         &mut self,
         game_context: &mut GameContext,
         map: &mut TileMap,
-        character_info: &HashMap<usize, CharacterInfo>,
+        character_info: &HashMap<CharID, CharacterInfo>,
     ) {
         match self.get_data().state {
             CharacterState::None => {
@@ -308,7 +309,7 @@ impl Character {
                         }
                     }
                     CombatState::Attack => {
-                        let self_idx = self.get_data().char_idx;
+                        let self_idx = self.get_data().unique_char_id;
                         let opponent_idx = self.get_data().opponents[0];
 
                         self.attack(
@@ -509,14 +510,14 @@ impl Character {
     pub fn is_idle(&self) -> bool {
         match self {
             Character::GathererChar(gatherer) => {
-                return gatherer.state == GathererState::Idle;
+                return gatherer.gatherer_state == GathererState::Idle;
             }
         }
     }
 
     pub fn reset_state(&mut self) {
         match self {
-            Character::GathererChar(gatherer) => gatherer.state = GathererState::Idle,
+            Character::GathererChar(gatherer) => gatherer.gatherer_state = GathererState::Idle,
         }
     }
 
@@ -532,8 +533,8 @@ impl Character {
 
     pub fn attack(
         &mut self,
-        self_id: usize,
-        target_id: usize,
+        self_id: CharID,
+        target_id: CharID,
         character_action_manager: &mut CharacterActionManager,
     ) {
         match self {

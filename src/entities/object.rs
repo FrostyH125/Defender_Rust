@@ -18,6 +18,12 @@ use crate::{
     },
 };
 
+#[derive(Hash, Eq, PartialEq, Clone, Copy)]
+pub enum ObjectKind {
+    Tree,
+    Grass,
+}
+
 #[derive(PartialEq, Eq, Copy, Clone)]
 pub enum ObjectState {
     Idle,
@@ -41,7 +47,15 @@ pub struct ObjectData {
     pub is_occupied: bool,
     pub is_marked_for_gathering: bool,
     pub state: ObjectState,
+    pub object_kind: ObjectKind,
     pub sprite_flip: bool,
+}
+
+/// this is strictly for data that is solely dependent on the kind of object it is, not stuff that just every object has
+/// for example, pos doesnt count, because pos is not dependent on the kind of object, but something like the health would be
+/// because different objects will likely start with different amounts of health
+pub struct ObjectSpecificData {
+    
 }
 
 impl ObjectData {
@@ -55,12 +69,14 @@ impl ObjectData {
         health: f32,
         hit_timer_duration: f32,
         disappear_timer_duration: f32,
+        kind: ObjectKind
     ) -> Self {
         let true_pos = pos + randomized_offset;
         let draw_pos = true_pos + draw_offset;
 
 
         return ObjectData {
+            object_kind: kind,
             pos: true_pos,
             draw_pos,
             situational_draw_offset: Vector2::default(),
