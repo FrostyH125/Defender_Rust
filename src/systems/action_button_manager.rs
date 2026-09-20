@@ -162,7 +162,7 @@ fn check_for_matches(
             continue;
         }
 
-        let obj_kind = obj.get_data().object_kind;
+        let obj_kind = obj.get_data().object_specific_data.object_kind;
 
         obj_types.insert(obj_kind);
     }

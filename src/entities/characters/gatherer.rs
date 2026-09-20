@@ -10,7 +10,7 @@ use zander_game_core_rs::{
 use crate::{
     GameContext, entities::{
         character::{
-            Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult, CharacterSpecificValues,
+            Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult, CharacterSpecificData,
         }, characters::gatherer::GathererState::MovingToObject, object::Object,
     }, map::tile_map::{MapObjectGrid, TileMap},
 };
@@ -112,7 +112,7 @@ pub struct Gatherer {
 
 impl Gatherer {
     pub fn new(pos: Vector2) -> Character {
-        let character_values = CharacterSpecificValues {
+        let character_values = CharacterSpecificData {
             idle_anim: SpriteAnimationInstance::new(&GATHERER_IDLE_ANIM),
             move_anim: SpriteAnimationInstance::new(&GATHERER_MOVE_ANIM),
             attack_anim: SpriteAnimationInstance::new(&GATHERER_ATTACK_ANIM),

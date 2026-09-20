@@ -1,12 +1,12 @@
 use rand::{RngExt, rngs::ThreadRng};
 use raylib::math::Vector2;
-use zander_game_core_rs::raylib::{
+use zander_game_core_rs::{raylib::{
     animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
-};
+}, system::timer::Timer};
 
 use crate::{
     GameContext, entities::{
-        object::{Object, ObjectData, ObjectKind}, objects::grass::GrassType::Wheaty,
+        object::{Object, ObjectData, ObjectKind, ObjectSpecificData}, objects::grass::GrassType::Wheaty,
     }, utils::{direction_utils::FacingDirection, map_cord::MapCord, vector2_utils},
 };
 
@@ -165,17 +165,22 @@ impl Grass {
             _ => panic!("only levels 0..=2 allowed for grass"),
         };
 
+        let object_specific_data = ObjectSpecificData {
+            situational_draw_offset: Vector2::zero(),
+            draw_offset: Vector2::new(0.0, offset_y),
+            width: GRASS_WIDTH as f32,
+            height: height as f32,
+            hit_timer: Timer::new(0.5),
+            disappear_timer: Timer::new(0.0),
+            health: 100.0,
+            object_kind: ObjectKind::Grass,
+        };
+
         let data = ObjectData::new(
             cord.map_pos(),
-            Vector2::new(0.0, offset_y),
             vector2_utils::random_offset_by_one(&mut game_context.rng),
             cord,
-            GRASS_WIDTH as f32,
-            height as f32,
-            100.0,
-            0.5,
-            0.0,
-            ObjectKind::Grass
+            object_specific_data
         );
 
         let grass = Grass {
@@ -219,17 +224,22 @@ impl Grass {
             _ => panic!("only levels 0..=2 allowed for grass"),
         };
 
+        let object_specific_data = ObjectSpecificData {
+            situational_draw_offset: Vector2::zero(),
+            draw_offset: Vector2::new(0.0, offset_y),
+            width: GRASS_WIDTH as f32,
+            height: height as f32,
+            hit_timer: Timer::new(0.5),
+            disappear_timer: Timer::new(0.0),
+            health: 100.0,
+            object_kind: ObjectKind::Grass,
+        };
+
         let data = ObjectData::new(
             cord.map_pos(),
-            Vector2::new(0.0, offset_y),
             vector2_utils::random_offset_by_one(&mut game_context.rng),
             cord,
-            GRASS_WIDTH as f32,
-            height as f32,
-            100.0,
-            0.0,
-            0.0,
-            ObjectKind::Grass
+            object_specific_data
         );
 
         let grass = Grass {
@@ -273,17 +283,22 @@ impl Grass {
             _ => panic!("only levels 0..=2 allowed for grass"),
         };
 
+        let object_specific_data = ObjectSpecificData {
+            situational_draw_offset: Vector2::zero(),
+            draw_offset: Vector2::new(0.0, offset_y),
+            width: GRASS_WIDTH as f32,
+            height: height as f32,
+            hit_timer: Timer::new(0.5),
+            disappear_timer: Timer::new(0.0),
+            health: 100.0,
+            object_kind: ObjectKind::Grass,
+        };
+
         let data = ObjectData::new(
             cord.map_pos(),
-            Vector2::new(0.0, offset_y),
             vector2_utils::random_offset_by_one(&mut game_context.rng),
             cord,
-            GRASS_WIDTH as f32,
-            height as f32,
-            100.0,
-            0.0,
-            0.0,
-            ObjectKind::Grass
+            object_specific_data
         );
 
         let grass = Grass {

@@ -1,4 +1,3 @@
-
 use raylib::{
     drawing::RaylibDrawHandle,
     math::{Rectangle, Vector2},
@@ -7,15 +6,12 @@ use raylib::{
 use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
 
 use crate::{
-    GameContext, entities::{
+    GameContext,
+    entities::{
         object::{Object::*, ObjectState::GettingHit},
         objects::{grass::Grass, tree::Tree},
-    }, utils::{
-        camera_utils,
-        direction_utils::FacingDirection,
-        draw_utils,
-        map_cord::MapCord,
     },
+    utils::{camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord},
 };
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
@@ -33,59 +29,47 @@ pub enum ObjectState {
 
 /// This houses data that all objects share, as to not repeat fields between objects
 pub struct ObjectData {
+    pub object_specific_data: ObjectSpecificData,
     pub pos: Vector2,
     pub draw_pos: Vector2,
-    pub situational_draw_offset: Vector2,
-    width: f32,
-    height: f32,
-    hit_timer: Timer,
-    disappear_timer: Timer,
-    health: f32,
     pub cord: MapCord,
     pub is_hovering: bool,
     pub is_selected: bool,
     pub is_occupied: bool,
     pub is_marked_for_gathering: bool,
     pub state: ObjectState,
-    pub object_kind: ObjectKind,
     pub sprite_flip: bool,
 }
 
-/// this is strictly for data that is solely dependent on the kind of object it is, not stuff that just every object has
+/// this is strictly for data that is solely dependent on the kind of object it is, not just stuff that every object has
 /// for example, pos doesnt count, because pos is not dependent on the kind of object, but something like the health would be
 /// because different objects will likely start with different amounts of health
 pub struct ObjectSpecificData {
-    
+    pub situational_draw_offset: Vector2,
+    pub draw_offset: Vector2,
+    pub width: f32,
+    pub height: f32,
+    pub hit_timer: Timer,
+    pub disappear_timer: Timer,
+    pub health: f32,
+    pub object_kind: ObjectKind,
 }
 
 impl ObjectData {
     pub fn new(
         pos: Vector2,
-        draw_offset: Vector2,
         randomized_offset: Vector2,
         cord: MapCord,
-        width: f32,
-        height: f32,
-        health: f32,
-        hit_timer_duration: f32,
-        disappear_timer_duration: f32,
-        kind: ObjectKind
+        object_specific_data: ObjectSpecificData,
     ) -> Self {
-        let true_pos = pos + randomized_offset;
-        let draw_pos = true_pos + draw_offset;
-
+        let true_logical_pos = pos + randomized_offset;
+        let final_draw_pos = true_logical_pos + object_specific_data.draw_offset;
 
         return ObjectData {
-            object_kind: kind,
-            pos: true_pos,
-            draw_pos,
-            situational_draw_offset: Vector2::default(),
-            width,
-            height,
-            health,
+            object_specific_data,
+            pos: true_logical_pos,
+            draw_pos: final_draw_pos,
             cord,
-            hit_timer: Timer::new(hit_timer_duration),
-            disappear_timer: Timer::new(disappear_timer_duration),
             is_hovering: false,
             is_selected: false,
             is_occupied: false,
@@ -97,7 +81,12 @@ impl ObjectData {
 
     #[inline]
     pub fn hover_rect(&self) -> Rectangle {
-        return Rectangle::new(self.draw_pos.x, self.draw_pos.y, self.width, self.height);
+        return Rectangle::new(
+            self.draw_pos.x,
+            self.draw_pos.y,
+            self.object_specific_data.width,
+            self.object_specific_data.height,
+        );
     }
 }
 
@@ -127,11 +116,7 @@ impl Object {
     }
 
     #[inline]
-    pub fn update(
-        &mut self,
-        game_context: &mut GameContext,
-        should_deselect: bool,
-    ) {
+    pub fn update(&mut self, game_context: &mut GameContext, should_deselect: bool) {
         match self {
             TreeObj(tree) => tree.update(game_context),
             GrassObj(grass) => grass.update(game_context),
@@ -156,7 +141,7 @@ impl Object {
                     return;
                 }
 
-                let disappear_timer = &mut self.get_mut_data().disappear_timer;
+                let disappear_timer = &mut self.get_mut_data().object_specific_data.disappear_timer;
 
                 disappear_timer.track(game_context.dt);
                 if disappear_timer.is_done() {
@@ -165,7 +150,7 @@ impl Object {
                 }
             }
             ObjectState::GettingHit => {
-                let hit_timer = &mut self.get_mut_data().hit_timer;
+                let hit_timer = &mut self.get_mut_data().object_specific_data.hit_timer;
 
                 hit_timer.track(game_context.dt);
 
@@ -189,7 +174,7 @@ impl Object {
 
         sprite.draw(
             d,
-            self.get_data().draw_pos + self.get_data().situational_draw_offset,
+            self.get_data().draw_pos + self.get_data().object_specific_data.situational_draw_offset,
             texture,
         );
     }
@@ -200,7 +185,7 @@ impl Object {
         draw_utils::draw_outline(
             d,
             sprite,
-            self.get_data().draw_pos + self.get_data().situational_draw_offset,
+            self.get_data().draw_pos + self.get_data().object_specific_data.situational_draw_offset,
             texture,
         );
     }
@@ -211,7 +196,7 @@ impl Object {
         draw_utils::draw_with_extra_brightness(
             d,
             sprite,
-            self.get_data().draw_pos + self.get_data().situational_draw_offset,
+            self.get_data().draw_pos + self.get_data().object_specific_data.situational_draw_offset,
             texture,
         );
     }
@@ -230,7 +215,7 @@ impl Object {
         draw_utils::draw_shadow(
             d,
             sprite,
-            data.draw_pos + data.situational_draw_offset,
+            data.draw_pos + data.object_specific_data.situational_draw_offset,
             shadow_shear,
             shadow_scale,
             texture,
@@ -258,12 +243,12 @@ impl Object {
         facing_dir: FacingDirection,
     ) {
         let data = self.get_mut_data();
-        data.health -= damage;
-        let health = data.health;
+        data.object_specific_data.health -= damage;
+        let health = data.object_specific_data.health;
 
         match data.state {
             GettingHit => {
-                data.hit_timer.reset();
+                data.object_specific_data.hit_timer.reset();
             }
             _ => {
                 data.state = GettingHit;
@@ -292,7 +277,7 @@ impl Object {
         match self {
             NoObject => (),
             TreeObj(tree) => tree.on_out_of_hit(),
-            GrassObj(grass) => (),
+            GrassObj(..) => (/* to be added eventually */),
         }
     }
 

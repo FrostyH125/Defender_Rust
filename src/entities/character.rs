@@ -67,7 +67,7 @@ pub enum CombatState {
 }
 
 pub struct CharacterData {
-    pub character_values: CharacterSpecificValues,
+    pub character_values: CharacterSpecificData,
     pub path: PathResult,
     pub opponents: Vec<CharID>,
     pub pos: Vector2,
@@ -87,7 +87,7 @@ pub struct CharacterData {
 /// this struct is for things that are based on T type character, not characters as a whole and not things managed by the code specifically
 /// basically just things that are solely dependent on the type of character holding it (ex: position doesnt count, since that isnt based
 /// on the character type)
-pub struct CharacterSpecificValues {
+pub struct CharacterSpecificData {
     pub idle_anim: SpriteAnimationInstance,
     pub move_anim: SpriteAnimationInstance,
     pub attack_anim: SpriteAnimationInstance,
@@ -104,7 +104,7 @@ pub struct CharacterSpecificValues {
 }
 
 impl CharacterData {
-    pub fn new(pos: Vector2, character_values: CharacterSpecificValues) -> CharacterData {
+    pub fn new(pos: Vector2, character_values: CharacterSpecificData) -> CharacterData {
         return CharacterData {
             state: CharacterState::None,
             combat_state: CombatState::None,

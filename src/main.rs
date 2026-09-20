@@ -36,7 +36,7 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
-//      ObjectIndex? Might make things slightly more readable too tbh
+//      grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
 //      make it so that the selectors never select or even hover enemies for movement
 //      draw grass with a shear when its hit
 //      add a type alias for usize : CharID

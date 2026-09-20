@@ -1,11 +1,17 @@
 use rand::{RngExt, rngs::ThreadRng};
 use raylib::math::Vector2;
-use zander_game_core_rs::raylib::{
-    animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
+use zander_game_core_rs::{
+    raylib::{
+        animation_data::SpriteAnimationData, sprite::Sprite,
+        sprite_animation::SpriteAnimationInstance,
+    },
+    system::timer::Timer,
 };
 
 use crate::{
-    GameContext, TILE_SIZE, entities::object::{Object, ObjectData, ObjectKind, ObjectState}, utils::{map_cord::MapCord, vector2_utils},
+    GameContext, TILE_SIZE,
+    entities::object::{Object, ObjectData, ObjectKind, ObjectSpecificData, ObjectState},
+    utils::{map_cord::MapCord, vector2_utils},
 };
 
 enum TreeVariant {
@@ -54,10 +60,7 @@ pub struct Tree {
 }
 
 impl Tree {
-    pub fn new(
-        cord: MapCord,
-        rng: &mut ThreadRng,
-    ) -> Object {
+    pub fn new(cord: MapCord, rng: &mut ThreadRng) -> Object {
         let variant = match rng.random_range(0..=1) {
             0 => TreeVariant::One,
             1 => TreeVariant::Two,
@@ -69,18 +72,25 @@ impl Tree {
             TreeVariant::Two => &TREE_FALL_ANIM_TWO,
         };
 
+        let object_specific_data = ObjectSpecificData {
+            situational_draw_offset: Vector2::zero(),
+            draw_offset: Vector2::new(0.0, -TILE_SIZE),
+            width: 8.0,
+            height: 16.0,
+            hit_timer: Timer::new(0.1),
+            disappear_timer: Timer::new(
+                TREE_FALL_ANIM_ONE.frame_duration * TREE_FALL_ANIM_ONE.frames.len() as f32,
+            ),
+            health: 100.0,
+            object_kind: ObjectKind::Tree,
+        };
+
         let mut tree = Tree {
             data: ObjectData::new(
                 cord.map_pos(),
-                Vector2::new(0.0, -TILE_SIZE),
                 vector2_utils::random_offset_by_one(rng),
                 cord,
-                8.0,
-                16.0,
-                100.0,
-                0.1,
-                TREE_FALL_ANIM_ONE.frame_duration * TREE_FALL_ANIM_ONE.frames.len() as f32,
-                ObjectKind::Tree
+                object_specific_data,
             ),
             variant,
 
@@ -100,20 +110,20 @@ impl Tree {
             self.falling_anim.update(game_context.dt);
 
             if self.data.sprite_flip {
-                self.data.situational_draw_offset.x = -8.0;
+                self.data.object_specific_data.situational_draw_offset.x = -8.0;
             }
         }
     }
 
     pub fn on_hit(&mut self, rng: &mut ThreadRng) {
-        self.data.situational_draw_offset.x = match rng.random_bool(0.5) {
+        self.data.object_specific_data.situational_draw_offset.x = match rng.random_bool(0.5) {
             true => 1.0,
             false => -1.0,
         };
     }
 
     pub fn on_out_of_hit(&mut self) {
-        self.data.situational_draw_offset.x = 0.0;
+        self.data.object_specific_data.situational_draw_offset.x = 0.0;
     }
 
     pub fn sprite(&self) -> Sprite {
