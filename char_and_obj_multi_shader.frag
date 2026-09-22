@@ -42,5 +42,7 @@ void main()
     vec4 time_of_day_tint = vec4(red_tint, 0.0, blue_tint, 0.0);
     time_of_day_tint.rgb += brightness_modifier;
 
+    // do light stuff here
+
     finalColor = tex * fragColor + time_of_day_tint;
 }

@@ -15,15 +15,11 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SixX, ThreeX, TwoX},
-    entities::{characters::gatherer::Gatherer, entity_manager::EntityManager},
-    map::tile_map::TileMap,
-    systems::{
+    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
         action_button_manager::ActionButtonManager,
         character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle,
         entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
-    },
-    utils::{
+    }, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -163,7 +159,7 @@ fn main() {
     let brightness_modifier_loc_ground_shader =
         ground_time_of_day_shader.get_shader_location("brightness_modifier");
 
-    let mut ground_render_textures: [RenderTexture2D; 5] = [
+    let mut ground_render_textures: [RenderTexture2D; 6] = [
         rl.load_render_texture(
             &thread,
             window_width_target as u32 / 2,
@@ -192,11 +188,17 @@ fn main() {
             &thread,
             window_width_target as u32 / 6,
             window_height_target as u32 / 6,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 7,
+            window_height_target as u32 / 7,
         )
         .unwrap(),
     ];
 
-    let mut object_and_character_render_textures: [RenderTexture2D; 5] = [
+    let mut object_and_character_render_textures: [RenderTexture2D; 6] = [
         rl.load_render_texture(
             &thread,
             window_width_target as u32 / 2,
@@ -225,6 +227,12 @@ fn main() {
             &thread,
             window_width_target as u32 / 6,
             window_height_target as u32 / 6,
+        )
+        .unwrap(),
+        rl.load_render_texture(
+            &thread,
+            window_width_target as u32 / 7,
+            window_height_target as u32 / 7,
         )
         .unwrap(),
     ];
@@ -454,6 +462,7 @@ enum ZoomSizes {
     FourX,
     FiveX,
     SixX,
+    SevenX,
 }
 
 impl ZoomSizes {
@@ -484,7 +493,8 @@ impl ZoomSizes {
             2 => FourX,
             3 => FiveX,
             4 => SixX,
-            5.. => SixX,
+            5 => SevenX,
+            _ => panic!()
         }
     }
 
@@ -531,6 +541,9 @@ fn set_render_textures(
 
     let rt_count = ground_rt_array.len();
 
+    // the +2 here is to account for the fact that the base res is never used for render targets
+    // because its too far of a zoom out, otherwise it would be +1
+    
     for i in 0..rt_count {
         ground_rt_array[i] = rl
             .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))

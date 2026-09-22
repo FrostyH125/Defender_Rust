@@ -56,8 +56,11 @@ pub static GATHERER_GATHER_ANIM: SpriteAnimationData = SpriteAnimationData {
         Sprite::new(40, 200, 8, 8),
         Sprite::new(48, 200, 8, 8),
         Sprite::new(56, 200, 8, 8),
+        Sprite::new(64, 200, 8, 8),
+        Sprite::new(72, 200, 8, 8),
+        Sprite::new(80, 200, 8, 8),
     ],
-    frame_duration: 0.15,
+    frame_duration: 0.05,
     should_loop: false,
 };
 
