@@ -23,7 +23,6 @@ uniform vec2 cameraOffset;
 uniform vec2 renderTargetRes;
 
 // stuff for lighting
-uniform sampler2D normalMap;
 uniform vec3 lightPosition;
 uniform vec3 lightColor;
 uniform float lightIntensity;
@@ -60,33 +59,31 @@ void main()
     vec4 time_of_day_tint = vec4(red_tint, 0.0, blue_tint, 0.0);
     time_of_day_tint.rgb += brightness_modifier;
     
-    // find world pos of this fragment
     vec2 screenPosition = gl_FragCoord.xy;
     screenPosition.y = renderTargetRes.y - screenPosition.y;
     vec2 worldPosition = cameraTarget + (screenPosition - cameraOffset);
 
-    // extract normal color and pixel color of fragment
     vec3 color = tex.rgb;
-    vec3 normal = texture(normalMap, fragTexCoord).rgb;
-    normal = normal * 2.0 - 1.0;
+    vec3 normal = vec3(0.0, 0.0, 1.0);
+    vec3 ambient_lighting = vec3(1.0);
 
+    vec2 deltaToLight = lightPosition.xy - worldPosition;
+    float distance = length(deltaToLight);
     
-    // determine the direction of the light
-    vec3 lightDirection = normalize(vec3(lightPosition.xy - worldPosition, lightPosition.z));
+    //vec3 lightDirection = normalize(vec3(deltaToLight, lightPosition.z));
 
-    // determine brightness using the normal color and the direction of the lighting
-    float brightness = dot(normal, lightDirection);
-    float distance = length(lightPosition.xy - worldPosition);
+    //float brightness = max(dot(normal, lightDirection), 0.0);
+
     float attenuation = 1.0 - smoothstep(0.0, lightRadius, distance);
-    brightness = max(brightness, 0.0);
+
+    float brightness = attenuation * lightIntensity;
+    
     brightness *= attenuation;
+    brightness *= lightIntensity;
 
-    // determine the lighting based on light color and brightness
-    vec3 lighting = lightColor * brightness;
+    vec3 lighting = ambient_lighting + lightColor * brightness;
 
-    // multiply the original fragments pixel color with the lighting from the light
     vec3 finalRGB = color * lighting;
     
     finalColor = vec4(finalRGB * fragColor.rgb + time_of_day_tint.rgb, tex.a);
-    //finalColor = vec4(normal, tex.a);
 }

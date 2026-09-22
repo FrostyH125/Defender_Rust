@@ -85,7 +85,7 @@ impl Tree {
             object_kind: ObjectKind::Tree,
         };
 
-        let mut tree = Tree {
+        let tree = Tree {
             data: ObjectData::new(
                 cord.map_pos(),
                 vector2_utils::random_offset_by_one(rng),
@@ -96,11 +96,6 @@ impl Tree {
 
             falling_anim: SpriteAnimationInstance::new(anim),
         };
-
-        if rng.random_bool(0.5) {
-            tree.data.sprite_flip = true;
-        }
-
         return Object::TreeObj(tree);
     }
 

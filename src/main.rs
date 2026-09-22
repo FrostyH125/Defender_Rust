@@ -28,6 +28,11 @@ pub mod map;
 pub mod systems;
 pub mod utils;
 
+// lights sprint:
+//  make ground shader do lighting
+//  make each object draw a new shadow based on the lights around it
+
+
 // any of these can be done in any order:
 //      grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
 //      make it so that the selectors never select or even hover enemies for movement
@@ -120,10 +125,6 @@ fn main() {
     let path_finder = PathFinder::new(map_width, map_height);
     let character_action_manager = CharacterActionManager::new();
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
-    let normal_map = rl.load_texture(&thread, "NormalMap.png").unwrap();
-
-    println!("normal map id: {}", normal_map.id);
-    println!("normal map size: {}x{}", normal_map.width, normal_map.height);
 
     let mut game_context = GameContext {
         total_game_time: 0.0,
@@ -146,10 +147,10 @@ fn main() {
     let TEST_LIGHT_POS_XY = mouse_world_coords(&game_context);
 
     let mut TEST_LIGHT = Light {
-        position: Vector3::new(TEST_LIGHT_POS_XY.x, TEST_LIGHT_POS_XY.y, 1.0),
+        position: Vector3::new(TEST_LIGHT_POS_XY.x, TEST_LIGHT_POS_XY.y, 10.0),
         color: Vector3::new(1.0, 1.0, 1.0),
-        intensity: 100.0,
-        radius: 100.0,
+        intensity: 1.0,
+        radius: 200.0,
     };
 
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
@@ -161,8 +162,6 @@ fn main() {
     // CH OBJ SHADER
     let mut char_and_object_multi_shader =
         rl.load_shader(&thread, None, Some("char_and_obj_multi_shader.frag"));
-    let normal_map_ch_obj_shader = char_and_object_multi_shader.get_shader_location("normalMap");
-    char_and_object_multi_shader.set_shader_value_texture(normal_map_ch_obj_shader, &normal_map);
     let red_tint_loc_ch_obj_shader = char_and_object_multi_shader.get_shader_location("red_tint");
     let blue_tint_loc_ch_obj_shader = char_and_object_multi_shader.get_shader_location("blue_tint");
     let brightness_modifier_loc_ch_obj_shader =
@@ -177,8 +176,6 @@ fn main() {
     let light_color_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightColor");
     let light_intensity_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightIntensity");
     let light_radius_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightRadius");
-
-    println!("normalMap location: {}", normal_map_ch_obj_shader);
     
     // GROUND SHADER
     let mut ground_time_of_day_shader =
