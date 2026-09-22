@@ -1,13 +1,6 @@
 use rand::rngs::ThreadRng;
 use raylib::{
-    RaylibHandle, RaylibThread,
-    camera::Camera2D,
-    color::Color,
-    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
-    ffi::KeyboardKey,
-    math::{Rectangle, Vector2},
-    shaders::RaylibShader,
-    texture::{RenderTexture2D, Texture2D},
+    RaylibHandle, RaylibThread, camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, ffi::{self, KeyboardKey, SetShaderValueTexture}, math::{Rectangle, Vector2, Vector3}, shaders::RaylibShader, texture::{RenderTexture2D, Texture2D},
 };
 use zander_game_core_rs::{
     raylib::sprite::Sprite,
@@ -15,11 +8,15 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
+    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX},
+    entities::{characters::gatherer::Gatherer, entity_manager::EntityManager},
+    map::tile_map::TileMap,
+    systems::{
         action_button_manager::ActionButtonManager,
         character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle,
-        entity_selecting_manager::EntitySelectingManager, select_rect::SelectRect,
-    }, utils::{
+        entity_selecting_manager::EntitySelectingManager, light::Light, select_rect::SelectRect,
+    },
+    utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -123,6 +120,10 @@ fn main() {
     let path_finder = PathFinder::new(map_width, map_height);
     let character_action_manager = CharacterActionManager::new();
     let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
+    let normal_map = rl.load_texture(&thread, "NormalMap.png").unwrap();
+
+    println!("normal map id: {}", normal_map.id);
+    println!("normal map size: {}x{}", normal_map.width, normal_map.height);
 
     let mut game_context = GameContext {
         total_game_time: 0.0,
@@ -142,18 +143,46 @@ fn main() {
         dt: 0.0,
     };
 
+    let TEST_LIGHT_POS_XY = mouse_world_coords(&game_context);
+
+    let mut TEST_LIGHT = Light {
+        position: Vector3::new(TEST_LIGHT_POS_XY.x, TEST_LIGHT_POS_XY.y, 1.0),
+        color: Vector3::new(1.0, 1.0, 1.0),
+        intensity: 100.0,
+        radius: 100.0,
+    };
+
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
 
-    let mut char_and_object_multi_shader = rl.load_shader(&thread, None, Some("char_and_obj_multi_shader.frag"));
     let mut shadow_fix_shader = rl.load_shader(&thread, None, Some("object_rt_shadow_fix.frag"));
-    let mut ground_time_of_day_shader = rl.load_shader(&thread, None, Some("ground_time_of_day_shader.frag"));
-    
+
+
+    // CH OBJ SHADER
+    let mut char_and_object_multi_shader =
+        rl.load_shader(&thread, None, Some("char_and_obj_multi_shader.frag"));
+    let normal_map_ch_obj_shader = char_and_object_multi_shader.get_shader_location("normalMap");
+    char_and_object_multi_shader.set_shader_value_texture(normal_map_ch_obj_shader, &normal_map);
     let red_tint_loc_ch_obj_shader = char_and_object_multi_shader.get_shader_location("red_tint");
     let blue_tint_loc_ch_obj_shader = char_and_object_multi_shader.get_shader_location("blue_tint");
     let brightness_modifier_loc_ch_obj_shader =
         char_and_object_multi_shader.get_shader_location("brightness_modifier");
+    let camera_target_loc_ch_obj_shader =
+        char_and_object_multi_shader.get_shader_location("cameraTarget");
+    let camera_offset_loc_ch_obj_shader =
+        char_and_object_multi_shader.get_shader_location("cameraOffset");
+    let render_target_res_loc_ch_obj_shader =
+        char_and_object_multi_shader.get_shader_location("renderTargetRes");
+    let light_position_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightPosition");
+    let light_color_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightColor");
+    let light_intensity_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightIntensity");
+    let light_radius_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightRadius");
 
+    println!("normalMap location: {}", normal_map_ch_obj_shader);
+    
+    // GROUND SHADER
+    let mut ground_time_of_day_shader =
+        rl.load_shader(&thread, None, Some("ground_time_of_day_shader.frag"));
     let red_tint_loc_ground_shader = ground_time_of_day_shader.get_shader_location("red_tint");
     let blue_tint_loc_ground_shader = ground_time_of_day_shader.get_shader_location("blue_tint");
     let brightness_modifier_loc_ground_shader =
@@ -313,6 +342,10 @@ fn main() {
         game_context.camera.target.y = camera_pos.y.round();
 
         //--UPDATE BEGINS HERE--//
+        
+        let TEST_LIGHT_NEW_XY = mouse_world_coords(&game_context);
+        TEST_LIGHT.position.x = TEST_LIGHT_NEW_XY.x;
+        TEST_LIGHT.position.y = TEST_LIGHT_NEW_XY.y;
 
         // update map first
         map.update(game_context.dt);
@@ -339,19 +372,44 @@ fn main() {
             .day_night_cycle
             .update(game_context.dt, &mut rl);
 
-        char_and_object_multi_shader
-            .set_shader_value(red_tint_loc_ch_obj_shader, game_context.day_night_cycle.red_tint);
-        char_and_object_multi_shader
-            .set_shader_value(blue_tint_loc_ch_obj_shader, game_context.day_night_cycle.blue_tint);
+        char_and_object_multi_shader.set_shader_value(
+            red_tint_loc_ch_obj_shader,
+            game_context.day_night_cycle.red_tint,
+        );
+        char_and_object_multi_shader.set_shader_value(
+            blue_tint_loc_ch_obj_shader,
+            game_context.day_night_cycle.blue_tint,
+        );
         char_and_object_multi_shader.set_shader_value(
             brightness_modifier_loc_ch_obj_shader,
             game_context.day_night_cycle.brightness_modifier,
         );
 
-        ground_time_of_day_shader
-            .set_shader_value(red_tint_loc_ground_shader, game_context.day_night_cycle.red_tint);
-        ground_time_of_day_shader
-            .set_shader_value(blue_tint_loc_ground_shader, game_context.day_night_cycle.blue_tint);
+        char_and_object_multi_shader
+            .set_shader_value(camera_target_loc_ch_obj_shader, game_context.camera.target);
+        char_and_object_multi_shader
+            .set_shader_value(camera_offset_loc_ch_obj_shader, game_context.camera.offset);
+        char_and_object_multi_shader.set_shader_value(
+            render_target_res_loc_ch_obj_shader,
+            Vector2::new(
+                current_zoom.v_width(game_context.logical_window_width) as f32,
+                current_zoom.v_height(game_context.logical_window_height) as f32,
+            ),
+        );
+
+        char_and_object_multi_shader.set_shader_value(light_position_ch_obj_shader, TEST_LIGHT.position);
+        char_and_object_multi_shader.set_shader_value(light_color_ch_obj_shader, TEST_LIGHT.color);
+        char_and_object_multi_shader.set_shader_value(light_intensity_ch_obj_shader, TEST_LIGHT.intensity);
+        char_and_object_multi_shader.set_shader_value(light_radius_ch_obj_shader, TEST_LIGHT.radius);
+
+        ground_time_of_day_shader.set_shader_value(
+            red_tint_loc_ground_shader,
+            game_context.day_night_cycle.red_tint,
+        );
+        ground_time_of_day_shader.set_shader_value(
+            blue_tint_loc_ground_shader,
+            game_context.day_night_cycle.blue_tint,
+        );
         ground_time_of_day_shader.set_shader_value(
             brightness_modifier_loc_ground_shader,
             game_context.day_night_cycle.brightness_modifier,
@@ -372,6 +430,7 @@ fn main() {
             {
                 let mut cam = ground_rt.begin_mode2D(game_context.camera);
 
+                //char_and_object_multi_shader.set_shader_value_texture(normal_map_ch_obj_shader, &normal_map);
                 let mut shader = cam.begin_shader_mode(&mut ground_time_of_day_shader);
 
                 map.draw(&mut shader, &game_context);
@@ -391,7 +450,7 @@ fn main() {
                 let mut cam = object_rt.begin_mode2D(game_context.camera);
 
                 let mut shader = cam.begin_shader_mode(&mut char_and_object_multi_shader);
-
+                
                 entity_manager.draw(
                     &map.map_object_grid,
                     &mut shader,
@@ -494,7 +553,7 @@ impl ZoomSizes {
             3 => FiveX,
             4 => SixX,
             5 => SevenX,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
@@ -543,7 +602,7 @@ fn set_render_textures(
 
     // the +2 here is to account for the fact that the base res is never used for render targets
     // because its too far of a zoom out, otherwise it would be +1
-    
+
     for i in 0..rt_count {
         ground_rt_array[i] = rl
             .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))

@@ -4,3 +4,4 @@ pub mod select_rect;
 pub mod action_buttons;
 pub mod action_button_manager;
 pub mod character_action_manager;
+pub mod light;
