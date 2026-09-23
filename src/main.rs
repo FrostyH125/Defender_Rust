@@ -140,9 +140,10 @@ fn main() {
     };
 
     let mut lights = Lights::new();
+    let mut light_z = 0.0;
     let mousepos = mouse_world_coords(&game_context);
-    let light_id = lights.add_light(Vector3::new(mousepos.x, mousepos.y, 10.0), Color::WHITE,1.0, 100.0);
-    let light_id_two = lights.add_light(Vector3::new(mousepos.x + 100.0, mousepos.y + 100.0, 20.0), Color::WHITE,1.0, 100.0);
+    let light_id = lights.add_light(Vector3::new(mousepos.x, mousepos.y, light_z), Color::WHITE,1.0, 100.0);
+    let light_id_two = lights.add_light(Vector3::new(mousepos.x + 100.0, mousepos.y + 100.0, light_z), Color::WHITE,1.0, 100.0);
 
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
@@ -328,8 +329,9 @@ fn main() {
 
         //--UPDATE BEGINS HERE--//
         let mouse_pos = mouse_world_coords(&game_context);
-        lights.set_light_pos(light_id, Vector3::new(mouse_pos.x, mouse_pos.y, 10.0));
-        lights.set_light_pos(light_id_two, Vector3::new(mouse_pos.x + 100.0, mouse_pos.y + 100.0, 10.0));
+        light_z += 10.0 * game_context.dt;
+        lights.set_light_pos(light_id, Vector3::new(mouse_pos.x, mouse_pos.y, light_z));
+        lights.set_light_pos(light_id_two, Vector3::new(mouse_pos.x + 100.0, mouse_pos.y + 100.0, light_z));
         // update map first
         map.update(game_context.dt);
 

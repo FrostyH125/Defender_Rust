@@ -71,7 +71,7 @@ void main()
     vec3 ambient_lighting = vec3(1.0);
 
     for (int i = 0; i < lightCount; i++) {
-        vec2 deltaToLight = lightPosition[i].xy - worldPosition;
+        vec3 deltaToLight = vec3(lightPosition[i].xy - worldPosition, lightPosition[i].z);
         float distance = length(deltaToLight);
         float attenuation = 1.0 - smoothstep(0.0, lightRadius[i], distance);
         float brightness = attenuation * lightIntensity[i];
