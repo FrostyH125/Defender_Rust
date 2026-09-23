@@ -8,15 +8,9 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX},
-    entities::{characters::gatherer::Gatherer, entity_manager::EntityManager},
-    map::tile_map::TileMap,
-    systems::{
-        action_button_manager::ActionButtonManager,
-        character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle,
-        entity_selecting_manager::EntitySelectingManager, light::Light, select_rect::SelectRect,
-    },
-    utils::{
+    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
+        action_button_manager::ActionButtonManager, character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, light::{Light, Lights}, select_rect::SelectRect,
+    }, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -29,6 +23,7 @@ pub mod systems;
 pub mod utils;
 
 // lights sprint:
+//  make array of light possible
 //  make ground shader do lighting
 //  make each object draw a new shadow based on the lights around it
 
@@ -144,14 +139,10 @@ fn main() {
         dt: 0.0,
     };
 
-    let TEST_LIGHT_POS_XY = mouse_world_coords(&game_context);
-
-    let mut TEST_LIGHT = Light {
-        position: Vector3::new(TEST_LIGHT_POS_XY.x, TEST_LIGHT_POS_XY.y, 10.0),
-        color: Vector3::new(1.0, 1.0, 1.0),
-        intensity: 1.0,
-        radius: 200.0,
-    };
+    let mut lights = Lights::new();
+    let mousepos = mouse_world_coords(&game_context);
+    let light_id = lights.add_light(Vector3::new(mousepos.x, mousepos.y, 10.0), Color::WHITE,1.0, 100.0);
+    let light_id_two = lights.add_light(Vector3::new(mousepos.x + 100.0, mousepos.y + 100.0, 20.0), Color::WHITE,1.0, 100.0);
 
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
@@ -172,10 +163,7 @@ fn main() {
         char_and_object_multi_shader.get_shader_location("cameraOffset");
     let render_target_res_loc_ch_obj_shader =
         char_and_object_multi_shader.get_shader_location("renderTargetRes");
-    let light_position_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightPosition");
-    let light_color_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightColor");
-    let light_intensity_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightIntensity");
-    let light_radius_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightRadius");
+    let light_count_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightCount");
     
     // GROUND SHADER
     let mut ground_time_of_day_shader =
@@ -339,11 +327,9 @@ fn main() {
         game_context.camera.target.y = camera_pos.y.round();
 
         //--UPDATE BEGINS HERE--//
-        
-        let TEST_LIGHT_NEW_XY = mouse_world_coords(&game_context);
-        TEST_LIGHT.position.x = TEST_LIGHT_NEW_XY.x;
-        TEST_LIGHT.position.y = TEST_LIGHT_NEW_XY.y;
-
+        let mouse_pos = mouse_world_coords(&game_context);
+        lights.set_light_pos(light_id, Vector3::new(mouse_pos.x, mouse_pos.y, 10.0));
+        lights.set_light_pos(light_id_two, Vector3::new(mouse_pos.x + 100.0, mouse_pos.y + 100.0, 10.0));
         // update map first
         map.update(game_context.dt);
 
@@ -394,10 +380,20 @@ fn main() {
             ),
         );
 
-        char_and_object_multi_shader.set_shader_value(light_position_ch_obj_shader, TEST_LIGHT.position);
-        char_and_object_multi_shader.set_shader_value(light_color_ch_obj_shader, TEST_LIGHT.color);
-        char_and_object_multi_shader.set_shader_value(light_intensity_ch_obj_shader, TEST_LIGHT.intensity);
-        char_and_object_multi_shader.set_shader_value(light_radius_ch_obj_shader, TEST_LIGHT.radius);
+        char_and_object_multi_shader.set_shader_value(light_count_ch_obj_shader, lights.all_lights.iter().count() as i32);
+
+        for (i, light) in lights.all_lights.iter().enumerate() {
+            let light_position_loc = char_and_object_multi_shader.get_shader_location(&format!("lightPosition[{i}]"));
+            let light_color_loc = char_and_object_multi_shader.get_shader_location(&format!("lightColor[{i}]"));
+            let light_intensity_loc = char_and_object_multi_shader.get_shader_location(&format!("lightIntensity[{i}]"));
+            let light_radius_loc = char_and_object_multi_shader.get_shader_location(&format!("lightRadius[{i}]"));
+            
+            char_and_object_multi_shader.set_shader_value(light_position_loc, light.1.position);
+            char_and_object_multi_shader.set_shader_value(light_color_loc, light.1.color);
+            char_and_object_multi_shader.set_shader_value(light_intensity_loc, light.1.intensity);
+            char_and_object_multi_shader.set_shader_value(light_radius_loc, light.1.radius);
+        }
+        
 
         ground_time_of_day_shader.set_shader_value(
             red_tint_loc_ground_shader,

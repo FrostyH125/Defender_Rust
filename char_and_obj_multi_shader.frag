@@ -23,10 +23,12 @@ uniform vec2 cameraOffset;
 uniform vec2 renderTargetRes;
 
 // stuff for lighting
-uniform vec3 lightPosition;
-uniform vec3 lightColor;
-uniform float lightIntensity;
-uniform float lightRadius;
+const int MAX_LIGHTS = 100;
+uniform int lightCount;
+uniform vec3 lightPosition[MAX_LIGHTS];
+uniform vec3 lightColor[MAX_LIGHTS];
+uniform float lightIntensity[MAX_LIGHTS];
+uniform float lightRadius[MAX_LIGHTS];
 
 void main()
 {
@@ -63,26 +65,20 @@ void main()
     screenPosition.y = renderTargetRes.y - screenPosition.y;
     vec2 worldPosition = cameraTarget + (screenPosition - cameraOffset);
 
+    vec3 additive_light = vec3(0.0);
     vec3 color = tex.rgb;
     vec3 normal = vec3(0.0, 0.0, 1.0);
     vec3 ambient_lighting = vec3(1.0);
 
-    vec2 deltaToLight = lightPosition.xy - worldPosition;
-    float distance = length(deltaToLight);
-    
-    //vec3 lightDirection = normalize(vec3(deltaToLight, lightPosition.z));
+    for (int i = 0; i < lightCount; i++) {
+        vec2 deltaToLight = lightPosition[i].xy - worldPosition;
+        float distance = length(deltaToLight);
+        float attenuation = 1.0 - smoothstep(0.0, lightRadius[i], distance);
+        float brightness = attenuation * lightIntensity[i];
+        additive_light += lightColor[i] * brightness;
+    }
 
-    //float brightness = max(dot(normal, lightDirection), 0.0);
-
-    float attenuation = 1.0 - smoothstep(0.0, lightRadius, distance);
-
-    float brightness = attenuation * lightIntensity;
-    
-    brightness *= attenuation;
-    brightness *= lightIntensity;
-
-    vec3 lighting = ambient_lighting + lightColor * brightness;
-
+    vec3 lighting = ambient_lighting + additive_light;
     vec3 finalRGB = color * lighting;
     
     finalColor = vec4(finalRGB * fragColor.rgb + time_of_day_tint.rgb, tex.a);
