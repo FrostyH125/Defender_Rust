@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use raylib::{color::Color, math::Vector3};
+use raylib::{color::Color, math::{Vector2, Vector3}};
 
 pub struct Light {
     pub position: Vector3,
@@ -22,8 +22,13 @@ impl Lights {
         }
     }
 
+    
+
     /// returns an id for the light created, the only way to
-    /// get rid of this light is to remove it with this id
+    /// get rid of this light is to remove it with this id.
+    /// note: the color parameter only reads the rgb values
+    /// note: the id cannot be ignored, it must be assigned to a variable
+    #[must_use = "The only way that a light can be removed is with the original ID"]
     pub fn add_light(&mut self, position: Vector3, color: Color, intensity: f32, radius: f32) -> usize {
 
         let normalized_color = color.color_normalize();
@@ -46,6 +51,13 @@ impl Lights {
 
     pub fn set_light_pos(&mut self, id: usize, new_pos: Vector3) {
         self.all_lights.entry(id).and_modify(|l| l.position = new_pos);
+    }
+
+    pub fn set_light_pos_no_z(&mut self, id: usize, new_pos_xy: Vector2) {
+        self.all_lights.entry(id).and_modify(|l| {
+            l.position.x = new_pos_xy.x;
+            l.position.y = new_pos_xy.y;
+        });
     }
 
     pub fn remove_light(&mut self, id: usize) {

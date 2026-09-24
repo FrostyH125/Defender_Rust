@@ -1,6 +1,6 @@
 use rand::rngs::ThreadRng;
 use raylib::{
-    RaylibHandle, RaylibThread, camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, ffi::{self, KeyboardKey, SetShaderValueTexture}, math::{Rectangle, Vector2, Vector3}, shaders::RaylibShader, texture::{RenderTexture2D, Texture2D},
+    RaylibHandle, RaylibThread, camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, ffi::{KeyboardKey}, math::{Rectangle, Vector2, Vector3}, shaders::RaylibShader, texture::{RenderTexture2D, Texture2D},
 };
 use zander_game_core_rs::{
     raylib::sprite::Sprite,
@@ -9,7 +9,7 @@ use zander_game_core_rs::{
 
 use crate::{
     ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
-        action_button_manager::ActionButtonManager, character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, light::{Light, Lights}, select_rect::SelectRect,
+        action_button_manager::ActionButtonManager, character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, light::Lights, select_rect::SelectRect,
     }, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
@@ -23,7 +23,6 @@ pub mod systems;
 pub mod utils;
 
 // lights sprint:
-//  make array of light possible
 //  make ground shader do lighting
 //  make each object draw a new shadow based on the lights around it
 
@@ -59,11 +58,11 @@ pub const TILE_SIZE: f32 = 8.0;
 
 pub struct GameContext {
     total_game_time: f32,
+    dt: f32,
     logical_window_width: u32,
     logical_window_height: u32,
     v_width: u32,
     v_height: u32,
-    dt: f32,
     camera: Camera2D,
     day_night_cycle: DayNightCycle,
     input_state: InputState,
@@ -140,10 +139,9 @@ fn main() {
     };
 
     let mut lights = Lights::new();
-    let mut light_z = 0.0;
+    let light_z = 0.0;
     let mousepos = mouse_world_coords(&game_context);
     let light_id = lights.add_light(Vector3::new(mousepos.x, mousepos.y, light_z), Color::WHITE,1.0, 100.0);
-    let light_id_two = lights.add_light(Vector3::new(mousepos.x + 100.0, mousepos.y + 100.0, light_z), Color::WHITE,1.0, 100.0);
 
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
@@ -152,27 +150,34 @@ fn main() {
 
 
     // CH OBJ SHADER
-    let mut char_and_object_multi_shader =
-        rl.load_shader(&thread, None, Some("char_and_obj_multi_shader.frag"));
-    let red_tint_loc_ch_obj_shader = char_and_object_multi_shader.get_shader_location("red_tint");
-    let blue_tint_loc_ch_obj_shader = char_and_object_multi_shader.get_shader_location("blue_tint");
-    let brightness_modifier_loc_ch_obj_shader =
-        char_and_object_multi_shader.get_shader_location("brightness_modifier");
-    let camera_target_loc_ch_obj_shader =
-        char_and_object_multi_shader.get_shader_location("cameraTarget");
-    let camera_offset_loc_ch_obj_shader =
-        char_and_object_multi_shader.get_shader_location("cameraOffset");
-    let render_target_res_loc_ch_obj_shader =
-        char_and_object_multi_shader.get_shader_location("renderTargetRes");
-    let light_count_ch_obj_shader = char_and_object_multi_shader.get_shader_location("lightCount");
-    
+    let mut entity_shader =
+        rl.load_shader(&thread, None, Some("entity_shader.frag"));
+    let entity_shader_red_tint_loc = entity_shader.get_shader_location("red_tint");
+    let entity_shader_blue_tint_loc = entity_shader.get_shader_location("blue_tint");
+    let entity_shader_brightness_modifier_loc =
+        entity_shader.get_shader_location("brightness_modifier");
+    let entity_shader_camera_target_loc =
+        entity_shader.get_shader_location("cameraTarget");
+    let entity_shader_camera_offset_loc =
+        entity_shader.get_shader_location("cameraOffset");
+    let entity_shader_render_target_res_loc =
+        entity_shader.get_shader_location("renderTargetRes");
+    let entity_shader_light_count_loc = entity_shader.get_shader_location("lightCount");
+
     // GROUND SHADER
-    let mut ground_time_of_day_shader =
-        rl.load_shader(&thread, None, Some("ground_time_of_day_shader.frag"));
-    let red_tint_loc_ground_shader = ground_time_of_day_shader.get_shader_location("red_tint");
-    let blue_tint_loc_ground_shader = ground_time_of_day_shader.get_shader_location("blue_tint");
-    let brightness_modifier_loc_ground_shader =
-        ground_time_of_day_shader.get_shader_location("brightness_modifier");
+    let mut ground_shader =
+        rl.load_shader(&thread, None, Some("ground_shader.frag"));
+    let ground_shader_red_tint_loc = ground_shader.get_shader_location("red_tint");
+    let ground_shader_blue_tint_loc = ground_shader.get_shader_location("blue_tint");
+    let ground_shader_brightness_modifier_loc =
+        ground_shader.get_shader_location("brightness_modifier");
+    let ground_shader_camera_target_loc =
+        ground_shader.get_shader_location("cameraTarget");
+    let ground_shader_camera_offset_loc =
+        ground_shader.get_shader_location("cameraOffset");
+    let ground_shader_render_target_res_loc =
+        ground_shader.get_shader_location("renderTargetRes");
+    let ground_shader_light_count_loc = ground_shader.get_shader_location("lightCount");
 
     let mut ground_render_textures: [RenderTexture2D; 6] = [
         rl.load_render_texture(
@@ -267,71 +272,13 @@ fn main() {
 
     while !rl.window_should_close() {
         game_context.dt = rl.get_frame_time();
-
         game_context.total_game_time += game_context.dt;
 
         // update input first
-        game_context.input_state.update(&mut rl, camera.zoom);
-
-        if game_context.input_state.left_clicked_once {
-            let pos = mouse_world_coords(&game_context);
-            make_mouse_click_particles(pos, &mut game_context.particle_system);
-        }
-
-        if game_context.input_state.right_clicked_once {
-            let pos = mouse_world_coords(&game_context);
-            make_mouse_right_click_particles(pos, &mut game_context.particle_system);
-        }
-
-        select_rect.update(&game_context);
-
-        if game_context.input_state.middle_roll.abs() >= 1.0 {
-            let up = game_context.input_state.middle_roll < 0.0;
-            current_zoom = current_zoom.change_res(up);
-            game_context.v_width = current_zoom.v_width(game_context.logical_window_width);
-            game_context.v_height = current_zoom.v_height(game_context.logical_window_height);
-        }
-
-        if rl.is_key_pressed(KeyboardKey::KEY_Z) {
-            current_zoom = current_zoom.change_res(false);
-        } else if rl.is_key_pressed(KeyboardKey::KEY_X) {
-            current_zoom = current_zoom.change_res(true);
-        }
-
-        if rl.is_key_down(KeyboardKey::KEY_D) {
-            camera_pos.x += game_context.v_width as f32 * game_context.dt;
-        }
-        if rl.is_key_down(KeyboardKey::KEY_A) {
-            camera_pos.x -= game_context.v_width as f32 * game_context.dt;
-        }
-        if rl.is_key_down(KeyboardKey::KEY_W) {
-            camera_pos.y -= game_context.v_width as f32 * game_context.dt;
-        }
-        if rl.is_key_down(KeyboardKey::KEY_S) {
-            camera_pos.y += game_context.v_width as f32 * game_context.dt;
-        }
-
-        if game_context.input_state.middle_currently_held {
-            camera_pos.x -= game_context.input_state.delta.x
-                / (window_width_target as f32 / game_context.v_width as f32);
-            camera_pos.y -= game_context.input_state.delta.y
-                / (window_height_target as f32 / game_context.v_height as f32);
-        }
-
-        // keep cam offset synced no MATTER WHAT THIS WAS PISSING ME OFF FOR A WHILE
-        game_context.camera.offset.x = current_zoom.v_width(window_width_target) as f32 / 2.0;
-        game_context.camera.offset.y = current_zoom.v_height(window_height_target) as f32 / 2.0;
-
-        // remove any floating points from camera pos
-
-        game_context.camera.target.x = camera_pos.x.round();
-        game_context.camera.target.y = camera_pos.y.round();
+        handle_input_and_update_camera(window_width_target, window_height_target, &mut current_zoom, &mut rl, camera, &mut select_rect, &mut camera_pos, &mut game_context);
 
         //--UPDATE BEGINS HERE--//
-        let mouse_pos = mouse_world_coords(&game_context);
-        light_z += 10.0 * game_context.dt;
-        lights.set_light_pos(light_id, Vector3::new(mouse_pos.x, mouse_pos.y, light_z));
-        lights.set_light_pos(light_id_two, Vector3::new(mouse_pos.x + 100.0, mouse_pos.y + 100.0, light_z));
+        lights.set_light_pos_no_z(light_id, mouse_world_coords(&game_context));
         // update map first
         map.update(game_context.dt);
 
@@ -352,63 +299,14 @@ fn main() {
         // particle system updates next since the particle system could be used by the buttons
         game_context.particle_system.update(game_context.dt);
 
-        // this just updates the values used for the shader
+        // this just updates the values used for the shaders
         game_context
             .day_night_cycle
             .update(game_context.dt, &mut rl);
 
-        char_and_object_multi_shader.set_shader_value(
-            red_tint_loc_ch_obj_shader,
-            game_context.day_night_cycle.red_tint,
-        );
-        char_and_object_multi_shader.set_shader_value(
-            blue_tint_loc_ch_obj_shader,
-            game_context.day_night_cycle.blue_tint,
-        );
-        char_and_object_multi_shader.set_shader_value(
-            brightness_modifier_loc_ch_obj_shader,
-            game_context.day_night_cycle.brightness_modifier,
-        );
 
-        char_and_object_multi_shader
-            .set_shader_value(camera_target_loc_ch_obj_shader, game_context.camera.target);
-        char_and_object_multi_shader
-            .set_shader_value(camera_offset_loc_ch_obj_shader, game_context.camera.offset);
-        char_and_object_multi_shader.set_shader_value(
-            render_target_res_loc_ch_obj_shader,
-            Vector2::new(
-                current_zoom.v_width(game_context.logical_window_width) as f32,
-                current_zoom.v_height(game_context.logical_window_height) as f32,
-            ),
-        );
+        set_shader_values(current_zoom, &game_context, &lights, &mut entity_shader, entity_shader_red_tint_loc, entity_shader_blue_tint_loc, entity_shader_brightness_modifier_loc, entity_shader_camera_target_loc, entity_shader_camera_offset_loc, entity_shader_render_target_res_loc, entity_shader_light_count_loc, &mut ground_shader, ground_shader_red_tint_loc, ground_shader_blue_tint_loc, ground_shader_brightness_modifier_loc, ground_shader_camera_target_loc, ground_shader_camera_offset_loc, ground_shader_render_target_res_loc, ground_shader_light_count_loc);
 
-        char_and_object_multi_shader.set_shader_value(light_count_ch_obj_shader, lights.all_lights.iter().count() as i32);
-
-        for (i, light) in lights.all_lights.iter().enumerate() {
-            let light_position_loc = char_and_object_multi_shader.get_shader_location(&format!("lightPosition[{i}]"));
-            let light_color_loc = char_and_object_multi_shader.get_shader_location(&format!("lightColor[{i}]"));
-            let light_intensity_loc = char_and_object_multi_shader.get_shader_location(&format!("lightIntensity[{i}]"));
-            let light_radius_loc = char_and_object_multi_shader.get_shader_location(&format!("lightRadius[{i}]"));
-            
-            char_and_object_multi_shader.set_shader_value(light_position_loc, light.1.position);
-            char_and_object_multi_shader.set_shader_value(light_color_loc, light.1.color);
-            char_and_object_multi_shader.set_shader_value(light_intensity_loc, light.1.intensity);
-            char_and_object_multi_shader.set_shader_value(light_radius_loc, light.1.radius);
-        }
-        
-
-        ground_time_of_day_shader.set_shader_value(
-            red_tint_loc_ground_shader,
-            game_context.day_night_cycle.red_tint,
-        );
-        ground_time_of_day_shader.set_shader_value(
-            blue_tint_loc_ground_shader,
-            game_context.day_night_cycle.blue_tint,
-        );
-        ground_time_of_day_shader.set_shader_value(
-            brightness_modifier_loc_ground_shader,
-            game_context.day_night_cycle.brightness_modifier,
-        );
 
         let current_ground_rt = &mut ground_render_textures[current_zoom as usize];
         let current_object_and_character_rt =
@@ -425,8 +323,7 @@ fn main() {
             {
                 let mut cam = ground_rt.begin_mode2D(game_context.camera);
 
-                //char_and_object_multi_shader.set_shader_value_texture(normal_map_ch_obj_shader, &normal_map);
-                let mut shader = cam.begin_shader_mode(&mut ground_time_of_day_shader);
+                let mut shader = cam.begin_shader_mode(&mut ground_shader);
 
                 map.draw(&mut shader, &game_context);
 
@@ -444,8 +341,8 @@ fn main() {
             {
                 let mut cam = object_rt.begin_mode2D(game_context.camera);
 
-                let mut shader = cam.begin_shader_mode(&mut char_and_object_multi_shader);
-                
+                let mut shader = cam.begin_shader_mode(&mut entity_shader);
+
                 entity_manager.draw(
                     &map.map_object_grid,
                     &mut shader,
@@ -506,6 +403,150 @@ fn main() {
         entity_selecting_manager.draw(&mut d);
     }
     //--DRAWING ENDS HERE--//
+}
+
+#[inline]
+fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights: &Lights, entity_shader: &mut raylib::prelude::Shader, entity_shader_red_tint_loc: i32, entity_shader_blue_tint_loc: i32, entity_shader_brightness_modifier_loc: i32, entity_shader_camera_target_loc: i32, entity_shader_camera_offset_loc: i32, entity_shader_render_target_res_loc: i32, entity_shader_light_count_loc: i32, ground_shader: &mut raylib::prelude::Shader, ground_shader_red_tint_loc: i32, ground_shader_blue_tint_loc: i32, ground_shader_brightness_modifier_loc: i32, ground_shader_camera_target_loc: i32, ground_shader_camera_offset_loc: i32, ground_shader_render_target_res_loc: i32, ground_shader_light_count_loc: i32) {
+    entity_shader.set_shader_value(
+        entity_shader_red_tint_loc,
+        game_context.day_night_cycle.red_tint,
+    );
+    entity_shader.set_shader_value(
+        entity_shader_blue_tint_loc,
+        game_context.day_night_cycle.blue_tint,
+    );
+    entity_shader.set_shader_value(
+        entity_shader_brightness_modifier_loc,
+        game_context.day_night_cycle.brightness_modifier,
+    );
+
+    entity_shader
+        .set_shader_value(entity_shader_camera_target_loc, game_context.camera.target);
+    entity_shader
+        .set_shader_value(entity_shader_camera_offset_loc, game_context.camera.offset);
+    entity_shader.set_shader_value(
+        entity_shader_render_target_res_loc,
+        Vector2::new(
+            current_zoom.v_width(game_context.logical_window_width) as f32,
+            current_zoom.v_height(game_context.logical_window_height) as f32,
+        ),
+    );
+
+    entity_shader.set_shader_value(entity_shader_light_count_loc, lights.all_lights.iter().count() as i32);
+
+    ground_shader.set_shader_value(
+        ground_shader_red_tint_loc,
+        game_context.day_night_cycle.red_tint,
+    );
+    ground_shader.set_shader_value(
+        ground_shader_blue_tint_loc,
+        game_context.day_night_cycle.blue_tint,
+    );
+    ground_shader.set_shader_value(
+        ground_shader_brightness_modifier_loc,
+        game_context.day_night_cycle.brightness_modifier,
+    );
+
+    ground_shader
+        .set_shader_value(ground_shader_camera_target_loc, game_context.camera.target);
+    ground_shader
+        .set_shader_value(ground_shader_camera_offset_loc, game_context.camera.offset);
+    ground_shader.set_shader_value(
+        ground_shader_render_target_res_loc,
+        Vector2::new(
+            current_zoom.v_width(game_context.logical_window_width) as f32,
+            current_zoom.v_height(game_context.logical_window_height) as f32,
+        ),
+    );
+
+    ground_shader.set_shader_value(ground_shader_light_count_loc, lights.all_lights.iter().count() as i32);
+
+    for (i, light) in lights.all_lights.iter().enumerate() {
+        let current_light = light.1;
+        let light_pos = current_light.position;
+        let light_color = current_light.color;
+        let light_intensity = current_light.intensity;
+        let light_radius = current_light.radius;
+
+        let entity_light_position_loc = entity_shader.get_shader_location(&format!("lightPosition[{i}]"));
+        let entity_light_color_loc = entity_shader.get_shader_location(&format!("lightColor[{i}]"));
+        let entity_light_intensity_loc = entity_shader.get_shader_location(&format!("lightIntensity[{i}]"));
+        let entity_light_radius_loc = entity_shader.get_shader_location(&format!("lightRadius[{i}]"));
+
+        let ground_light_position_loc = ground_shader.get_shader_location(&format!("lightPosition[{i}]"));
+        let ground_light_color_loc = ground_shader.get_shader_location(&format!("lightColor[{i}]"));
+        let ground_light_intensity_loc = ground_shader.get_shader_location(&format!("lightIntensity[{i}]"));
+        let ground_light_radius_loc = ground_shader.get_shader_location(&format!("lightRadius[{i}]"));
+
+        entity_shader.set_shader_value(entity_light_position_loc, light_pos);
+        entity_shader.set_shader_value(entity_light_color_loc, light_color);
+        entity_shader.set_shader_value(entity_light_intensity_loc, light_intensity);
+        entity_shader.set_shader_value(entity_light_radius_loc, light_radius);
+
+        ground_shader.set_shader_value(ground_light_position_loc, light_pos);
+        ground_shader.set_shader_value(ground_light_color_loc, light_color);
+        ground_shader.set_shader_value(ground_light_intensity_loc, light_intensity);
+        ground_shader.set_shader_value(ground_light_radius_loc, light_radius);
+    }
+}
+
+#[inline]
+fn handle_input_and_update_camera(window_width_target: u32, window_height_target: u32, current_zoom: &mut ZoomSizes, rl: &mut RaylibHandle, camera: Camera2D, select_rect: &mut SelectRect, camera_pos: &mut Vector2, game_context: &mut GameContext) {
+    game_context.input_state.update(rl, camera.zoom);
+
+    if game_context.input_state.left_clicked_once {
+        let pos = mouse_world_coords(&*game_context);
+        make_mouse_click_particles(pos, &mut game_context.particle_system);
+    }
+
+    if game_context.input_state.right_clicked_once {
+        let pos = mouse_world_coords(&*game_context);
+        make_mouse_right_click_particles(pos, &mut game_context.particle_system);
+    }
+
+    select_rect.update(&*game_context);
+
+    if game_context.input_state.middle_roll.abs() >= 1.0 {
+        let up = game_context.input_state.middle_roll < 0.0;
+        *current_zoom = current_zoom.change_res(up);
+        game_context.v_width = current_zoom.v_width(game_context.logical_window_width);
+        game_context.v_height = current_zoom.v_height(game_context.logical_window_height);
+    }
+
+    if rl.is_key_pressed(KeyboardKey::KEY_Z) {
+        *current_zoom = current_zoom.change_res(false);
+    } else if rl.is_key_pressed(KeyboardKey::KEY_X) {
+        *current_zoom = current_zoom.change_res(true);
+    }
+
+    if rl.is_key_down(KeyboardKey::KEY_D) {
+        camera_pos.x += game_context.v_width as f32 * game_context.dt;
+    }
+    if rl.is_key_down(KeyboardKey::KEY_A) {
+        camera_pos.x -= game_context.v_width as f32 * game_context.dt;
+    }
+    if rl.is_key_down(KeyboardKey::KEY_W) {
+        camera_pos.y -= game_context.v_width as f32 * game_context.dt;
+    }
+    if rl.is_key_down(KeyboardKey::KEY_S) {
+        camera_pos.y += game_context.v_width as f32 * game_context.dt;
+    }
+
+    if game_context.input_state.middle_currently_held {
+        camera_pos.x -= game_context.input_state.delta.x
+            / (window_width_target as f32 / game_context.v_width as f32);
+        camera_pos.y -= game_context.input_state.delta.y
+            / (window_height_target as f32 / game_context.v_height as f32);
+    }
+
+    // keep cam offset synced no MATTER WHAT THIS WAS PISSING ME OFF FOR A WHILE
+    game_context.camera.offset.x = current_zoom.v_width(window_width_target) as f32 / 2.0;
+    game_context.camera.offset.y = current_zoom.v_height(window_height_target) as f32 / 2.0;
+
+    // remove any floating points from camera pos
+
+    game_context.camera.target.x = camera_pos.x.round();
+    game_context.camera.target.y = camera_pos.y.round();
 }
 
 #[repr(usize)]

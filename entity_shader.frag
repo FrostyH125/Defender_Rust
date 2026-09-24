@@ -67,7 +67,6 @@ void main()
 
     vec3 additive_light = vec3(0.0);
     vec3 color = tex.rgb;
-    vec3 normal = vec3(0.0, 0.0, 1.0);
     vec3 ambient_lighting = vec3(1.0);
 
     for (int i = 0; i < lightCount; i++) {
