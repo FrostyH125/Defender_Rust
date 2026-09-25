@@ -133,6 +133,18 @@ pub enum GrassType {
     Stalky,
 }
 
+
+pub enum GrassSizePreference {
+    /// gives no extra chance to either large or small grass
+    None,
+
+    /// 90% chance for small grass, 8% for medium, and 2% for large
+    Small,
+
+    /// 90% chance for large grass, 8% for medium, and 2% for small
+    Large
+}
+
 impl GrassType {
     pub fn random_type(rng: &mut ThreadRng) -> Self {
         let k = rng.random_range(0..=3);
@@ -155,67 +167,29 @@ pub struct Grass {
 }
 
 impl Grass {
-    pub fn new(cord: MapCord, game_context: &mut GameContext) -> Object {
-        let grass_level = game_context.rng.random_range(0..=2);
-        let grass_type = GrassType::random_type(&mut game_context.rng);
-
-        let (offset_y, height) = match grass_level {
-            0 | 1 => (0.0, SMALL_GRASS_HEIGHT),
-            2 => (-8.0, TALL_GRASS_HEIGHT),
-            _ => panic!("only levels 0..=2 allowed for grass"),
-        };
-
-        let object_specific_data = ObjectSpecificData {
-            situational_draw_offset: Vector2::zero(),
-            draw_offset: Vector2::new(0.0, offset_y),
-            width: GRASS_WIDTH as f32,
-            height: height as f32,
-            hit_timer: Timer::new(0.5),
-            disappear_timer: Timer::new(0.0),
-            health: 100.0,
-            object_kind: ObjectKind::Grass,
-        };
-
-        let data = ObjectData::new(
-            cord.map_pos(),
-            vector2_utils::random_offset_by_one(&mut game_context.rng),
-            cord,
-            object_specific_data
-        );
-
-        let grass = Grass {
-            data,
-            level_up_time: game_context
-                .rng
-                .random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME)
-                + game_context.total_game_time,
-            grass_level,
-            grass_type,
-            anim_instance: SpriteAnimationInstance {
-                sprite_animation: Self::get_grass_anim(grass_type, grass_level),
-                current_frame_time: game_context.rng.random_range(0.0..=GRASS_ANIM_SPEED),
-                current_frame_index: game_context
-                    .rng
-                    .random_range(0..WHEATY_GRASS_ANIMS[0].frames.len())
-                    as u8,
-                finished_playing: false,
-                is_playing: false,
+    pub fn new(cord: MapCord, game_context: &mut GameContext, grass_size_preference: GrassSizePreference) -> Object {
+        let grass_level: u8 = match grass_size_preference {
+            GrassSizePreference::None => game_context.rng.random_range(0..=2),
+            GrassSizePreference::Small => {
+                if game_context.rng.random_bool(0.9) {
+                    0
+                } else if game_context.rng.random_bool(0.8) {
+                    1
+                } else {
+                    2
+                }
+            },
+            GrassSizePreference::Large => {
+                if game_context.rng.random_bool(0.9) {
+                    2
+                } else if game_context.rng.random_bool(0.8) {
+                    1
+                } else {
+                    0
+                }
             },
         };
 
-        return Object::GrassObj(grass);
-    }
-
-    /// has a 90% chance of being level 0 (small), and from the 10% of the other chance, it has an 80% chance of that to be 1 (medium), else its 2 (large)
-    pub fn new_small_likely(cord: MapCord, game_context: &mut GameContext) -> Object {
-        let grass_level = if game_context.rng.random_bool(0.9) {
-            0
-        } else if game_context.rng.random_bool(0.8) {
-            1
-        } else {
-            2
-        };
-
         let grass_type = GrassType::random_type(&mut game_context.rng);
 
         let (offset_y, height) = match grass_level {
@@ -229,66 +203,6 @@ impl Grass {
             draw_offset: Vector2::new(0.0, offset_y),
             width: GRASS_WIDTH as f32,
             height: height as f32,
-            hit_timer: Timer::new(0.5),
-            disappear_timer: Timer::new(0.0),
-            health: 100.0,
-            object_kind: ObjectKind::Grass,
-        };
-
-        let data = ObjectData::new(
-            cord.map_pos(),
-            vector2_utils::random_offset_by_one(&mut game_context.rng),
-            cord,
-            object_specific_data
-        );
-
-        let grass = Grass {
-            data,
-            level_up_time: game_context
-                .rng
-                .random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME)
-                + game_context.total_game_time,
-            grass_level,
-            grass_type,
-            anim_instance: SpriteAnimationInstance {
-                sprite_animation: Self::get_grass_anim(grass_type, grass_level),
-                current_frame_time: game_context.rng.random_range(0.0..=GRASS_ANIM_SPEED),
-                current_frame_index: game_context
-                    .rng
-                    .random_range(0..WHEATY_GRASS_ANIMS[0].frames.len())
-                    as u8,
-                finished_playing: false,
-                is_playing: false,
-            },
-        };
-
-        return Object::GrassObj(grass);
-    }
-
-    /// has a 90% chance of being level 2 (large), and from the 10% of the other chance, it has an 80% chance of that to be 1 (medium), else its 2 (small)
-    pub fn new_large_likely(cord: MapCord, game_context: &mut GameContext) -> Object {
-        let grass_level = if game_context.rng.random_bool(0.9) {
-            2
-        } else if game_context.rng.random_bool(0.8) {
-            1
-        } else {
-            0
-        };
-
-        let grass_type = GrassType::random_type(&mut game_context.rng);
-
-        let (offset_y, height) = match grass_level {
-            0 | 1 => (0.0, SMALL_GRASS_HEIGHT),
-            2 => (-8.0, TALL_GRASS_HEIGHT),
-            _ => panic!("only levels 0..=2 allowed for grass"),
-        };
-
-        let object_specific_data = ObjectSpecificData {
-            situational_draw_offset: Vector2::zero(),
-            draw_offset: Vector2::new(0.0, offset_y),
-            width: GRASS_WIDTH as f32,
-            height: height as f32,
-            hit_timer: Timer::new(0.5),
             disappear_timer: Timer::new(0.0),
             health: 100.0,
             object_kind: ObjectKind::Grass,

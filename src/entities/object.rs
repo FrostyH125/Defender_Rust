@@ -8,7 +8,7 @@ use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
 use crate::{
     GameContext,
     entities::{
-        object::{Object::*, ObjectState::GettingHit},
+        object::Object::*,
         objects::{grass::Grass, tree::Tree},
     },
     utils::{camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord},
@@ -23,7 +23,6 @@ pub enum ObjectKind {
 #[derive(PartialEq, Eq, Copy, Clone)]
 pub enum ObjectState {
     Idle,
-    GettingHit,
     Breaking,
 }
 
@@ -33,12 +32,12 @@ pub struct ObjectData {
     pub pos: Vector2,
     pub draw_pos: Vector2,
     pub cord: MapCord,
-    pub is_hovering: bool,
-    pub is_selected: bool,
-    pub is_occupied: bool,
-    pub is_marked_for_gathering: bool,
-    pub state: ObjectState,
     pub sprite_flip: bool,
+    pub state: ObjectState,
+    is_marked_for_gathering: bool,
+    is_occupied: bool,
+    is_hovering: bool,
+    is_selected: bool,
 }
 
 /// this is strictly for data that is solely dependent on the kind of object it is, not just stuff that every object has
@@ -49,7 +48,6 @@ pub struct ObjectSpecificData {
     pub draw_offset: Vector2,
     pub width: f32,
     pub height: f32,
-    pub hit_timer: Timer,
     pub disappear_timer: Timer,
     pub health: f32,
     pub object_kind: ObjectKind,
@@ -97,7 +95,6 @@ pub enum Object {
 }
 
 impl Object {
-    #[inline]
     pub fn get_data(&self) -> &ObjectData {
         match self {
             TreeObj(tree) => &tree.data,
@@ -106,7 +103,6 @@ impl Object {
         }
     }
 
-    #[inline]
     pub fn get_mut_data(&mut self) -> &mut ObjectData {
         match self {
             TreeObj(tree) => &mut tree.data,
@@ -147,17 +143,6 @@ impl Object {
                 if disappear_timer.is_done() {
                     self.delete();
                     return;
-                }
-            }
-            ObjectState::GettingHit => {
-                let hit_timer = &mut self.get_mut_data().object_specific_data.hit_timer;
-
-                hit_timer.track(game_context.dt);
-
-                if hit_timer.is_done() {
-                    hit_timer.reset();
-                    self.get_mut_data().state = ObjectState::Idle;
-                    self.on_out_of_hit();
                 }
             }
         }
@@ -246,15 +231,6 @@ impl Object {
         data.object_specific_data.health -= damage;
         let health = data.object_specific_data.health;
 
-        match data.state {
-            GettingHit => {
-                data.object_specific_data.hit_timer.reset();
-            }
-            _ => {
-                data.state = GettingHit;
-            }
-        }
-
         self.on_hit(game_context, facing_dir);
 
         if health <= 0.0 {
@@ -272,15 +248,6 @@ impl Object {
         }
     }
 
-    /// describes a one time action that should be taken the moment something comes out of the hit state
-    fn on_out_of_hit(&mut self) {
-        match self {
-            NoObject => (),
-            TreeObj(tree) => tree.on_out_of_hit(),
-            GrassObj(..) => (/* to be added eventually */),
-        }
-    }
-
     fn delete(&mut self) {
         *self = Self::NoObject
     }
@@ -293,5 +260,57 @@ impl Object {
     #[inline]
     pub fn hover_rect(&self) -> Rectangle {
         return self.get_data().hover_rect();
+    }
+
+    #[inline]
+    /// sets object's data's field `is_hovering` to `true`
+    pub fn set_hovering(&mut self) {
+        self.get_mut_data().is_hovering = true;
+    }
+
+    #[inline]
+    pub fn is_hovering(&self) -> bool {
+        return self.get_data().is_hovering;
+    }
+
+    #[inline]
+    /// sets object's data's field `is_selected` to `true`
+    pub fn set_selected(&mut self) {
+        self.get_mut_data().is_selected = true;
+    }
+
+    #[inline]
+    pub fn is_selected(&self) -> bool {
+        return self.get_data().is_selected;
+    }
+
+    #[inline]
+    /// sets object's data's field `is_occupied` to `true`
+    pub fn set_occupied(&mut self) {
+        self.get_mut_data().is_occupied = true;
+    }
+
+    #[inline]
+    /// sets object's data's field `is_occupied` to `true`
+    pub fn set_unoccupied(&mut self) {
+        self.get_mut_data().is_occupied = false;
+    }
+
+    #[inline]
+    pub fn is_occupied(&self) -> bool {
+        return self.get_data().is_occupied;
+    }
+
+    /// sets object's data's field `is_marked_for_gathering` to `true`
+    pub fn mark_for_gathering(&mut self) {
+        self.get_mut_data().is_marked_for_gathering = true;
+    }
+
+    pub fn unmark_for_gathering(&mut self) {
+        self.get_mut_data().is_marked_for_gathering = false;
+    }
+
+    pub fn is_marked_for_gathering(&self) -> bool {
+        return self.get_data().is_marked_for_gathering;
     }
 }

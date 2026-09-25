@@ -273,7 +273,7 @@ impl EntityManager {
                                 .check_collision_recs(&obj.hover_rect());
 
                             if should_hover_obj {
-                                obj.get_mut_data().is_hovering = true;
+                                obj.set_hovering();
                                 hover_objs.push(index);
                             }
                         }
@@ -300,7 +300,7 @@ impl EntityManager {
                     if let Some(idx) = hover_obj {
                         let obj = &mut map.map_object_grid[idx];
 
-                        obj.get_mut_data().is_hovering = true;
+                        obj.set_hovering();
 
                         if left_clicked {
                             selector.select_single_obj(obj, idx);
@@ -433,15 +433,14 @@ impl EntityManager {
                     Object::NoObject => (),
                     _ => {
                         let object = &object_grid[current_tile_index];
-                        let object_data = object.get_data();
 
                         object.draw(d, texture);
 
-                        if object_data.is_hovering {
+                        if object.is_hovering() {
                             object.draw_hover(d, texture);
                         }
 
-                        if object_data.is_selected {
+                        if object.is_selected() {
                             object.draw_selected(d, texture);
                         }
                     }

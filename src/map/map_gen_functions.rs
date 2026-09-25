@@ -4,8 +4,7 @@ use rand::{RngExt, rngs::ThreadRng};
 
 use crate::{
     GameContext, entities::{
-        object::Object::{self},
-        objects::{grass::Grass, tree::Tree},
+        object::Object::{self}, objects::{grass::{Grass, GrassSizePreference}, tree::Tree},
     }, map::{
         tile::{LakeSpriteData, RiverSpriteData, TileType},
         tile_map::{MapDimensions, MapObjectGrid, MapTileGrid},
@@ -775,7 +774,7 @@ pub fn spawn_standalone_grass(
             let idx = map_utils::cords_to_index(map_dimensions, try_grass_tile);
 
             if let Object::NoObject = object_grid[idx] {
-                object_grid[idx] = Grass::new(try_grass_tile, game_context);
+                object_grid[idx] = Grass::new(try_grass_tile, game_context, GrassSizePreference::None);
                 break;
             }
         }
@@ -820,18 +819,20 @@ pub fn spawn_grass_around_lakes(
                     // spawn different grass levels on average depending on distance from the water
                     match normalized_range {
                         0.0..=0.2 => {
-                            *obj = Grass::new_large_likely(
+                            *obj = Grass::new(
                                 try_grass_tile,
                                 game_context,
+                                GrassSizePreference::Large
                             )
                         }
                         0.7..=1.0 => {
-                            *obj = Grass::new_small_likely(
+                            *obj = Grass::new(
                                 try_grass_tile,
                                 game_context,
+                                GrassSizePreference::Small
                             )
                         }
-                        _ => *obj = Grass::new(try_grass_tile, game_context),
+                        _ => *obj = Grass::new(try_grass_tile, game_context, GrassSizePreference::None),
                     }
                 }
             }
@@ -875,18 +876,20 @@ pub fn spawn_grass_around_rivers(
                     // spawn different grass levels on average depending on distance from the water
                     match normalized_range {
                         0.0..=0.2 => {
-                            *obj = Grass::new_large_likely(
+                            *obj = Grass::new(
                                 try_grass_tile,
                                 game_context,
+                                GrassSizePreference::Large
                             )
                         }
                         0.7..=1.0 => {
-                            *obj = Grass::new_small_likely(
+                            *obj = Grass::new(
                                 try_grass_tile,
                                 game_context,
+                                GrassSizePreference::Small
                             )
                         }
-                        _ => *obj = Grass::new(try_grass_tile, game_context),
+                        _ => *obj = Grass::new(try_grass_tile, game_context, GrassSizePreference::None),
                     }
                 }
             }
@@ -957,13 +960,14 @@ pub fn spawn_fields_of_grass(
 
                 if let Object::NoObject = obj {
                     // meant to be used on any thin parts (typically the end)
-                    if height <= 4 {
+                    if height <= 5 {
                         if game_context.rng.random_bool(0.03) {
                             continue;
                         }
-                        *obj = Grass::new_small_likely(
+                        *obj = Grass::new(
                             try_grass_tile,
                             game_context,
+                            GrassSizePreference::Small
                         )
                     } else {
                         // if its on the edges of the field, make it likely to be small, if in middle, its likely to be large, else, random size
@@ -973,21 +977,24 @@ pub fn spawn_fields_of_grass(
                                 if game_context.rng.random_bool(0.05) {
                                     continue;
                                 }
-                                *obj = Grass::new_small_likely(
+                                *obj = Grass::new(
                                     try_grass_tile,
                                     game_context,
+                                    GrassSizePreference::Small
                                 )
                             }
                             0.4..=0.6 => {
-                                *obj = Grass::new_large_likely(
+                                *obj = Grass::new(
                                     try_grass_tile,
                                     game_context,
+                                    GrassSizePreference::Large
                                 )
                             }
                             _ => {
                                 *obj = Grass::new(
                                     try_grass_tile,
                                     game_context,
+                                    GrassSizePreference::None
                                 )
                             }
                         }

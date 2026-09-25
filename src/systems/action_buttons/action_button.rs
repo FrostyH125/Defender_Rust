@@ -12,8 +12,7 @@ use crate::{
     GameContext, entities::{
         character::Character, characters::gatherer::{GatherTarget, GathererState}, entity_manager::{CharID, CharacterEntry}, object::Object,
     }, map::tile_map::MapObjectGrid, utils::{
-        direction_utils::ORTHOGONAL_DELTAS, draw_utils, entity_utils::get_char_by_unique_id,
-        mouse_utils::mouse_world_coords,
+        direction_utils::ORTHOGONAL_DELTAS, draw_utils, entity_utils::{get_char_by_unique_id, object_matches_gathering_target}, mouse_utils::mouse_world_coords,
     },
 };
 
@@ -117,19 +116,11 @@ impl ActionButton {
         for obj_id in obj_ids {
             let obj = &mut object_grid[*obj_id];
 
-            match obj_kind {
-                GatherTarget::Tree => {
-                    if let Object::TreeObj(tree) = obj {
-                        tree.data.is_marked_for_gathering = true;
-                        object_ids_with_correct_type.push(*obj_id);
-                    }
-                }
-                GatherTarget::Grass => {
-                    if let Object::GrassObj(grass) = obj {
-                        grass.data.is_marked_for_gathering = true;
-                        object_ids_with_correct_type.push(*obj_id);
-                    }
-                }
+            let is_match = object_matches_gathering_target(obj_kind, &obj);
+            
+            if is_match {
+                obj.mark_for_gathering();
+                object_ids_with_correct_type.push(*obj_id);
             }
         }
 

@@ -62,8 +62,7 @@ impl EntitySelectingManager {
 
     pub fn select_single_obj(&mut self, object: &mut Object, idx: usize) {
         self.deselect_objs();
-        let data = object.get_mut_data();
-        data.is_selected = true;
+        object.set_selected();
         self.selected_objects.push(idx);
     }
 
@@ -100,7 +99,7 @@ impl EntitySelectingManager {
         self.deselect_objs();
         for idx in indexes {
             let obj = &mut object_grid[idx];
-            obj.get_mut_data().is_selected = true;
+            obj.set_selected();
             self.selected_objects.push(idx);
         }
     }

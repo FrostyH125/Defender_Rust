@@ -12,7 +12,7 @@ use crate::{
         character::{
             Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult, CharacterSpecificData,
         }, characters::gatherer::GathererState::MovingToObject, object::Object,
-    }, map::tile_map::{MapObjectGrid, TileMap},
+    }, map::tile_map::{MapObjectGrid, TileMap}, utils::entity_utils::object_matches_gathering_target,
 };
 
 pub static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -71,6 +71,7 @@ struct ObjectEntry {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
+// when adding a new gather target, you need to add the match to entity_utils::object_matches_gather_target()
 pub enum GatherTarget {
     Tree,
     Grass,
@@ -150,7 +151,7 @@ impl Gatherer {
             self.should_unoccupy_current_obj = false;
 
             if let Some(o_idx) = self.current_index {
-                map.map_object_grid[o_idx].get_mut_data().is_occupied = false;
+                map.map_object_grid[o_idx].set_unoccupied();
                 self.current_index = None;
             }
         }
@@ -222,9 +223,7 @@ impl Gatherer {
             CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {
                 self.data.character_values.move_anim.reset();
                 self.object_indices.clear();
-                map.map_object_grid[self.current_index.unwrap()]
-                    .get_mut_data()
-                    .is_occupied = false;
+                map.map_object_grid[self.current_index.unwrap()].set_unoccupied();
                 self.current_index = None;
                 self.gatherer_state = GathererState::Idle;
             }
@@ -242,7 +241,7 @@ impl Gatherer {
 
         match closest_obj {
             Some(o) => {
-                map.map_object_grid[o.idx].get_mut_data().is_occupied = true;
+                map.map_object_grid[o.idx].set_occupied();
                 self.current_index = Some(o.idx);
                 self.gatherer_state = MovingToObject {
                     target_pos: o.pos,
@@ -265,7 +264,7 @@ impl Gatherer {
         );
 
         if obj.should_not_be_used_again_by_anything() {
-            obj.get_mut_data().is_marked_for_gathering = false;
+            obj.unmark_for_gathering();
             return true;
         }
 
@@ -290,7 +289,7 @@ impl Gatherer {
                 continue;
             }
 
-            if !Gatherer::obj_matches_target(obj, target_obj) {
+            if !Gatherer::obj_matches_target_and_is_available(obj, target_obj) {
                 continue;
             }
 
@@ -321,24 +320,17 @@ impl Gatherer {
         return closest_obj;
     }
 
-    fn obj_matches_target(obj: &Object, target_obj: GatherTarget) -> bool {
-        match target_obj {
-            GatherTarget::Tree => {
-                if let Object::TreeObj(tree) = obj {
-                    if tree.data.is_marked_for_gathering && !tree.data.is_occupied {
-                        return true;
-                    }
-                }
-            }
-            GatherTarget::Grass => {
-                if let Object::GrassObj(grass) = obj {
-                    if grass.data.is_marked_for_gathering && !grass.data.is_occupied {
-                        return true;
-                    }
-                }
-            }
+    fn obj_matches_target_and_is_available(obj: &Object, target_obj: GatherTarget) -> bool {
+
+        if obj.is_occupied() {
+            return false
+        };
+
+        if !obj.is_marked_for_gathering() {
+            return false;
         }
-        return false;
+
+        return object_matches_gathering_target(target_obj, obj);
     }
 
     pub fn current_sprite(&self) -> Sprite {

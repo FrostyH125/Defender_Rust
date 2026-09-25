@@ -57,6 +57,7 @@ pub struct Tree {
     pub data: ObjectData,
     falling_anim: SpriteAnimationInstance,
     variant: TreeVariant,
+    out_of_hit_pos_timer: Timer
 }
 
 impl Tree {
@@ -77,7 +78,6 @@ impl Tree {
             draw_offset: Vector2::new(0.0, -TILE_SIZE),
             width: 8.0,
             height: 16.0,
-            hit_timer: Timer::new(0.1),
             disappear_timer: Timer::new(
                 TREE_FALL_ANIM_ONE.frame_duration * TREE_FALL_ANIM_ONE.frames.len() as f32,
             ),
@@ -93,7 +93,7 @@ impl Tree {
                 object_specific_data,
             ),
             variant,
-
+            out_of_hit_pos_timer: Timer::new(0.1),
             falling_anim: SpriteAnimationInstance::new(anim),
         };
 
@@ -111,6 +111,19 @@ impl Tree {
 
             if self.data.sprite_flip {
                 self.data.object_specific_data.situational_draw_offset.x = -8.0;
+            } else {
+                self.data.object_specific_data.situational_draw_offset.x = 0.0;
+            }
+
+            // returning because the out of hit pos timer would reset the draw offset
+            // and none of that is necessary since those get overridden on breaking here
+            return;
+        }
+
+        if self.out_of_hit_pos_timer.is_playing() {
+            self.out_of_hit_pos_timer.track(game_context.dt);
+            if self.out_of_hit_pos_timer.is_done() {
+                self.data.object_specific_data.situational_draw_offset.x = 0.0;
             }
         }
     }
@@ -120,10 +133,9 @@ impl Tree {
             true => 1.0,
             false => -1.0,
         };
-    }
 
-    pub fn on_out_of_hit(&mut self) {
-        self.data.object_specific_data.situational_draw_offset.x = 0.0;
+        self.out_of_hit_pos_timer.reset();
+        self.out_of_hit_pos_timer.set_playing();
     }
 
     pub fn sprite(&self) -> Sprite {
