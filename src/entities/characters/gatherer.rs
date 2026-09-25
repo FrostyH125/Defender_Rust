@@ -321,7 +321,6 @@ impl Gatherer {
     }
 
     fn obj_matches_target_and_is_available(obj: &Object, target_obj: GatherTarget) -> bool {
-
         if obj.is_occupied() {
             return false
         };

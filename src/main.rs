@@ -539,8 +539,8 @@ impl ZoomSizes {
     }
 }
 
-// if you change window to a new aspect ratio, youll need to set_render_textures to accomodate the new
-// aspect ratio otherwise it will shrink or stretch
+/// if you change window to a new aspect ratio, youll need to set_render_textures() to accomodate the new
+/// aspect ratio otherwise it will shrink or stretch
 fn change_window_size(
     rl: &mut RaylibHandle,
     window_width: &mut f32,
