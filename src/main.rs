@@ -77,16 +77,16 @@ pub struct GameContext {
 fn main() {
     // what the game is pretending the game is running at,
     // to be honest, ideally this will never change unless aspect ratio changes
-    let window_width_target = 1920;
-    let window_height_target = 1080;
+    let logical_window_width = 1920;
+    let logical_window_height = 1080;
 
     // what the game will stretch the render target to, to fill the screen
     let actual_window_width = 1920;
     let actual_window_height = 1080;
 
     let mut current_zoom = ZoomSizes::FiveX;
-    let v_width = current_zoom.v_width(window_width_target);
-    let v_height = current_zoom.v_height(window_height_target);
+    let v_width = current_zoom.v_width(logical_window_width);
+    let v_height = current_zoom.v_height(logical_window_height);
 
     let (mut rl, thread) = raylib::init()
         .size(actual_window_width as i32, actual_window_height as i32)
@@ -122,8 +122,8 @@ fn main() {
 
     let mut game_context = GameContext {
         total_game_time: 0.0,
-        logical_window_width: window_width_target,
-        logical_window_height: window_height_target,
+        logical_window_width,
+        logical_window_height,
         v_width,
         v_height,
         camera,
@@ -179,83 +179,14 @@ fn main() {
         ground_shader.get_shader_location("renderTargetRes");
     let ground_shader_light_count_loc = ground_shader.get_shader_location("lightCount");
 
-    let mut ground_render_textures: [RenderTexture2D; 6] = [
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 2,
-            window_height_target as u32 / 2,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 3,
-            window_height_target as u32 / 3,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 4,
-            window_height_target as u32 / 4,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 5,
-            window_height_target as u32 / 5,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 6,
-            window_height_target as u32 / 6,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 7,
-            window_height_target as u32 / 7,
-        )
-        .unwrap(),
-    ];
+    let mut ground_render_textures: [RenderTexture2D; 6];
+    let mut object_and_character_render_textures: [RenderTexture2D; 6];
 
-    let mut object_and_character_render_textures: [RenderTexture2D; 6] = [
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 2,
-            window_height_target as u32 / 2,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 3,
-            window_height_target as u32 / 3,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 4,
-            window_height_target as u32 / 4,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 5,
-            window_height_target as u32 / 5,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 6,
-            window_height_target as u32 / 6,
-        )
-        .unwrap(),
-        rl.load_render_texture(
-            &thread,
-            window_width_target as u32 / 7,
-            window_height_target as u32 / 7,
-        )
-        .unwrap(),
-    ];
+    let (mut ground_render_textures, mut entity_render_textures) = set_render_textures(
+        &mut rl,
+        &thread,
+        game_context.logical_window_width,
+        game_context.logical_window_height);
 
     rl.set_target_fps(60);
     rl.disable_cursor();
@@ -276,7 +207,7 @@ fn main() {
         game_context.total_game_time += game_context.dt;
 
         // update input first
-        handle_input_and_update_camera(window_width_target, window_height_target, &mut current_zoom, &mut rl, camera, &mut select_rect, &mut camera_pos, &mut game_context);
+        handle_input_and_update_camera(logical_window_width, logical_window_height, &mut current_zoom, &mut rl, camera, &mut select_rect, &mut camera_pos, &mut game_context);
 
         //--UPDATE BEGINS HERE--//
         lights.set_light_pos_no_z(light_id, mouse_world_coords(&game_context));
@@ -311,7 +242,7 @@ fn main() {
 
         let current_ground_rt = &mut ground_render_textures[current_zoom as usize];
         let current_object_and_character_rt =
-            &mut object_and_character_render_textures[current_zoom as usize];
+            &mut entity_render_textures[current_zoom as usize];
         //--UPDATE ENDS HERE--//
 
         //--DRAWING BEINGS HERE--//
@@ -627,29 +558,31 @@ fn change_window_size(
 fn set_render_textures(
     rl: &mut RaylibHandle,
     thread: &RaylibThread,
-    ground_rt_array: &mut [RenderTexture2D],
-    obj_rt_array: &mut [RenderTexture2D],
-    window_width_target: f32,
-    window_height_target: f32,
-) {
-    let w_u32 = window_width_target as u32;
-    let h_u32 = window_height_target as u32;
+    window_width_target: u32,
+    window_height_target: u32,
+) -> ([RenderTexture2D; 6], [RenderTexture2D; 6]){
 
-    let rt_count = ground_rt_array.len();
+    // +2 because it starts at 2x zoom, 1x zoom is never used, otherwise it would be +1
+    
+    let rts_1 = std::array::from_fn(|i| {
+            rl.load_render_texture(
+                thread,
+                window_width_target / (i as u32 + 2),
+                window_height_target / (i as u32 + 2),
+            )
+            .unwrap()
+        });
+    
+        let rts_2 = std::array::from_fn(|i| {
+            rl.load_render_texture(
+                thread,
+                window_width_target / (i as u32 + 2),
+                window_height_target / (i as u32 + 2),
+            )
+            .unwrap()
+        });
 
-    // the +2 here is to account for the fact that the base res is never used for render targets
-    // because its too far of a zoom out, otherwise it would be +1
-
-    for i in 0..rt_count {
-        ground_rt_array[i] = rl
-            .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))
-            .unwrap();
-    }
-    for i in 0..rt_count {
-        obj_rt_array[i] = rl
-            .load_render_texture(thread, w_u32 / (i as u32 + 2), h_u32 / (i as u32 + 2))
-            .unwrap();
-    }
+    return (rts_1, rts_2);
 }
 
 pub fn make_mouse_click_particles(click_pos: Vector2, particle_system: &mut SpriteParticleSystem) {
