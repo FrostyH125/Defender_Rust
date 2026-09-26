@@ -3,8 +3,8 @@ use zander_game_core_rs::raylib::{animation_data::SpriteAnimationData, sprite::S
 
 use crate::utils::direction_utils::Direction;
 
-pub const SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION: f32 = 0.4;
-pub const LAKE_TILE_FRAME_DURATION: f32 = 0.2;
+pub const SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION: f32 = 0.8;
+pub const LAKE_TILE_FRAME_DURATION: f32 = 0.4;
 
 pub enum SpriteFlip {
     None,

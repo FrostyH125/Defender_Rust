@@ -233,7 +233,6 @@ impl Gatherer {
     fn looking_for_object(&mut self, map: &mut TileMap, gather_target: GatherTarget) {
         // reset this here because if an object that is currently being gathered is reselected, then
         // i need it to reset the timer so it doesnt just continue off from where it stopped.
-        // this also just acts as a nice safeguard
         self.gather_timer.reset();
 
         let closest_obj: Option<ObjectEntry> =

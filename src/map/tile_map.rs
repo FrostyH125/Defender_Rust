@@ -345,6 +345,13 @@ impl TileMap {
                                 );
                             }
                             RiverType::Inlet => {
+                                self.lake_tile_anim_instance.draw(
+                                    &LAKE_TILE_ANIM,
+                                    pos,
+                                    d,
+                                    &game_context.texture,
+                                );
+                                
                                 let anim = &INLET_ANIMS[riv_data.river_sprite_index as usize];
 
                                 let (flp_h, flp_v) = match anim.1 {
@@ -371,7 +378,7 @@ impl TileMap {
                                     SpriteFlip::Vertical => (false, true),
                                 };
 
-                                self.river_tile_anim_instance.draw_flp(
+                                self.lake_tile_anim_instance.draw_flp(
                                     &anim.0,
                                     pos,
                                     d,
