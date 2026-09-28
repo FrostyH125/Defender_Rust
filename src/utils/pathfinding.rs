@@ -46,9 +46,9 @@ impl PartialEq for Node {
 
 impl Eq for Node {}
 
-pub enum PathResult {
-    NoPath,
-    Success { path: VecDeque<Vector2> },
+pub type Path = VecDeque<Vector2>;
+
+pub enum PathError {
     TooLong,
     NoRoute,
 }
@@ -107,35 +107,35 @@ impl PathFinder {
         goal: MapCord,
         tile_map: &TileMap,
         max_radius_for_path: f32,
-    ) -> PathResult {
+    ) -> Result<Path, PathError> {
         // base case handling
         if goal.dist_to(start) >= max_radius_for_path {
             println!("current pathfinding goal too far away");
-            return PathResult::TooLong;
+            return Err(PathError::TooLong);
         }
 
         if !is_tile_in_bounds(tile_map.map_dimensions, goal) {
             println!("current pathfinding goal out of bounds");
-            return PathResult::NoRoute;
+            return Err(PathError::NoRoute);
         }
 
         if !is_tile_in_bounds(tile_map.map_dimensions, start) {
             println!("current pathfinding start out of bounds");
-            return PathResult::NoRoute;
+            return Err(PathError::NoRoute);
         }
 
         if get_tile_at_cord(&tile_map.map_tile_grid, tile_map.map_dimensions, goal)
             != TileType::Grass
         {
             println!("current pathfinding goal is not grass");
-            return PathResult::NoRoute;
+            return Err(PathError::NoRoute);
         }
 
         if get_tile_at_cord(&tile_map.map_tile_grid, tile_map.map_dimensions, start)
             != TileType::Grass
         {
             println!("current pathfinding start is not grass");
-            return PathResult::NoRoute;
+            return Err(PathError::NoRoute);
         }
 
         // handle overflow on generation
@@ -188,9 +188,7 @@ impl PathFinder {
 
             // goal found, go home
             if current.cord == goal {
-                return PathResult::Success {
-                    path: reconstruct_path(&self.parents, tile_map.map_dimensions, start, goal),
-                };
+                return Ok(reconstruct_path(&self.parents, tile_map.map_dimensions, start, goal));
             }
 
             // check all neighbors in 8 directions, this is where tiles get added to open if applicable
@@ -259,7 +257,7 @@ impl PathFinder {
 
         // if you run out of open, that means that all available tiles within the
         // constraints were explored, and the goal was never found
-        return PathResult::NoRoute;
+        return Err(PathError::NoRoute);
     }
 }
 
@@ -268,7 +266,7 @@ fn reconstruct_path(
     map_dimensions: MapDimensions,
     start: MapCord,
     goal: MapCord,
-) -> VecDeque<Vector2> {
+) -> Path {
     let mut path: VecDeque<Vector2> = VecDeque::new();
     let mut current = goal;
 

@@ -11,22 +11,31 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{
-        characters::gatherer::{Gatherer, GathererState}, entity_manager::{CharID, CharacterInfo}, object::Object,
-    }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::CharacterActionManager, utils::{
+    GameContext, TILE_SIZE,
+    entities::{
+        characters::gatherer::{Gatherer, GathererState},
+        entity_manager::{CharID, CharacterInfo},
+        object::Object,
+    },
+    map::tile_map::{MapDimensions, TileMap},
+    systems::character_action_manager::CharacterActionManager,
+    utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
         map_cord::MapCord,
         map_utils,
-        pathfinding::PathResult::{self, NoPath},
+        pathfinding::{
+            Path,
+            PathError::{self},
+        },
     },
 };
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
 pub enum CharacterKind {
     Gatherer,
-    Enemy
+    Enemy,
 }
 
 #[derive(Clone, Copy)]
@@ -68,7 +77,7 @@ pub enum CombatState {
 
 pub struct CharacterData {
     pub character_values: CharacterSpecificData,
-    pub path: PathResult,
+    pub path: Option<Path>,
     pub opponents: Vec<CharID>,
     pub pos: Vector2,
     pub target_pos: Option<Vector2>,
@@ -100,7 +109,7 @@ pub struct CharacterSpecificData {
     pub width: f32,
     pub height: f32,
     pub affiliation: Affiliation,
-    pub character_kind: CharacterKind
+    pub character_kind: CharacterKind,
 }
 
 impl CharacterData {
@@ -110,7 +119,7 @@ impl CharacterData {
             combat_state: CombatState::None,
             pos,
             target_pos: None,
-            path: NoPath,
+            path: None,
             facing_direction: FacingDirection::Right,
             health: character_values.max_health,
             is_hovering: false,
@@ -131,15 +140,29 @@ impl CharacterData {
         map: &TileMap,
     ) -> CharacterMovementResult {
         // compare current target to new target
-        if self.target_pos != Some(target) || matches!(self.path, PathResult::NoPath) {
+        if self.target_pos != Some(target) || matches!(self.path, None) {
             self.target_pos = Some(target);
-            self.path = game_context.path_finder.a_star(
+
+            match game_context.path_finder.a_star(
                 MapCord::from_vec2(self.pos),
                 MapCord::from_vec2(target),
                 map,
                 100.0,
-            );
-            if let PathResult::Success { path } = &mut self.path {
+            ) {
+                Ok(path) => self.path = Some(path),
+                Err(path_error) => match path_error {
+                    PathError::TooLong => {
+                        println!("Route is too long for character");
+                        return CharacterMovementResult::TooLong;
+                    }
+                    PathError::NoRoute => {
+                        println!("There is no viable route for character");
+                        return CharacterMovementResult::NoRoute;
+                    }
+                },
+            }
+
+            if let Some(path) = &mut self.path {
                 path.push_back(target);
 
                 // if the target path entry is more than or equal to an eigth of a block away from the last
@@ -154,17 +177,7 @@ impl CharacterData {
             }
         }
 
-        if let PathResult::TooLong = self.path {
-            println!("Route is too long for character");
-            return CharacterMovementResult::TooLong;
-        }
-
-        if let PathResult::NoRoute = self.path {
-            println!("There is no viable route for character");
-            return CharacterMovementResult::NoRoute;
-        }
-
-        if let PathResult::Success { path } = &mut self.path {
+        if let Some(path) = &mut self.path {
             if path.is_empty() {
                 return CharacterMovementResult::Success;
             }
@@ -180,7 +193,7 @@ impl CharacterData {
                     // if theres only one left and youre running this code,
                     // this means youve made it to the only tile left, which is the target
                     self.pos = target;
-                    self.path = NoPath;
+                    self.path = None;
                     self.target_pos = None;
                     return CharacterMovementResult::Success;
                 }
@@ -265,7 +278,7 @@ impl Character {
                     _ => {
                         self.get_mut_data().character_values.move_anim.reset();
                         self.get_mut_data().state = CharacterState::None;
-                    },
+                    }
                 }
             }
             CharacterState::InCombat => {
