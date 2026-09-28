@@ -63,7 +63,7 @@ pub struct PathFinder {
 
     open: BinaryHeap<Node>,
 
-    parents: Vec<Option<MapCord>>,
+    parents: Vec<MapCord>,
 
     // if you didnt know, g_score is basically just how many tiles it took to get to this tile
     // each tile in this algorithm costs 1.0g to traverse and the distance algo calulates
@@ -84,7 +84,7 @@ impl PathFinder {
             generation: 0,
             open: BinaryHeap::with_capacity(10000),
 
-            parents: vec![None; num_of_tiles],
+            parents: vec![MapCord { x: 0, y: 0 }; num_of_tiles],
 
             g_score: vec![f32::INFINITY; num_of_tiles],
             g_score_generation: vec![0; num_of_tiles],
@@ -93,7 +93,7 @@ impl PathFinder {
 
     /// a, dare i say, optimized a* algorithm
     /// one caveat, this algorithm will just happen to a return a
-    /// PathResult::NoRoute if the goal is technically within
+    /// PathError::NoRoute if the goal is technically within
     /// the max distance but the path youll have to travel is
     /// further than the max distance to get there, such as in having to
     /// go around something large, for example. I pondered if this was the
@@ -142,7 +142,7 @@ impl PathFinder {
         if self.generation == u32::MAX {
             self.generation = 0;
             self.g_score_generation.fill(0);
-            self.parents.fill(None);
+            self.parents.fill(MapCord { x: 0, y: 0 });
         }
 
         // generation counters make the closed and g-score arrays not needing to be upkept
@@ -158,12 +158,7 @@ impl PathFinder {
         self.g_score[start_index] = start_g;
         self.g_score_generation[start_index] = self.generation;
 
-        // set the starting node up,
-        // this parent will be in the first node, and at the time of reconstruction,
-        // the starting node is never actually added to the path.
-        // this is on purpose, since the implementation of move_to() using
-        // this a_star algorithm will actually insert a final position before running, which is the
-        // target pos Vector2, so it'll still go to the target
+        // set the starting node up
         let start_h = octile_dist(start, goal);
         let start_f = start_h + start_g;
         let parent = MapCord::new(i16::MAX, i16::MAX);
@@ -184,7 +179,7 @@ impl PathFinder {
                 continue;
             }
 
-            self.parents[current_index] = Some(current.parent);
+            self.parents[current_index] = current.parent;
 
             // goal found, go home
             if current.cord == goal {
@@ -230,12 +225,12 @@ impl PathFinder {
                     f32::INFINITY
                 };
 
-                // if the g thats already there (or isnt there) is greater than the g_score thats tentatively being tried
+                // if the g being tried is less (expensive) than the g thats already there (or INFINITY if there wasnt a g there) then add it to the open list
                 // originally i had a closed array as well, but i realized eventually that it wasnt necessary, and id
                 // rather save the memory usage (4b * total tiles) and just do slightly more computations for neighbor checking
                 // originally it would continue early right before the tentative_g calculation if the tile was marked closed
                 // already. this comparison legitimately guarantees that only improved path tiles are added
-                if existing_g > tentative_g {
+                if tentative_g < existing_g {
                     // set the g_score for this tile to tentative_g, because a lower score means its a cheaper cost
                     self.g_score[check_index] = tentative_g;
                     self.g_score_generation[check_index] = self.generation;
@@ -262,7 +257,7 @@ impl PathFinder {
 }
 
 fn reconstruct_path(
-    parents: &[Option<MapCord>],
+    parents: &[MapCord],
     map_dimensions: MapDimensions,
     start: MapCord,
     goal: MapCord,
@@ -275,7 +270,7 @@ fn reconstruct_path(
 
         let index = cords_to_index(map_dimensions, current);
 
-        current = parents[index].unwrap();
+        current = parents[index];
     }
 
     return path;

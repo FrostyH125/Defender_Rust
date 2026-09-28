@@ -128,6 +128,7 @@ impl ActionButton {
             let char = &mut get_char_by_unique_id(characters, *char_id).character;
 
             if let Character::GathererChar(gatherer) = char {
+                gatherer.data.set_idle_character_state();
                 gatherer.object_indices.clear();
                 gatherer.object_indices = object_ids_with_correct_type.clone();
                 gatherer.gatherer_state = GathererState::LookingForObject {

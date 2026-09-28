@@ -195,7 +195,7 @@ fn main() {
     // DEBUG START
     //
     for i in 0..5 {
-        entity_manager.add_character(Gatherer::new(Vector2::new(100.0 + i as f32, 100.0 + i as f32)));
+        entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
     }
 
     //

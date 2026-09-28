@@ -133,6 +133,10 @@ impl CharacterData {
         };
     }
 
+    pub fn set_idle_character_state(&mut self) {
+        self.state = CharacterState::None;
+    }
+
     pub fn move_to(
         &mut self,
         target: Vector2,
@@ -224,11 +228,11 @@ pub enum Character {
 
 impl Character {
     pub fn set_move_to(&mut self, target: Vector2) {
-        self.set_idle();
+        self.set_idle_individual_states();
         self.get_mut_data().state = CharacterState::Moving { target };
     }
 
-    pub fn set_idle(&mut self) {
+    pub fn set_idle_individual_states(&mut self) {
         match self {
             Character::GathererChar(gatherer) => gatherer.gatherer_state = GathererState::Idle,
         }
