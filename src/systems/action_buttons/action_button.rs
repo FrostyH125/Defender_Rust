@@ -9,10 +9,19 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, entities::{
-        character::Character, characters::gatherer::{GatherTarget, GathererState}, entity_manager::{CharID, CharacterEntry}, object::Object,
-    }, map::tile_map::MapObjectGrid, utils::{
-        direction_utils::ORTHOGONAL_DELTAS, draw_utils, entity_utils::{get_char_by_unique_id, object_matches_gathering_target}, mouse_utils::mouse_world_coords,
+    GameContext,
+    entities::{
+        character::Character,
+        characters::gatherer::{GatherTarget, GathererState},
+        entity_manager::{CharID, CharacterEntry},
+        object::Object,
+    },
+    map::tile_map::MapObjectGrid,
+    utils::{
+        direction_utils::ORTHOGONAL_DELTAS,
+        draw_utils,
+        entity_utils::{get_char_by_unique_id, object_matches_gathering_target},
+        mouse_utils::mouse_world_coords,
     },
 };
 
@@ -117,7 +126,7 @@ impl ActionButton {
             let obj = &mut object_grid[*obj_id];
 
             let is_match = object_matches_gathering_target(obj_kind, &obj);
-            
+
             if is_match {
                 obj.mark_for_gathering();
                 object_ids_with_correct_type.push(*obj_id);
@@ -128,13 +137,7 @@ impl ActionButton {
             let char = &mut get_char_by_unique_id(characters, *char_id).character;
 
             if let Character::GathererChar(gatherer) = char {
-                gatherer.data.set_idle_character_state();
-                gatherer.object_indices.clear();
-                gatherer.object_indices = object_ids_with_correct_type.clone();
-                gatherer.gatherer_state = GathererState::LookingForObject {
-                    gather_target: obj_kind,
-                };
-                gatherer.should_unoccupy_current_obj = true;
+                gatherer.set_new_target(obj_kind, object_grid, &object_ids_with_correct_type);
             }
         }
     }

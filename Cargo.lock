@@ -374,7 +374,7 @@ checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
 [[package]]
 name = "zander-game-core-rs"
 version = "0.1.0"
-source = "git+https://github.com/FrostyH125/zander-game-core-rs#b94f07bf48a7dc30c5af459abb60e04bf693aaea"
+source = "git+https://github.com/FrostyH125/zander-game-core-rs#94b8fa8004ba9eacc184d3dc686f1ad58e1d6835"
 dependencies = [
  "rand",
  "raylib",

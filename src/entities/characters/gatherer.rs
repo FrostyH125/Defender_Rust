@@ -8,11 +8,17 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, entities::{
+    GameContext,
+    entities::{
         character::{
-            Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult, CharacterSpecificData,
-        }, characters::gatherer::GathererState::MovingToObject, object::Object,
-    }, map::tile_map::{MapObjectGrid, TileMap}, utils::entity_utils::object_matches_gathering_target,
+            Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult,
+            CharacterSpecificData,
+        },
+        characters::gatherer::GathererState::MovingToObject,
+        object::Object,
+    },
+    map::tile_map::{MapObjectGrid, TileMap},
+    utils::entity_utils::object_matches_gathering_target,
 };
 
 pub static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -129,7 +135,7 @@ impl Gatherer {
             height: 8.0,
             move_speed: 30.0,
             max_health: 100.0,
-            character_kind: CharacterKind::Gatherer
+            character_kind: CharacterKind::Gatherer,
         };
 
         let gatherer = Gatherer {
@@ -149,11 +155,6 @@ impl Gatherer {
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
         if self.should_unoccupy_current_obj {
             self.should_unoccupy_current_obj = false;
-
-            if let Some(o_idx) = self.current_index {
-                map.map_object_grid[o_idx].set_unoccupied();
-                self.current_index = None;
-            }
         }
 
         match self.gatherer_state {
@@ -321,7 +322,7 @@ impl Gatherer {
 
     fn obj_matches_target_and_is_available(obj: &Object, target_obj: GatherTarget) -> bool {
         if obj.is_occupied() {
-            return false
+            return false;
         };
 
         if !obj.is_marked_for_gathering() {
@@ -344,5 +345,29 @@ impl Gatherer {
                 }
             }
         }
+    }
+
+    pub fn set_new_target(
+        &mut self,
+        gather_target: GatherTarget,
+        object_grid: &mut MapObjectGrid,
+        obj_ids_of_type: &[usize],
+    ) {
+        // set to idle so that the character doesnt keep fighting or walking
+        self.data.set_idle_character_state();
+
+        // reset current objects in queue
+        // also set no current object if there was one
+        self.object_indices.clear();
+        if let Some(o_idx) = self.current_index {
+            object_grid[o_idx].set_unoccupied();
+            self.current_index = None;
+        }
+
+        // set new object ids for gathering
+        self.object_indices = obj_ids_of_type.to_vec();
+
+        // set new state with the proper gather target
+        self.gatherer_state = GathererState::LookingForObject { gather_target };
     }
 }
