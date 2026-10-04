@@ -200,7 +200,16 @@ impl EntityManager {
                 .get_render_tile_index(self.map_dimensions);
 
             if select_rect.move_select_range_active {
+                // dont let enemies be selected for this.
+                // they cant be moved manually
+                // and continue because if the move rect is active, the other rect isnt active
+                if character.character.get_data().character_values.affiliation == Affiliation::Evil {
+                    continue;
+                }
+                
                 if hover_rect.check_collision_recs(&select_rect.rectangle) {
+
+                    
                     character.character.get_mut_data().is_hovering_for_move = true;
                     hover_chars_for_move.push(character);
                     continue;

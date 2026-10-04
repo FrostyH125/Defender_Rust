@@ -40,6 +40,8 @@ impl SelectRect {
         self.is_selecting_this_frame = false;
         self.is_selecting_for_move_this_frame = false;
 
+
+        // early return and reset to prevent multiple types of select rects to be active at once
         if self.is_dragging_for_move_selection && self.is_dragging_normal_selection {
             self.origin_set = false;
             self.select_range_active = false;

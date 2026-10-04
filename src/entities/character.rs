@@ -41,7 +41,7 @@ pub enum CharacterKind {
     Enemy,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Affiliation {
     Good,
     Evil,
