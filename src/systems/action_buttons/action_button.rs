@@ -136,7 +136,7 @@ impl ActionButton {
         for char_id in char_ids {
             let char = &mut get_char_by_unique_id(characters, *char_id).character;
 
-            if let Character::GathererChar(gatherer) = char {
+            if let Character::Gatherer(gatherer) = char {
                 gatherer.set_new_target(obj_kind, object_grid, &object_ids_with_correct_type);
             }
         }

@@ -21,52 +21,40 @@ use crate::{
     utils::entity_utils::object_matches_gathering_target,
 };
 
-pub static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &[
-        Sprite::new(16, 176, 8, 8),
-        Sprite::new(24, 176, 8, 8),
-        Sprite::new(32, 176, 8, 8),
-        Sprite::new(40, 176, 8, 8),
-    ],
+static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
+    // frames: &[
+    //     Sprite::new(16, 176, 8, 8),
+    //     Sprite::new(24, 176, 8, 8),
+    //     Sprite::new(32, 176, 8, 8),
+    //     Sprite::new(40, 176, 8, 8),
+    // ],
+    frames: &Sprite::create_sequence_of_sprites::<4>(16, 176, 8, 8),
     frame_duration: 0.5,
     should_loop: true,
 };
 
-pub static GATHERER_MOVE_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &[
-        Sprite::new(16, 184, 8, 8),
-        Sprite::new(24, 184, 8, 8),
-        Sprite::new(32, 184, 8, 8),
-    ],
+static GATHERER_MOVE_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &Sprite::create_sequence_of_sprites::<3>(16, 184, 8, 8),
     frame_duration: 0.25,
     should_loop: true,
 };
 
-pub static GATHERER_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &[
-        Sprite::new(16, 192, 8, 8),
-        Sprite::new(24, 192, 8, 8),
-        Sprite::new(32, 192, 8, 8),
-        Sprite::new(40, 192, 8, 8),
-        Sprite::new(48, 192, 8, 8),
-    ],
+static GATHERER_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &Sprite::create_sequence_of_sprites::<5>(16, 192, 8, 8),
     frame_duration: 0.25,
     should_loop: false,
 };
 
-pub static GATHERER_GATHER_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &[
-        Sprite::new(16, 200, 8, 8),
-        Sprite::new(24, 200, 8, 8),
-        Sprite::new(32, 200, 8, 8),
-        Sprite::new(40, 200, 8, 8),
-        Sprite::new(48, 200, 8, 8),
-        Sprite::new(56, 200, 8, 8),
-        Sprite::new(64, 200, 8, 8),
-        Sprite::new(72, 200, 8, 8),
-        Sprite::new(80, 200, 8, 8),
-    ],
+static GATHERER_GATHER_ANIM: SpriteAnimationData = SpriteAnimationData {
+
+    frames:&Sprite::create_sequence_of_sprites::<9>(16, 200, 8, 8),
     frame_duration: 0.05,
+    should_loop: false,
+};
+
+static GATHERER_POST_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &Sprite::create_sequence_of_sprites::<5>(64, 192, 8, 8),
+    frame_duration: 0.1,
     should_loop: false,
 };
 
@@ -111,13 +99,12 @@ impl std::fmt::Debug for GathererState {
 
 pub struct Gatherer {
     pub data: CharacterData,
-    pub gatherer_state: GathererState,
-    gather_anim: SpriteAnimationInstance,
-    gathering_power: f32,
-    gather_timer: Timer,
-    pub object_indices: Vec<usize>,
+    object_indices: Vec<usize>,
     current_index: Option<usize>,
-    pub should_unoccupy_current_obj: bool,
+    gather_anim: SpriteAnimationInstance,
+    pub gatherer_state: GathererState,
+    gather_timer: Timer,
+    gathering_power: f32,
 }
 
 impl Gatherer {
@@ -126,7 +113,7 @@ impl Gatherer {
             idle_anim: SpriteAnimationInstance::new(&GATHERER_IDLE_ANIM),
             move_anim: SpriteAnimationInstance::new(&GATHERER_MOVE_ANIM),
             attack_anim: SpriteAnimationInstance::new(&GATHERER_ATTACK_ANIM),
-            post_attack_anim: None,
+            post_attack_anim: SpriteAnimationInstance::new(&GATHERER_POST_ATTACK_ANIM),
             affiliation: Affiliation::Good,
             draw_offset: Vector2::zero(),
             time_between_attacks: 1.0,
@@ -146,17 +133,12 @@ impl Gatherer {
             gather_timer: Timer::new(2.0),
             object_indices: Vec::new(),
             current_index: None,
-            should_unoccupy_current_obj: false,
         };
 
-        return Character::GathererChar(gatherer);
+        return Character::Gatherer(gatherer);
     }
 
     pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
-        if self.should_unoccupy_current_obj {
-            self.should_unoccupy_current_obj = false;
-        }
-
         match self.gatherer_state {
             GathererState::Idle => (),
             GathererState::LookingForObject { gather_target } => {
@@ -334,8 +316,10 @@ impl Gatherer {
 
     pub fn current_sprite(&self) -> Sprite {
         match self.gatherer_state {
-            GathererState::Idle => GATHERER_IDLE_ANIM.frames[0],
-            GathererState::LookingForObject { .. } => GATHERER_IDLE_ANIM.frames[0],
+            GathererState::Idle => self.data.character_values.idle_anim.current_sprite(),
+            GathererState::LookingForObject { .. } => {
+                self.data.character_values.idle_anim.current_sprite()
+            }
             MovingToObject { .. } => self.data.character_values.move_anim.current_sprite(),
             GathererState::GatheringObject { .. } => {
                 if self.gather_anim.is_playing {

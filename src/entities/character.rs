@@ -13,7 +13,10 @@ use zander_game_core_rs::{
 use crate::{
     GameContext, TILE_SIZE,
     entities::{
-        characters::gatherer::{Gatherer, GathererState},
+        characters::{
+            enemy::Enemy,
+            gatherer::{Gatherer, GathererState},
+        },
         entity_manager::{CharID, CharacterInfo},
         object::Object,
     },
@@ -100,7 +103,7 @@ pub struct CharacterSpecificData {
     pub idle_anim: SpriteAnimationInstance,
     pub move_anim: SpriteAnimationInstance,
     pub attack_anim: SpriteAnimationInstance,
-    pub post_attack_anim: Option<SpriteAnimationInstance>,
+    pub post_attack_anim: SpriteAnimationInstance,
     pub draw_offset: Vector2,
     pub max_health: f32,
     pub time_between_attacks: f32,
@@ -223,32 +226,34 @@ impl CharacterData {
 }
 
 pub enum Character {
-    GathererChar(Gatherer),
+    Gatherer(Gatherer),
+    Enemy(Enemy),
 }
 
 impl Character {
     pub fn set_move_to(&mut self, target: Vector2) {
-        self.set_idle_individual_states();
+        self.set_idle_to_unique_states();
         self.get_mut_data().state = CharacterState::Moving { target };
     }
 
-    pub fn set_idle_individual_states(&mut self) {
+    pub fn set_idle_to_unique_states(&mut self) {
         match self {
-            Character::GathererChar(gatherer) => gatherer.gatherer_state = GathererState::Idle,
+            Character::Gatherer(gatherer) => gatherer.gatherer_state = GathererState::Idle,
+            Character::Enemy(enemy) => enemy.set_idle(),
         }
     }
 
-    #[inline]
     pub fn get_data(&self) -> &CharacterData {
         match self {
-            Character::GathererChar(gatherer) => &gatherer.data,
+            Character::Gatherer(gatherer) => &gatherer.data,
+            Character::Enemy(enemy) => enemy.get_data(),
         }
     }
 
-    #[inline]
     pub fn get_mut_data(&mut self) -> &mut CharacterData {
         match self {
-            Character::GathererChar(gatherer) => &mut gatherer.data,
+            Character::Gatherer(gatherer) => &mut gatherer.data,
+            Character::Enemy(enemy) => enemy.get_mut_data(),
         }
     }
 
@@ -269,7 +274,8 @@ impl Character {
                 }
 
                 match self {
-                    Character::GathererChar(gatherer) => gatherer.update(game_context, map),
+                    Character::Gatherer(gatherer) => gatherer.update(game_context, map),
+                    Character::Enemy(enemy) => enemy.update(game_context, map, character_info),
                 }
             }
             CharacterState::Moving { target } => {
@@ -335,26 +341,18 @@ impl Character {
                             &mut game_context.character_action_manager,
                         );
 
-                        let data = self.get_mut_data();
-
-                        match data.character_values.post_attack_anim {
-                            Some(_) => data.combat_state = CombatState::PostAttack,
-                            None => data.combat_state = CombatState::EvaluatingState,
-                        }
+                        // move to the wind down attack before evaluating state
+                        self.get_mut_data().combat_state = CombatState::PostAttack;
                     }
                     CombatState::PostAttack => {
-                        if let Some(anim) = self
-                            .get_mut_data()
-                            .character_values
-                            .post_attack_anim
-                            .as_mut()
-                        {
-                            anim.update(dt);
+                        let data = self.get_mut_data();
+                        let post_attack_anim = &mut data.character_values.post_attack_anim;
 
-                            if anim.finished_playing {
-                                anim.reset();
-                                self.get_mut_data().combat_state = CombatState::EvaluatingState;
-                            }
+                        post_attack_anim.update(dt);
+
+                        if post_attack_anim.finished_playing {
+                            post_attack_anim.reset();
+                            data.combat_state = CombatState::EvaluatingState;
                         }
                     }
                 }
@@ -421,15 +419,10 @@ impl Character {
     /// is not idle, thus, unique actions can be implemented cleanly
     pub fn current_sprite(&self) -> Sprite {
         let mut spr = match self.get_data().state {
-            CharacterState::None => {
-                if self.is_idle() {
-                    self.get_data().character_values.idle_anim.current_sprite()
-                } else {
-                    match self {
-                        Character::GathererChar(gatherer) => gatherer.current_sprite(),
-                    }
-                }
-            }
+            CharacterState::None => match self {
+                Character::Gatherer(gatherer) => gatherer.current_sprite(),
+                Character::Enemy(enemy) => enemy.current_sprite(),
+            },
             CharacterState::Moving { .. } => {
                 self.get_data().character_values.move_anim.current_sprite()
             }
@@ -459,8 +452,6 @@ impl Character {
                     .get_data()
                     .character_values
                     .post_attack_anim
-                    .as_ref()
-                    .unwrap()
                     .current_sprite(),
             },
         };
@@ -526,15 +517,11 @@ impl Character {
 
     pub fn is_idle(&self) -> bool {
         match self {
-            Character::GathererChar(gatherer) => {
+            Character::Gatherer(gatherer) => {
                 return gatherer.gatherer_state == GathererState::Idle;
             }
-        }
-    }
-
-    pub fn reset_state(&mut self) {
-        match self {
-            Character::GathererChar(gatherer) => gatherer.gatherer_state = GathererState::Idle,
+            // enemy itself is a base struct, so dipatch is one level deeper
+            Character::Enemy(enemy) => enemy.is_idle(),
         }
     }
 
@@ -554,12 +541,7 @@ impl Character {
         target_id: CharID,
         character_action_manager: &mut CharacterActionManager,
     ) {
-        match self {
-            Character::GathererChar(..) => character_action_manager.request_attack(
-                self_id,
-                target_id,
-                self.get_data().character_values.attack_power,
-            ),
-        }
+        let attack_power = self.get_data().character_values.attack_power;
+        character_action_manager.request_attack(self_id, target_id, attack_power);
     }
 }

@@ -8,7 +8,7 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX}, entities::{characters::gatherer::Gatherer, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
+    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX}, entities::{characters::{enemies::slime::Slime, gatherer::Gatherer}, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
         action_button_manager::ActionButtonManager, character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, light::Lights, select_rect::SelectRect,
     }, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
@@ -28,6 +28,12 @@ pub mod utils;
 
 
 // any of these can be done in any order:
+//      ENEMY IMPLEMENTATION: 
+//          Make unable to move manually
+//          Make look for closest character and change to moving to target state
+//          Once fighter is implemented, add new fight button
+// 
+//      BUGFIX: if 0 neighbors for a river tile, check what direction its flowing, check in front and behind, and if lakes r present there, make them inlets/outlets and place rivers
 //      grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
 //      make it so that the selectors never select or even hover enemies for movement
 //      draw grass with a shear when its hit
@@ -39,21 +45,22 @@ pub mod utils;
 //      wobble shader effect on the action buttons (will later be used on building buttons too)
 //      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo
-//      fighter struct sprint
-//          -- enemy: enum { EnemyKindOne, EnemyKindTwo, etc }
-//          -- fighter: enum { FighterKindOne, FighterKindTwo, etc..}
-//              -- Affiliation enum { Good, Bad }
-//          -- fighter_data: struct
-//          -- FighterState::Idle
-//          -- FighterState::LookingForEnemy
-//          -- FighterState::MovingToEnemy
-//          -- FighterState::InCombat
-//          After all of this is added, i need to test the new combat system in place.
-//          have a fighter request engaging in combat with an enemy after moving toward it
-//          have them hit eachother (draw hp over each one to see),
-//          then print the state of the fighter, and see if it switches back to none
-//          print as well the count of its opponent list
-
+//      On hit visual
+// 
+//      FIGHTER IMPLEMENTATION
+//          enemy: enum { EnemyKindOne, EnemyKindTwo, etc }
+//          fighter: enum { FighterKindOne, FighterKindTwo, etc..}
+//              Affiliation enum { Good, Bad }
+//          fighter_data: struct
+//          FighterState::Idle
+//          FighterState::LookingForEnemy
+//          FighterState::MovingToEnemy
+//          FighterState::InCombat
+//          Add fight button
+//          Test fight button, making sure the result is as expected
+//          Also make sure the underlying fighter list of enemies is working as expected, especially
+//          for multiple fighters
+//          Make sure multiple fighters works as expected
 pub const TILE_SIZE: f32 = 8.0;
 
 pub struct GameContext {
@@ -195,8 +202,10 @@ fn main() {
     // DEBUG START
     //
     for i in 0..5 {
-        entity_manager.add_character(Gatherer::new(Vector2::new(100.0, 100.0)));
+        entity_manager.add_character(Gatherer::new(Vector2::new(100.0 + i as f32 * 5.0, 100.0)));
     }
+
+    entity_manager.add_character(Slime::new(Vector2::new(150.0, 100.0)));
 
     //
     // DEBUG END

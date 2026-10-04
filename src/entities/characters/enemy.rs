@@ -16,19 +16,25 @@ pub struct EnemyData {
 impl Enemy {
     pub fn get_data(&self) -> &CharacterData {
         match self {
-            Enemy::Slime(slime) => &slime.ch_data
+            Enemy::Slime(slime) => &slime.character_data
         }
     }
 
     pub fn get_mut_data(&mut self) -> &mut CharacterData {
         match self {
-            Enemy::Slime(slime) => &mut slime.ch_data,
+            Enemy::Slime(slime) => &mut slime.character_data,
         }
     }
 
     pub fn set_idle(&mut self) {
         match self {
             Enemy::Slime(slime) => slime.slime_state = SlimeState::Idle,
+        }
+    }
+
+    pub fn is_idle(&self) -> bool {
+        match self {
+            Enemy::Slime(slime) => return slime.slime_state == SlimeState::Idle,
         }
     }
 
