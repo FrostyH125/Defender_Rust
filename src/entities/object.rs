@@ -262,8 +262,8 @@ impl Object {
         return self.get_data().hover_rect();
     }
 
-    #[inline]
     /// sets object's data's field `is_hovering` to `true`
+    #[inline]
     pub fn set_hovering(&mut self) {
         self.get_mut_data().is_hovering = true;
     }
@@ -273,8 +273,8 @@ impl Object {
         return self.get_data().is_hovering;
     }
 
-    #[inline]
     /// sets object's data's field `is_selected` to `true`
+    #[inline]
     pub fn set_selected(&mut self) {
         self.get_mut_data().is_selected = true;
     }
@@ -284,14 +284,14 @@ impl Object {
         return self.get_data().is_selected;
     }
 
-    #[inline]
     /// sets object's data's field `is_occupied` to `true`
+    #[inline]
     pub fn set_occupied(&mut self) {
         self.get_mut_data().is_occupied = true;
     }
 
-    #[inline]
     /// sets object's data's field `is_occupied` to `true`
+    #[inline]
     pub fn set_unoccupied(&mut self) {
         self.get_mut_data().is_occupied = false;
     }
@@ -302,15 +302,27 @@ impl Object {
     }
 
     /// sets object's data's field `is_marked_for_gathering` to `true`
+    #[inline]
     pub fn mark_for_gathering(&mut self) {
         self.get_mut_data().is_marked_for_gathering = true;
     }
 
+    #[inline]
     pub fn unmark_for_gathering(&mut self) {
         self.get_mut_data().is_marked_for_gathering = false;
     }
-
+    #[inline]
     pub fn is_marked_for_gathering(&self) -> bool {
         return self.get_data().is_marked_for_gathering;
+    }
+
+    #[inline]
+    pub fn get_center_pos(&self) -> Vector2 {
+        let visual_rect = self.hover_rect();
+
+        return Vector2::new(
+            visual_rect.x + (visual_rect.width / 2.0),
+            visual_rect.y + (visual_rect.height / 2.0),
+        );
     }
 }

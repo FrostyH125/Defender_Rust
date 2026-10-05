@@ -21,7 +21,7 @@ use crate::{
         object::Object,
     },
     map::tile_map::{MapDimensions, TileMap},
-    systems::character_action_manager::CharacterActionManager,
+    systems::character_action_manager::{CharacterAction, CharacterActionManager},
     utils::{
         camera_utils,
         direction_utils::FacingDirection,
@@ -541,7 +541,9 @@ impl Character {
         target_id: CharID,
         character_action_manager: &mut CharacterActionManager,
     ) {
-        let attack_power = self.get_data().character_values.attack_power;
-        character_action_manager.request_attack(self_id, target_id, attack_power);
+        character_action_manager.push_action(CharacterAction::Attack {
+            attacker_id: self_id,
+            target_id,
+        });
     }
 }

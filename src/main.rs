@@ -1,6 +1,14 @@
 use rand::rngs::ThreadRng;
 use raylib::{
-    RaylibHandle, RaylibThread, camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, ffi::{KeyboardKey}, math::{Rectangle, Vector2, Vector3}, shaders::RaylibShader, texture::{RenderTexture2D, Texture2D},
+    RaylibHandle, RaylibThread,
+    camera::Camera2D,
+    color::Color,
+    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
+    ffi::KeyboardKey,
+    math::{Rectangle, Vector2},
+    shaders::RaylibShader,
+    text::Font,
+    texture::{RenderTexture2D, Texture2D},
 };
 use zander_game_core_rs::{
     raylib::sprite::Sprite,
@@ -8,9 +16,22 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX}, entities::{characters::{enemies::slime::Slime, gatherer::Gatherer}, entity_manager::EntityManager}, map::tile_map::TileMap, systems::{
-        action_button_manager::ActionButtonManager, character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle, entity_selecting_manager::EntitySelectingManager, light::Lights, select_rect::SelectRect,
-    }, utils::{
+    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX},
+    entities::{
+        characters::{enemies::slime::Slime, gatherer::Gatherer},
+        entity_manager::EntityManager,
+    },
+    map::tile_map::TileMap,
+    systems::{
+        action_button_manager::ActionButtonManager,
+        character_action_manager::CharacterActionManager,
+        day_night_cycle::DayNightCycle,
+        entity_selecting_manager::EntitySelectingManager,
+        lights::{Light, Lights},
+        select_rect::SelectRect,
+        visual_effects_manager::VisualEffectsManager,
+    },
+    utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -22,18 +43,18 @@ pub mod map;
 pub mod systems;
 pub mod utils;
 
-// lights sprint:
-//  make ground shader do lighting
-//  make each object draw a new shadow based on the lights around it
-
-
 // any of these can be done in any order:
-//      ENEMY IMPLEMENTATION: 
+//      ENEMY IMPLEMENTATION:
 //          Make unable to move manually
 //          Make look for closest character and change to moving to target state
 //          Once fighter is implemented, add new fight button
-// 
-//      BUGFIX: if 0 neighbors for a river tile, check what direction its flowing, check in front and behind, and if lakes r present there, make them inlets/outlets and place rivers
+//
+//      FEATURE IMPLEMENTATION:
+//          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
+//
+//      BUGFIX:
+//          If 0 neighbors for a river tile, check what direction its flowing, check in front and behind, and if lakes r present there, make them inlets/outlets and place rivers
+//
 //      grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
 //      make it so that the selectors never select or even hover enemies for movement
 //      draw grass with a shear when its hit
@@ -46,7 +67,7 @@ pub mod utils;
 //      cool shader for background instead of no tiles -> use that one steam tool it was sick
 //      ALL the sounds from the github repo
 //      On hit visual
-// 
+//
 //      FIGHTER IMPLEMENTATION
 //          enemy: enum { EnemyKindOne, EnemyKindTwo, etc }
 //          fighter: enum { FighterKindOne, FighterKindTwo, etc..}
@@ -63,6 +84,7 @@ pub mod utils;
 //          Make sure multiple fighters works as expected
 pub const TILE_SIZE: f32 = 8.0;
 
+/// contains values and structs that provide services or critical fields for operation
 pub struct GameContext {
     total_game_time: f32,
     dt: f32,
@@ -70,6 +92,7 @@ pub struct GameContext {
     logical_window_height: u32,
     v_width: u32,
     v_height: u32,
+    lights: Lights,
     camera: Camera2D,
     day_night_cycle: DayNightCycle,
     input_state: InputState,
@@ -79,6 +102,7 @@ pub struct GameContext {
     update_rect: Rectangle,
     particle_system: SpriteParticleSystem,
     character_action_manager: CharacterActionManager,
+    visual_effects_manager: VisualEffectsManager,
 }
 
 fn main() {
@@ -100,6 +124,7 @@ fn main() {
         .title("Defender_Rust")
         .build();
 
+    let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
     let camera = Camera2D {
         offset: Vector2 {
             x: v_width as f32 / 2.0,
@@ -114,86 +139,65 @@ fn main() {
     };
 
     let mut select_rect = SelectRect::new();
-    let sprite_particle_system = SpriteParticleSystem::new(1000);
-    let rng = rand::rng();
     let mut camera_pos = camera.target;
-    let input_state = InputState::new();
     let mut entity_selecting_manager = EntitySelectingManager::new();
     let mut action_button_manager = ActionButtonManager::new();
     let map_width = 500;
     let map_height = 500;
-    let day_night_cycle = DayNightCycle::new();
-    let path_finder = PathFinder::new(map_width, map_height);
-    let character_action_manager = CharacterActionManager::new();
-    let texture = rl.load_texture(&thread, "Tileset.png").unwrap();
 
     let mut game_context = GameContext {
+        dt: 0.0,
         total_game_time: 0.0,
         logical_window_width,
         logical_window_height,
         v_width,
         v_height,
         camera,
-        day_night_cycle,
-        input_state,
-        rng,
         texture,
-        path_finder,
-        particle_system: sprite_particle_system,
+        lights: Lights::new(),
+        rng: rand::rng(),
+        day_night_cycle: DayNightCycle::new(),
+        input_state: InputState::new(),
+        path_finder: PathFinder::new(map_width, map_height),
+        particle_system: SpriteParticleSystem::new(1000),
         update_rect: Rectangle::default(),
-        character_action_manager,
-        dt: 0.0,
+        character_action_manager: CharacterActionManager::new(),
+        visual_effects_manager: VisualEffectsManager::new(),
     };
-
-    let mut lights = Lights::new();
-    let light_z = 0.0;
-    let mousepos = mouse_world_coords(&game_context);
-    let light_id = lights.add_light(Vector3::new(mousepos.x, mousepos.y, light_z), Color::WHITE,1.0, 100.0);
 
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
     let mut entity_manager = EntityManager::new(map.map_dimensions);
 
     let mut shadow_fix_shader = rl.load_shader(&thread, None, Some("object_rt_shadow_fix.frag"));
 
-
     // CH OBJ SHADER
-    let mut entity_shader =
-        rl.load_shader(&thread, None, Some("entity_shader.frag"));
+    let mut entity_shader = rl.load_shader(&thread, None, Some("entity_shader.frag"));
     let entity_shader_red_tint_loc = entity_shader.get_shader_location("red_tint");
     let entity_shader_blue_tint_loc = entity_shader.get_shader_location("blue_tint");
     let entity_shader_brightness_modifier_loc =
         entity_shader.get_shader_location("brightness_modifier");
-    let entity_shader_camera_target_loc =
-        entity_shader.get_shader_location("cameraTarget");
-    let entity_shader_camera_offset_loc =
-        entity_shader.get_shader_location("cameraOffset");
-    let entity_shader_render_target_res_loc =
-        entity_shader.get_shader_location("renderTargetRes");
+    let entity_shader_camera_target_loc = entity_shader.get_shader_location("cameraTarget");
+    let entity_shader_camera_offset_loc = entity_shader.get_shader_location("cameraOffset");
+    let entity_shader_render_target_res_loc = entity_shader.get_shader_location("renderTargetRes");
     let entity_shader_light_count_loc = entity_shader.get_shader_location("lightCount");
 
     // GROUND SHADER
-    let mut ground_shader =
-        rl.load_shader(&thread, None, Some("ground_shader.frag"));
+    let mut ground_shader = rl.load_shader(&thread, None, Some("ground_shader.frag"));
     let ground_shader_red_tint_loc = ground_shader.get_shader_location("red_tint");
     let ground_shader_blue_tint_loc = ground_shader.get_shader_location("blue_tint");
     let ground_shader_brightness_modifier_loc =
         ground_shader.get_shader_location("brightness_modifier");
-    let ground_shader_camera_target_loc =
-        ground_shader.get_shader_location("cameraTarget");
-    let ground_shader_camera_offset_loc =
-        ground_shader.get_shader_location("cameraOffset");
-    let ground_shader_render_target_res_loc =
-        ground_shader.get_shader_location("renderTargetRes");
+    let ground_shader_camera_target_loc = ground_shader.get_shader_location("cameraTarget");
+    let ground_shader_camera_offset_loc = ground_shader.get_shader_location("cameraOffset");
+    let ground_shader_render_target_res_loc = ground_shader.get_shader_location("renderTargetRes");
     let ground_shader_light_count_loc = ground_shader.get_shader_location("lightCount");
-
-    let mut ground_render_textures: [RenderTexture2D; 6];
-    let mut object_and_character_render_textures: [RenderTexture2D; 6];
 
     let (mut ground_render_textures, mut entity_render_textures) = set_render_textures(
         &mut rl,
         &thread,
         game_context.logical_window_width,
-        game_context.logical_window_height);
+        game_context.logical_window_height,
+    );
 
     rl.set_target_fps(60);
     rl.disable_cursor();
@@ -213,13 +217,25 @@ fn main() {
 
     while !rl.window_should_close() {
         game_context.dt = rl.get_frame_time();
-        game_context.total_game_time += game_context.dt;
+        game_context.total_game_time = rl.get_time() as f32;
+
+        let dt = game_context.dt;
+        let total_game_time = game_context.total_game_time;
 
         // update input first
-        handle_input_and_update_camera(logical_window_width, logical_window_height, &mut current_zoom, &mut rl, camera, &mut select_rect, &mut camera_pos, &mut game_context);
+        handle_input_and_update_camera(
+            logical_window_width,
+            logical_window_height,
+            &mut current_zoom,
+            &mut rl,
+            camera,
+            &mut select_rect,
+            &mut camera_pos,
+            &mut game_context,
+        );
 
         //--UPDATE BEGINS HERE--//
-        lights.set_light_pos_no_z(light_id, mouse_world_coords(&game_context));
+
         // update map first
         map.update(game_context.dt);
 
@@ -237,21 +253,42 @@ fn main() {
             current_zoom.zoom(),
         );
 
-        // particle system updates next since the particle system could be used by the buttons
-        game_context.particle_system.update(game_context.dt);
-
-        // this just updates the values used for the shaders
+        // resolve the possibly queued actions from the entity manager update
         game_context
-            .day_night_cycle
-            .update(game_context.dt, &mut rl);
+            .character_action_manager
+            .resolve_actions(&mut entity_manager.characters);
 
+        // vfx next since the particle system could be used by the buttons and i want it to be snappy and smooth
+        game_context.particle_system.update(dt);
+        game_context.visual_effects_manager.update_effects(dt);
 
-        set_shader_values(current_zoom, &game_context, &lights, &mut entity_shader, entity_shader_red_tint_loc, entity_shader_blue_tint_loc, entity_shader_brightness_modifier_loc, entity_shader_camera_target_loc, entity_shader_camera_offset_loc, entity_shader_render_target_res_loc, entity_shader_light_count_loc, &mut ground_shader, ground_shader_red_tint_loc, ground_shader_blue_tint_loc, ground_shader_brightness_modifier_loc, ground_shader_camera_target_loc, ground_shader_camera_offset_loc, ground_shader_render_target_res_loc, ground_shader_light_count_loc);
+        // this just updates the values used for the shaders, so order is much less important
+        game_context.day_night_cycle.update(dt, &mut rl);
 
+        set_shader_values(
+            current_zoom,
+            &game_context,
+            &game_context.lights,
+            &mut entity_shader,
+            entity_shader_red_tint_loc,
+            entity_shader_blue_tint_loc,
+            entity_shader_brightness_modifier_loc,
+            entity_shader_camera_target_loc,
+            entity_shader_camera_offset_loc,
+            entity_shader_render_target_res_loc,
+            entity_shader_light_count_loc,
+            &mut ground_shader,
+            ground_shader_red_tint_loc,
+            ground_shader_blue_tint_loc,
+            ground_shader_brightness_modifier_loc,
+            ground_shader_camera_target_loc,
+            ground_shader_camera_offset_loc,
+            ground_shader_render_target_res_loc,
+            ground_shader_light_count_loc,
+        );
 
         let current_ground_rt = &mut ground_render_textures[current_zoom as usize];
-        let current_object_and_character_rt =
-            &mut entity_render_textures[current_zoom as usize];
+        let current_object_and_character_rt = &mut entity_render_textures[current_zoom as usize];
         //--UPDATE ENDS HERE--//
 
         //--DRAWING BEINGS HERE--//
@@ -282,25 +319,30 @@ fn main() {
             {
                 let mut cam = object_rt.begin_mode2D(game_context.camera);
 
-                let mut shader = cam.begin_shader_mode(&mut entity_shader);
+                {
+                    let mut shader = cam.begin_shader_mode(&mut entity_shader);
 
-                entity_manager.draw(
-                    &map.map_object_grid,
-                    &mut shader,
-                    &game_context.texture,
-                    game_context.day_night_cycle.current_shadow_shear,
-                    game_context.day_night_cycle.current_shadow_scale,
-                );
+                    entity_manager.draw(
+                        &map.map_object_grid,
+                        &mut shader,
+                        &game_context.texture,
+                        game_context.day_night_cycle.current_shadow_shear,
+                        game_context.day_night_cycle.current_shadow_scale,
+                    );
 
-                select_rect.draw(&mut shader);
-                action_button_manager.draw(&mut shader, &game_context);
+                    select_rect.draw(&mut shader);
+                    action_button_manager.draw(&mut shader, &game_context);
 
-                mouse_utils::draw_mouse(
-                    &mut shader,
-                    mouse_utils::mouse_world_coords(&game_context),
-                    &game_context.texture,
-                );
-            } // end camera and shader drawing
+                    mouse_utils::draw_mouse(
+                        &mut shader,
+                        mouse_utils::mouse_world_coords(&game_context),
+                        &game_context.texture,
+                    );
+                } // end shader drawing
+
+                game_context.visual_effects_manager.draw_effects(&mut cam, &game_context.texture);
+                
+            } // end camera drawing
         } // end object rt drawing
 
         let source_rec = Rectangle::new(
@@ -340,14 +382,35 @@ fn main() {
             );
         }
 
+
         game_context.day_night_cycle.draw_dbg(&mut d);
         entity_selecting_manager.draw(&mut d);
-    }
     //--DRAWING ENDS HERE--//
+    }
 }
 
 #[inline]
-fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights: &Lights, entity_shader: &mut raylib::prelude::Shader, entity_shader_red_tint_loc: i32, entity_shader_blue_tint_loc: i32, entity_shader_brightness_modifier_loc: i32, entity_shader_camera_target_loc: i32, entity_shader_camera_offset_loc: i32, entity_shader_render_target_res_loc: i32, entity_shader_light_count_loc: i32, ground_shader: &mut raylib::prelude::Shader, ground_shader_red_tint_loc: i32, ground_shader_blue_tint_loc: i32, ground_shader_brightness_modifier_loc: i32, ground_shader_camera_target_loc: i32, ground_shader_camera_offset_loc: i32, ground_shader_render_target_res_loc: i32, ground_shader_light_count_loc: i32) {
+fn set_shader_values(
+    current_zoom: ZoomSizes,
+    game_context: &GameContext,
+    lights: &Lights,
+    entity_shader: &mut raylib::prelude::Shader,
+    entity_shader_red_tint_loc: i32,
+    entity_shader_blue_tint_loc: i32,
+    entity_shader_brightness_modifier_loc: i32,
+    entity_shader_camera_target_loc: i32,
+    entity_shader_camera_offset_loc: i32,
+    entity_shader_render_target_res_loc: i32,
+    entity_shader_light_count_loc: i32,
+    ground_shader: &mut raylib::prelude::Shader,
+    ground_shader_red_tint_loc: i32,
+    ground_shader_blue_tint_loc: i32,
+    ground_shader_brightness_modifier_loc: i32,
+    ground_shader_camera_target_loc: i32,
+    ground_shader_camera_offset_loc: i32,
+    ground_shader_render_target_res_loc: i32,
+    ground_shader_light_count_loc: i32,
+) {
     entity_shader.set_shader_value(
         entity_shader_red_tint_loc,
         game_context.day_night_cycle.red_tint,
@@ -361,10 +424,8 @@ fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights
         game_context.day_night_cycle.brightness_modifier,
     );
 
-    entity_shader
-        .set_shader_value(entity_shader_camera_target_loc, game_context.camera.target);
-    entity_shader
-        .set_shader_value(entity_shader_camera_offset_loc, game_context.camera.offset);
+    entity_shader.set_shader_value(entity_shader_camera_target_loc, game_context.camera.target);
+    entity_shader.set_shader_value(entity_shader_camera_offset_loc, game_context.camera.offset);
     entity_shader.set_shader_value(
         entity_shader_render_target_res_loc,
         Vector2::new(
@@ -373,7 +434,10 @@ fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights
         ),
     );
 
-    entity_shader.set_shader_value(entity_shader_light_count_loc, lights.all_lights.iter().count() as i32);
+    entity_shader.set_shader_value(
+        entity_shader_light_count_loc,
+        lights.all_lights.iter().count() as i32,
+    );
 
     ground_shader.set_shader_value(
         ground_shader_red_tint_loc,
@@ -388,10 +452,8 @@ fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights
         game_context.day_night_cycle.brightness_modifier,
     );
 
-    ground_shader
-        .set_shader_value(ground_shader_camera_target_loc, game_context.camera.target);
-    ground_shader
-        .set_shader_value(ground_shader_camera_offset_loc, game_context.camera.offset);
+    ground_shader.set_shader_value(ground_shader_camera_target_loc, game_context.camera.target);
+    ground_shader.set_shader_value(ground_shader_camera_offset_loc, game_context.camera.offset);
     ground_shader.set_shader_value(
         ground_shader_render_target_res_loc,
         Vector2::new(
@@ -400,7 +462,10 @@ fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights
         ),
     );
 
-    ground_shader.set_shader_value(ground_shader_light_count_loc, lights.all_lights.iter().count() as i32);
+    ground_shader.set_shader_value(
+        ground_shader_light_count_loc,
+        lights.all_lights.iter().count() as i32,
+    );
 
     for (i, light) in lights.all_lights.iter().enumerate() {
         let current_light = light.1;
@@ -409,15 +474,21 @@ fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights
         let light_intensity = current_light.intensity;
         let light_radius = current_light.radius;
 
-        let entity_light_position_loc = entity_shader.get_shader_location(&format!("lightPosition[{i}]"));
+        let entity_light_position_loc =
+            entity_shader.get_shader_location(&format!("lightPosition[{i}]"));
         let entity_light_color_loc = entity_shader.get_shader_location(&format!("lightColor[{i}]"));
-        let entity_light_intensity_loc = entity_shader.get_shader_location(&format!("lightIntensity[{i}]"));
-        let entity_light_radius_loc = entity_shader.get_shader_location(&format!("lightRadius[{i}]"));
+        let entity_light_intensity_loc =
+            entity_shader.get_shader_location(&format!("lightIntensity[{i}]"));
+        let entity_light_radius_loc =
+            entity_shader.get_shader_location(&format!("lightRadius[{i}]"));
 
-        let ground_light_position_loc = ground_shader.get_shader_location(&format!("lightPosition[{i}]"));
+        let ground_light_position_loc =
+            ground_shader.get_shader_location(&format!("lightPosition[{i}]"));
         let ground_light_color_loc = ground_shader.get_shader_location(&format!("lightColor[{i}]"));
-        let ground_light_intensity_loc = ground_shader.get_shader_location(&format!("lightIntensity[{i}]"));
-        let ground_light_radius_loc = ground_shader.get_shader_location(&format!("lightRadius[{i}]"));
+        let ground_light_intensity_loc =
+            ground_shader.get_shader_location(&format!("lightIntensity[{i}]"));
+        let ground_light_radius_loc =
+            ground_shader.get_shader_location(&format!("lightRadius[{i}]"));
 
         entity_shader.set_shader_value(entity_light_position_loc, light_pos);
         entity_shader.set_shader_value(entity_light_color_loc, light_color);
@@ -432,7 +503,16 @@ fn set_shader_values(current_zoom: ZoomSizes, game_context: &GameContext, lights
 }
 
 #[inline]
-fn handle_input_and_update_camera(window_width_target: u32, window_height_target: u32, current_zoom: &mut ZoomSizes, rl: &mut RaylibHandle, camera: Camera2D, select_rect: &mut SelectRect, camera_pos: &mut Vector2, game_context: &mut GameContext) {
+fn handle_input_and_update_camera(
+    window_width_target: u32,
+    window_height_target: u32,
+    current_zoom: &mut ZoomSizes,
+    rl: &mut RaylibHandle,
+    camera: Camera2D,
+    select_rect: &mut SelectRect,
+    camera_pos: &mut Vector2,
+    game_context: &mut GameContext,
+) {
     game_context.input_state.update(rl, camera.zoom);
 
     if game_context.input_state.left_clicked_once {
@@ -492,7 +572,7 @@ fn handle_input_and_update_camera(window_width_target: u32, window_height_target
 
 #[repr(usize)]
 #[derive(Clone, Copy)]
-enum ZoomSizes {
+pub enum ZoomSizes {
     TwoX,
     ThreeX,
     FourX,
@@ -569,27 +649,26 @@ fn set_render_textures(
     thread: &RaylibThread,
     window_width_target: u32,
     window_height_target: u32,
-) -> ([RenderTexture2D; 6], [RenderTexture2D; 6]){
-
+) -> ([RenderTexture2D; 6], [RenderTexture2D; 6]) {
     // +2 because it starts at 2x zoom, 1x zoom is never used, otherwise it would be +1
-    
+
     let rts_1 = std::array::from_fn(|i| {
-            rl.load_render_texture(
-                thread,
-                window_width_target / (i as u32 + 2),
-                window_height_target / (i as u32 + 2),
-            )
-            .unwrap()
-        });
-    
-        let rts_2 = std::array::from_fn(|i| {
-            rl.load_render_texture(
-                thread,
-                window_width_target / (i as u32 + 2),
-                window_height_target / (i as u32 + 2),
-            )
-            .unwrap()
-        });
+        rl.load_render_texture(
+            thread,
+            window_width_target / (i as u32 + 2),
+            window_height_target / (i as u32 + 2),
+        )
+        .unwrap()
+    });
+
+    let rts_2 = std::array::from_fn(|i| {
+        rl.load_render_texture(
+            thread,
+            window_width_target / (i as u32 + 2),
+            window_height_target / (i as u32 + 2),
+        )
+        .unwrap()
+    });
 
     return (rts_1, rts_2);
 }

@@ -1,11 +1,14 @@
-use raylib::math::{Rectangle, Vector2};
+use raylib::{
+    camera::Camera2D,
+    ffi::GetWorldToScreen2D,
+    math::{Rectangle, Vector2},
+};
 
-use crate::GameContext;
+use crate::{GameContext, ZoomSizes};
 
 /// checks if an object is within the visible view
 #[inline]
 pub fn is_in_camera_view(visual_rect: &Rectangle, game_context: &GameContext) -> bool {
-
     // draw_pos.x, draw_pos.y, w, h, which is what we need to see if obj is in view
     let cam_pos = game_context.camera.target - game_context.camera.offset;
 
@@ -23,5 +26,19 @@ pub fn is_in_camera_view(visual_rect: &Rectangle, game_context: &GameContext) ->
 /// checks if an object is within the area being updated
 #[inline]
 pub fn is_in_update_area(object_pos: Vector2, game_context: &GameContext) -> bool {
-    return game_context.update_rect.check_collision_point_rec(object_pos)
+    return game_context
+        .update_rect
+        .check_collision_point_rec(object_pos);
+}
+
+#[inline]
+pub fn world_to_screen(world_pos: Vector2, camera: &Camera2D, zoom: ZoomSizes) -> Vector2 {
+    let scale = zoom.zoom() as f32;
+    let ffi_v2: raylib::ffi::Vector2 = world_pos.into();
+    let ffi_camera: raylib::ffi::Camera2D = camera.into();
+
+    unsafe {
+        let screen_raw: Vector2 = GetWorldToScreen2D(ffi_v2, ffi_camera).into();
+        return screen_raw * scale;
+    }
 }

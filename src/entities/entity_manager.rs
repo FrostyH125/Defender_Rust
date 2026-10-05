@@ -164,6 +164,9 @@ impl EntityManager {
             .collect();
 
         for character in &mut self.characters {
+
+            let affiliation = character.character.get_data().character_values.affiliation;
+            
             let hover_rect = character.character.get_hover_rect();
 
             if selector.is_deselecting_chars {
@@ -203,13 +206,11 @@ impl EntityManager {
                 // dont let enemies be selected for this.
                 // they cant be moved manually
                 // and continue because if the move rect is active, the other rect isnt active
-                if character.character.get_data().character_values.affiliation == Affiliation::Evil {
+                if affiliation == Affiliation::Evil {
                     continue;
                 }
                 
                 if hover_rect.check_collision_recs(&select_rect.rectangle) {
-
-                    
                     character.character.get_mut_data().is_hovering_for_move = true;
                     hover_chars_for_move.push(character);
                     continue;
@@ -241,7 +242,7 @@ impl EntityManager {
             }
 
             let should_be_hovered_for_move =
-                !are_any_action_buttons_hovering && hover_rect.check_collision_point_rec(mouse_pos);
+                !are_any_action_buttons_hovering && hover_rect.check_collision_point_rec(mouse_pos) && affiliation != Affiliation::Evil;
 
             if should_be_hovered_for_move {
                 hover_char_for_move = Some(character);

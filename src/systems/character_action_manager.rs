@@ -4,10 +4,8 @@ use crate::{
 
 pub enum CharacterAction {
     Attack {
-        // even though its currently unused, attacker ID could eventually be used very easily, so im going to keep it for now
         attacker_id: CharID,
         target_id: CharID,
-        damage: f32,
     },
     EngageInCombat {
         attacker_id: CharID,
@@ -16,7 +14,8 @@ pub enum CharacterAction {
 }
 
 /// Handles storing and resolving the actions requested by characters.
-/// This prevents characters from needing direct mutable handles to eachother during the update loop
+/// This prevents characters from needing direct mutable access to eachother during the update loop
+/// it also prevents characters from needing to independently contain the business logic for doing so
 pub struct CharacterActionManager {
     actions: Vec<CharacterAction>,
 }
@@ -28,19 +27,8 @@ impl CharacterActionManager {
         };
     }
 
-    pub fn request_attack(&mut self, attacker_id: CharID, target_id: CharID, damage: f32) {
-        self.actions.push(CharacterAction::Attack {
-            attacker_id,
-            target_id,
-            damage,
-        });
-    }
-
-    pub fn request_engage_in_combat(&mut self, attacker_id: CharID, target_id: CharID) {
-        self.actions.push(CharacterAction::EngageInCombat {
-            attacker_id,
-            target_id,
-        });
+    pub fn push_action(&mut self, action: CharacterAction) {
+        self.actions.push(action);
     }
 
     pub fn resolve_actions(&mut self, chars: &mut [CharacterEntry]) {
@@ -49,12 +37,12 @@ impl CharacterActionManager {
                 CharacterAction::Attack {
                     attacker_id,
                     target_id,
-                    damage,
                 } => {
                     let attacker = get_char_by_unique_id(chars, *attacker_id);
-                    let target = get_char_by_unique_id(chars, *target_id);
+                    let damage = attacker.character.get_data().character_values.attack_power;
 
-                    todo!("target.take_damage(damage)")
+                    let target = get_char_by_unique_id(chars, *target_id);
+                    target.character.get_mut_data().health -= damage;
                 }
                 CharacterAction::EngageInCombat {
                     attacker_id,

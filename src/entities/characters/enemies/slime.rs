@@ -68,6 +68,7 @@ impl Slime {
     }
 
     pub fn update(&mut self) {}
+    
     pub fn current_sprite(&self) -> Sprite {
         match self.slime_state {
             SlimeState::Idle => self.character_data.character_values.idle_anim.current_sprite(),

@@ -245,6 +245,8 @@ impl Gatherer {
             self.data.facing_direction,
         );
 
+        game_context.visual_effects_manager.add_damage_number(obj.get_center_pos(), self.gathering_power);
+
         if obj.should_not_be_used_again_by_anything() {
             obj.unmark_for_gathering();
             return true;

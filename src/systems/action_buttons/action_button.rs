@@ -12,9 +12,8 @@ use crate::{
     GameContext,
     entities::{
         character::Character,
-        characters::gatherer::{GatherTarget, GathererState},
+        characters::gatherer::{GatherTarget},
         entity_manager::{CharID, CharacterEntry},
-        object::Object,
     },
     map::tile_map::MapObjectGrid,
     utils::{
