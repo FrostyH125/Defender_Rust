@@ -11,8 +11,8 @@ use zander_game_core_rs::raylib::sprite::Sprite;
 use crate::{
     GameContext, TILE_SIZE,
     entities::{
-        character::{Affiliation, Character},
-        object::Object,
+        character::{Affiliation, Character, SimpleCharacterKind},
+        object::{ObjectKind, ObjectState},
     },
     map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
     systems::{
@@ -21,8 +21,8 @@ use crate::{
         select_rect::SelectRect,
     },
     utils::{
-        map_cord::MapCord, map_utils, mouse_utils::mouse_world_coords,
-        rectangle_utils::center_of_rect,
+        camera_utils::is_in_camera_view, map_cord::MapCord, map_utils,
+        mouse_utils::mouse_world_coords, rectangle_utils::center_of_rect,
     },
 };
 
@@ -76,7 +76,7 @@ impl EntityManager {
     pub fn add_character(&mut self, mut character: Character) {
         let render_index = character.get_render_tile_index(self.map_dimensions);
 
-        character.get_mut_data().unique_char_id = self.next_unique_character_id;
+        character.character_data.unique_char_id = self.next_unique_character_id;
 
         self.characters.push(CharacterEntry {
             character,
@@ -154,9 +154,9 @@ impl EntityManager {
                 (
                     c.unique_id,
                     CharacterInfo {
-                        health: c.character.get_data().health,
-                        affiliation: c.character.get_data().character_values.affiliation,
-                        position: c.character.get_data().pos,
+                        health: c.character.character_data.health,
+                        affiliation: c.character.character_data.character_values.affiliation,
+                        position: c.character.character_data.pos,
                         char_id: c.unique_id,
                     },
                 )
@@ -164,17 +164,20 @@ impl EntityManager {
             .collect();
 
         for character in &mut self.characters {
+            let affiliation = character
+                .character
+                .character_data
+                .character_values
+                .affiliation;
 
-            let affiliation = character.character.get_data().character_values.affiliation;
-            
             let hover_rect = character.character.get_hover_rect();
 
             if selector.is_deselecting_chars {
-                character.character.get_mut_data().is_selected = false;
+                character.character.character_data.is_selected = false;
             }
 
             if right_clicked {
-                if character.character.get_mut_data().is_selected_for_move {
+                if character.character.character_data.is_selected_for_move {
                     character.character.set_move_to(mouse_pos);
                     moved_anyone = true;
                 }
@@ -183,7 +186,7 @@ impl EntityManager {
             if selector.is_deselecting_move {
                 // deselecting move means right mouse button was clicked
                 // this means move the character to a new pos
-                character.character.get_mut_data().is_selected_for_move = false;
+                character.character.character_data.is_selected_for_move = false;
             }
 
             character
@@ -191,7 +194,7 @@ impl EntityManager {
                 .update(game_context, map, &character_info);
 
             let should_spawn_new_selected_for_move_particle =
-                character.character.get_data().is_selected_for_move
+                character.character.character_data.is_selected_for_move
                     && game_context.rng.random_bool(game_context.dt as f64 * 10.0);
 
             if should_spawn_new_selected_for_move_particle {
@@ -209,9 +212,9 @@ impl EntityManager {
                 if affiliation == Affiliation::Evil {
                     continue;
                 }
-                
+
                 if hover_rect.check_collision_recs(&select_rect.rectangle) {
-                    character.character.get_mut_data().is_hovering_for_move = true;
+                    character.character.character_data.is_hovering_for_move = true;
                     hover_chars_for_move.push(character);
                     continue;
                 }
@@ -222,7 +225,7 @@ impl EntityManager {
                     // count each character inside of the rectangle if its dragging, they should all be drawing with hover
                     true => {
                         if hover_rect.check_collision_recs(&select_rect.rectangle) {
-                            character.character.get_mut_data().is_hovering = true;
+                            character.character.character_data.is_hovering = true;
                             hover_chars.push(character);
                             continue;
                         }
@@ -241,8 +244,9 @@ impl EntityManager {
                 }
             }
 
-            let should_be_hovered_for_move =
-                !are_any_action_buttons_hovering && hover_rect.check_collision_point_rec(mouse_pos) && affiliation != Affiliation::Evil;
+            let should_be_hovered_for_move = !are_any_action_buttons_hovering
+                && hover_rect.check_collision_point_rec(mouse_pos)
+                && affiliation != Affiliation::Evil;
 
             if should_be_hovered_for_move {
                 hover_char_for_move = Some(character);
@@ -266,13 +270,30 @@ impl EntityManager {
 
                 let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
-                let obj = &mut map.map_object_grid[index];
+                let object = &mut map.map_object_grid[index];
 
-                obj.update(game_context, selector.is_deselecting_objs);
-
-                if let Object::NoObject = obj {
+                if let None = object {
                     continue;
                 }
+
+                // delete object if its done with breaking or is breaking and left view
+                if let ObjectState::Breaking = object.as_ref().unwrap().object_data.state
+                    && (object
+                        .as_ref()
+                        .unwrap()
+                        .object_data
+                        .object_specific_data
+                        .disappear_timer
+                        .is_done()
+                        || !is_in_camera_view(&object.as_ref().unwrap().hover_rect(), game_context))
+                {
+                    *object = None;
+                    continue;
+                }
+
+                let obj = object.as_mut().unwrap();
+
+                obj.update(game_context, selector.is_deselecting_objs);
 
                 if let SelectingMode::Objects = selector.selecting_mode {
                     match select_rect.select_range_active {
@@ -308,7 +329,7 @@ impl EntityManager {
                     was_anything_selected_this_frame = true;
                 } else {
                     if let Some(idx) = hover_obj {
-                        let obj = &mut map.map_object_grid[idx];
+                        let obj = &mut map.map_object_grid[idx].as_mut().unwrap();
 
                         obj.set_hovering();
 
@@ -325,7 +346,7 @@ impl EntityManager {
                     was_anything_selected_this_frame = true;
                 } else {
                     if let Some(ch) = hover_char {
-                        ch.character.get_mut_data().is_hovering = true;
+                        ch.character.character_data.is_hovering = true;
 
                         if left_clicked {
                             selector.select_single_char(ch);
@@ -340,7 +361,7 @@ impl EntityManager {
             selector.select_multiple_moves(hover_chars_for_move);
         } else {
             if let Some(ch) = hover_char_for_move {
-                ch.character.get_mut_data().is_hovering_for_move = true;
+                ch.character.character_data.is_hovering_for_move = true;
 
                 if right_clicked {
                     selector.select_single_move(ch);
@@ -398,9 +419,9 @@ impl EntityManager {
 
                 let current_tile_index = map_utils::cords_to_index(self.map_dimensions, cord);
 
-                match object_grid[current_tile_index] {
-                    Object::NoObject => (),
-                    _ => object_grid[current_tile_index].draw_shadow(d, texture, shear_x, scale_y),
+                match &object_grid[current_tile_index] {
+                    None => (),
+                    Some(obj) => obj.draw_shadow(d, texture, shear_x, scale_y),
                 }
 
                 while current_char_list_index < self.characters.len() {
@@ -439,19 +460,17 @@ impl EntityManager {
 
                 let current_tile_index = map_utils::cords_to_index(self.map_dimensions, cord);
 
-                match object_grid[current_tile_index] {
-                    Object::NoObject => (),
-                    _ => {
-                        let object = &object_grid[current_tile_index];
+                match &object_grid[current_tile_index] {
+                    None => (),
+                    Some(obj) => {
+                        obj.draw(d, texture);
 
-                        object.draw(d, texture);
-
-                        if object.is_hovering() {
-                            object.draw_hover(d, texture);
+                        if obj.is_hovering() {
+                            obj.draw_hover(d, texture);
                         }
 
-                        if object.is_selected() {
-                            object.draw_selected(d, texture);
+                        if obj.is_selected() {
+                            obj.draw_selected(d, texture);
                         }
                     }
                 }
@@ -466,19 +485,18 @@ impl EntityManager {
 
                     if next_char_tile_index == current_tile_index {
                         let character = &self.characters[current_char_list_index].character;
-                        let character_data = character.get_data();
 
                         character.draw(d, texture);
 
-                        if character_data.is_hovering {
+                        if character.character_data.is_hovering {
                             character.draw_hover(d, texture);
                         }
 
-                        if character_data.is_selected {
+                        if character.character_data.is_selected {
                             character.draw_selected(d, texture);
                         }
 
-                        if character_data.is_hovering_for_move {
+                        if character.character_data.is_hovering_for_move {
                             character.draw_hover_for_move(d, texture);
                         }
                     }
@@ -562,17 +580,15 @@ fn spawn_character_selected_for_potential_move_particle(
     game_context: &mut GameContext,
     character: &mut CharacterEntry,
 ) {
-    let data = character.character.get_data();
-
-    let height = character.character.get_hover_rect().height;
+    let hover_rect = character.character.get_hover_rect();
 
     let p_pos = Vector2::new(
         game_context
             .rng
-            .random_range(data.pos.x..=data.pos.x + character.character.get_hover_rect().width),
-        game_context
-            .rng
-            .random_range(data.pos.y + height / 2.0..=data.pos.y + height),
+            .random_range(hover_rect.x..=hover_rect.x + hover_rect.width),
+        game_context.rng.random_range(
+            hover_rect.y + hover_rect.height / 2.0..=hover_rect.y + hover_rect.height,
+        ),
     );
 
     let p_vel = Vector2::new(0.0, game_context.rng.random_range(-50.0..=-45.0));

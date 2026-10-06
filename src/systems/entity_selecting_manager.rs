@@ -6,7 +6,7 @@ use raylib::{
 };
 
 use crate::{
-    entities::{entity_manager::{CharID, CharacterEntry}, object::Object}, map::tile_map::MapObjectGrid,
+    entities::{entity_manager::{CharID, CharacterEntry}, object::{Object, ObjectKind}}, map::tile_map::MapObjectGrid,
 };
 
 #[derive(Debug)]
@@ -69,20 +69,20 @@ impl EntitySelectingManager {
     pub fn select_single_char(&mut self, character_entry: &mut CharacterEntry) {
         self.deselect_chars();
 
-        character_entry.character.get_mut_data().is_selected = true;
+        character_entry.character.character_data.is_selected = true;
         self.selected_characters.push(character_entry.unique_id);
     }
 
     pub fn select_single_move(&mut self, character_entry: &mut CharacterEntry) {
         self.deselect_move();
-        character_entry.character.get_mut_data().is_selected_for_move = true;
+        character_entry.character.character_data.is_selected_for_move = true;
     }
 
     pub fn select_multiple_chars(&mut self, hover_characters: Vec<&mut CharacterEntry>) {
         self.deselect_chars();
 
         for ch in hover_characters {
-            ch.character.get_mut_data().is_selected = true;
+            ch.character.character_data.is_selected = true;
             self.selected_characters.push(ch.unique_id);
         }
     }
@@ -91,7 +91,7 @@ impl EntitySelectingManager {
         self.deselect_move();
 
         for ch in hover_move_chars {
-            ch.character.get_mut_data().is_selected_for_move = true;
+            ch.character.character_data.is_selected_for_move = true;
         }
     }
 
@@ -99,7 +99,7 @@ impl EntitySelectingManager {
         self.deselect_objs();
         for idx in indexes {
             let obj = &mut object_grid[idx];
-            obj.set_selected();
+            obj.as_mut().unwrap().set_selected();
             self.selected_objects.push(idx);
         }
     }

@@ -1,8 +1,14 @@
 use raylib::math::Vector2;
-use zander_game_core_rs::raylib::{animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance};
+use zander_game_core_rs::raylib::{
+    animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
+};
 
 use crate::entities::{
-    character::{Affiliation, Character, CharacterData, CharacterKind, CharacterSpecificData}, characters::enemy::{Enemy, EnemyData},
+    character::{
+        Affiliation, Character, CharacterData, CharacterKind, CharacterSpecificData,
+        SimpleCharacterKind,
+    },
+    characters::enemy::{Enemy, EnemyData, EnemyKind},
 };
 
 static SLIME_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -35,8 +41,6 @@ pub enum SlimeState {
 }
 
 pub struct Slime {
-    pub character_data: CharacterData,
-    enemy_data: EnemyData,
     pub slime_state: SlimeState,
 }
 
@@ -55,23 +59,29 @@ impl Slime {
             width: 8.0,
             height: 8.0,
             affiliation: Affiliation::Evil,
-            character_kind: CharacterKind::Enemy,
+            character_kind: SimpleCharacterKind::Enemy,
         };
 
+        let data = CharacterData::new(pos, character_values);
+
         let slime = Slime {
-            character_data: CharacterData::new(pos, character_values),
-            enemy_data: EnemyData {},
             slime_state: SlimeState::Idle,
         };
 
-        return Character::Enemy(Enemy::Slime(slime));
+        return Character {
+            character_data: data,
+            character_kind: CharacterKind::Enemy(Enemy {
+                enemy_data: EnemyData {},
+                enemy_kind: EnemyKind::Slime(slime),
+            }),
+        };
     }
 
     pub fn update(&mut self) {}
-    
-    pub fn current_sprite(&self) -> Sprite {
+
+    pub fn current_sprite(&self, character_data: &CharacterData) -> Sprite {
         match self.slime_state {
-            SlimeState::Idle => self.character_data.character_values.idle_anim.current_sprite(),
+            SlimeState::Idle => character_data.character_values.idle_anim.current_sprite(),
         }
     }
 }

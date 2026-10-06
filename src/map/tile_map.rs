@@ -4,9 +4,7 @@ use raylib::{color::Color, drawing::RaylibDrawHandle, math::Vector2, texture::Te
 use zander_game_core_rs::raylib::animation_data::SpriteAnimationData;
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::object::Object,
-    map::{
+    GameContext, TILE_SIZE, entities::object::{Object, ObjectKind}, map::{
         map_gen_functions,
         tile::{
             LakeSpriteData, RiverSpriteData,
@@ -19,12 +17,11 @@ use crate::{
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
-    },
-    utils::map_cord::MapCord,
+    }, utils::map_cord::MapCord,
 };
 
 pub type MapTileGrid = Vec<TileType>;
-pub type MapObjectGrid = Vec<Object>;
+pub type MapObjectGrid = Vec<Option<Object>>;
 
 #[derive(Clone, Copy)]
 pub struct MapDimensions {
@@ -116,7 +113,7 @@ impl TileMap {
         let mut tile_grid: MapTileGrid = vec![TileType::Grass; total_map_length];
 
         let mut object_grid = Vec::new();
-        object_grid.resize_with(total_map_length, || Object::NoObject);
+        object_grid.resize_with(total_map_length, || None);
 
         let (forest_lake_tiles, grass_lake_tiles) =
             map_gen_functions::create_lakes(&mut tile_grid, map_dimensions, &mut game_context.rng);

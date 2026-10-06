@@ -9,9 +9,7 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::object::{Object, ObjectData, ObjectKind, ObjectSpecificData, ObjectState},
-    utils::{map_cord::MapCord, vector2_utils},
+    GameContext, TILE_SIZE, entities::object::{Object, ObjectData, ObjectKind, ObjectSpecificData, ObjectState, SimpleObjectKind}, utils::{map_cord::MapCord, vector2_utils},
 };
 
 enum TreeVariant {
@@ -54,7 +52,6 @@ static TREE_FALL_ANIM_TWO: SpriteAnimationData = SpriteAnimationData {
 };
 
 pub struct Tree {
-    pub data: ObjectData,
     falling_anim: SpriteAnimationInstance,
     variant: TreeVariant,
     out_of_hit_pos_timer: Timer
@@ -82,37 +79,41 @@ impl Tree {
                 TREE_FALL_ANIM_ONE.frame_duration * TREE_FALL_ANIM_ONE.frames.len() as f32,
             ),
             health: 100.0,
-            object_kind: ObjectKind::Tree,
+            object_kind: SimpleObjectKind::Tree,
         };
 
-        let mut tree = Tree {
-            data: ObjectData::new(
-                cord.map_pos(),
-                vector2_utils::random_offset_by_one(rng),
-                cord,
-                object_specific_data,
-            ),
+        let tree = Tree {
             variant,
             out_of_hit_pos_timer: Timer::new(0.1),
             falling_anim: SpriteAnimationInstance::new(anim),
         };
 
+        let mut data = ObjectData::new(
+            cord.map_pos(),
+            vector2_utils::random_offset_by_one(rng),
+            cord,
+            object_specific_data,
+        );
+
         if rng.random_bool(0.5) {
-            tree.data.sprite_flip = true;
+            data.sprite_flip = true;
         }
         
-        return Object::TreeObj(tree);
+        return Object {
+            object_data: data,
+            object_kind: ObjectKind::TreeObj(tree),
+        };
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext) {
-        if let ObjectState::Breaking = self.data.state {
+    pub fn update(&mut self, object_data: &mut ObjectData, game_context: &mut GameContext) {
+        if let ObjectState::Breaking = object_data.state {
             // doesnt matter which one to use because update data is same
             self.falling_anim.update(game_context.dt);
 
-            if self.data.sprite_flip {
-                self.data.object_specific_data.situational_draw_offset.x = -8.0;
+            if object_data.sprite_flip {
+                object_data.object_specific_data.situational_draw_offset.x = -8.0;
             } else {
-                self.data.object_specific_data.situational_draw_offset.x = 0.0;
+                object_data.object_specific_data.situational_draw_offset.x = 0.0;
             }
 
             // returning because the out of hit pos timer would reset the draw offset
@@ -123,13 +124,13 @@ impl Tree {
         if self.out_of_hit_pos_timer.is_playing() {
             self.out_of_hit_pos_timer.track(game_context.dt);
             if self.out_of_hit_pos_timer.is_done() {
-                self.data.object_specific_data.situational_draw_offset.x = 0.0;
+                object_data.object_specific_data.situational_draw_offset.x = 0.0;
             }
         }
     }
 
-    pub fn on_hit(&mut self, rng: &mut ThreadRng) {
-        self.data.object_specific_data.situational_draw_offset.x = match rng.random_bool(0.5) {
+    pub fn on_hit(&mut self, object_data: &mut ObjectData, rng: &mut ThreadRng) {
+        object_data.object_specific_data.situational_draw_offset.x = match rng.random_bool(0.5) {
             true => 1.0,
             false => -1.0,
         };
@@ -138,8 +139,8 @@ impl Tree {
         self.out_of_hit_pos_timer.set_playing();
     }
 
-    pub fn sprite(&self) -> Sprite {
-        return match self.data.state {
+    pub fn sprite(&self, object_data: &ObjectData) -> Sprite {
+        return match object_data.state {
             ObjectState::Breaking => self.falling_anim.current_sprite(),
             _ => match self.variant {
                 TreeVariant::One => TREE_SPRITE_ONE,

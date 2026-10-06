@@ -7,7 +7,7 @@ use raylib::{
 };
 
 use crate::{
-    GameContext, entities::{character::CharacterKind, entity_manager::{CharID, CharacterEntry}, object::{Object, ObjectKind}}, map::tile_map::MapObjectGrid, systems::{
+    GameContext, entities::{character::SimpleCharacterKind, entity_manager::{CharID, CharacterEntry}, object::{ObjectKind, SimpleObjectKind}}, map::tile_map::MapObjectGrid, systems::{
         action_buttons::action_button::{ActionButton, ActionButtonKind},
         entity_selecting_manager::EntitySelectingManager,
     }, utils::entity_utils::get_char_by_unique_id,
@@ -152,17 +152,17 @@ fn check_for_matches(
     character_entries: &mut [CharacterEntry],
 ) -> Vec<ActionButton> {
     let mut successful_matches = Vec::new();
-    let mut obj_types: HashSet<ObjectKind> = HashSet::new();
-    let mut char_types: HashSet<CharacterKind> = HashSet::new();
+    let mut obj_types: HashSet<SimpleObjectKind> = HashSet::new();
+    let mut char_types: HashSet<SimpleCharacterKind> = HashSet::new();
 
     for id in obj_ids {
         let obj = &object_grid[*id];
 
-        if let Object::NoObject = obj {
+        if let None = obj {
             continue;
         }
 
-        let obj_kind = obj.get_data().object_specific_data.object_kind;
+        let obj_kind = obj.as_ref().unwrap().object_data.object_specific_data.object_kind;
 
         obj_types.insert(obj_kind);
     }
@@ -170,7 +170,7 @@ fn check_for_matches(
     for c_id in char_ids {
         let character = get_char_by_unique_id(character_entries, *c_id);
 
-        let char_kind = character.character.get_data().character_values.character_kind;
+        let char_kind = character.character.character_data.character_values.character_kind;
 
         char_types.insert(char_kind);
     }
@@ -178,10 +178,10 @@ fn check_for_matches(
     for o in &obj_types {
         for c in &char_types {
             let button: Option<ActionButton> = match (*o, *c) {
-                (ObjectKind::Tree, CharacterKind::Gatherer) => {
+                (SimpleObjectKind::Tree, SimpleCharacterKind::Gatherer) => {
                     Some(ActionButton::new(ActionButtonKind::ChopTreeButton))
                 }
-                (ObjectKind::Grass, CharacterKind::Gatherer) => {
+                (SimpleObjectKind::Grass, SimpleCharacterKind::Gatherer) => {
                     Some(ActionButton::new(ActionButtonKind::CutGrassButton))
                 }
                 _ => None,

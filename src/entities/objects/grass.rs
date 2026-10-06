@@ -6,7 +6,7 @@ use zander_game_core_rs::{raylib::{
 
 use crate::{
     GameContext, entities::{
-        object::{Object, ObjectData, ObjectKind, ObjectSpecificData}, objects::grass::GrassType::Wheaty,
+        object::{Object, ObjectData, ObjectKind, ObjectSpecificData, SimpleObjectKind}, objects::grass::GrassType::Wheaty,
     }, utils::{direction_utils::FacingDirection, map_cord::MapCord, vector2_utils},
 };
 
@@ -159,7 +159,6 @@ impl GrassType {
 }
 
 pub struct Grass {
-    pub data: ObjectData,
     level_up_time: f32,
     grass_level: u8,
     grass_type: GrassType,
@@ -205,7 +204,7 @@ impl Grass {
             height: height as f32,
             disappear_timer: Timer::new(0.0),
             health: 100.0,
-            object_kind: ObjectKind::Grass,
+            object_kind: SimpleObjectKind::Grass,
         };
 
         let data = ObjectData::new(
@@ -216,7 +215,6 @@ impl Grass {
         );
 
         let grass = Grass {
-            data,
             level_up_time: game_context
                 .rng
                 .random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME)
@@ -235,10 +233,13 @@ impl Grass {
             },
         };
 
-        return Object::GrassObj(grass);
+        return Object {
+            object_data: data,
+            object_kind: ObjectKind::GrassObj(grass),
+        };
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext) {
+    pub fn update(&mut self, object_data: &mut ObjectData, game_context: &mut GameContext) {
         // all anims have exact same properties so its simply not necessary to distinguish them
         self.anim_instance.update(game_context.dt);
 
@@ -255,25 +256,25 @@ impl Grass {
             self.level_up_time += game_context
                 .rng
                 .random_range(MINIMUM_LEVEL_UP_TIME..=MAXIMUM_LEVEL_UP_TIME);
-            self.level_up();
+            self.level_up(object_data);
         }
     }
 
-    pub fn level_up(&mut self) {
+    pub fn level_up(&mut self, object_data: &mut ObjectData) {
         self.grass_level += 1;
         self.grass_level = self.grass_level.clamp(0, 2);
 
         if self.grass_level == 2 {
             // this only happens once since the level up cant be called once you reach 2
             // this just adjusts for the increased height of the tall grass
-            self.data.draw_pos += Vector2::new(0.0, -8.0);
+            object_data.draw_pos += Vector2::new(0.0, -8.0);
         }
 
         self.anim_instance.sprite_animation =
             Self::get_grass_anim(self.grass_type, self.grass_level);
     }
 
-    pub fn on_hit(&mut self, game_context: &mut GameContext, facing_dir: FacingDirection) {
+    pub fn on_hit(&mut self, object_data: &ObjectData, game_context: &mut GameContext, facing_dir: FacingDirection) {
         static GRASS_EMIT_PARTICLES: [Sprite; 4] = [
             Sprite::new(51, 0, 1, 1),
             Sprite::new(52, 0, 1, 1),
@@ -281,7 +282,7 @@ impl Grass {
             Sprite::new(54, 0, 1, 1),
         ];
 
-        let rect = self.data.hover_rect();
+        let rect = object_data.hover_rect();
         let half_height = rect.height / 2.0;
 
         for _ in 0..=game_context.rng.random_range(15..=25) {

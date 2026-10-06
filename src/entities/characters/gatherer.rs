@@ -8,17 +8,12 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
+    GameContext, entities::{
         character::{
             Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult,
-            CharacterSpecificData,
-        },
-        characters::gatherer::GathererState::MovingToObject,
-        object::Object,
-    },
-    map::tile_map::{MapObjectGrid, TileMap},
-    utils::entity_utils::object_matches_gathering_target,
+            CharacterSpecificData, SimpleCharacterKind,
+        }, characters::gatherer::GathererState::MovingToObject, object::{Object, ObjectKind},
+    }, map::tile_map::{MapObjectGrid, TileMap}, utils::entity_utils::object_matches_gathering_target,
 };
 
 static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -46,8 +41,7 @@ static GATHERER_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
 };
 
 static GATHERER_GATHER_ANIM: SpriteAnimationData = SpriteAnimationData {
-
-    frames:&Sprite::create_sequence_of_sprites::<9>(16, 200, 8, 8),
+    frames: &Sprite::create_sequence_of_sprites::<9>(16, 200, 8, 8),
     frame_duration: 0.05,
     should_loop: false,
 };
@@ -98,7 +92,6 @@ impl std::fmt::Debug for GathererState {
 }
 
 pub struct Gatherer {
-    pub data: CharacterData,
     object_indices: Vec<usize>,
     current_index: Option<usize>,
     gather_anim: SpriteAnimationInstance,
@@ -122,11 +115,12 @@ impl Gatherer {
             height: 8.0,
             move_speed: 30.0,
             max_health: 100.0,
-            character_kind: CharacterKind::Gatherer,
+            character_kind: SimpleCharacterKind::Gatherer,
         };
 
+        let data = CharacterData::new(pos, character_values);
+
         let gatherer = Gatherer {
-            data: CharacterData::new(pos, character_values),
             gatherer_state: GathererState::Idle,
             gather_anim: SpriteAnimationInstance::new(&GATHERER_GATHER_ANIM),
             gathering_power: 20.0,
@@ -135,29 +129,38 @@ impl Gatherer {
             current_index: None,
         };
 
-        return Character::Gatherer(gatherer);
+        return Character {
+            character_data: data,
+            character_kind: CharacterKind::Gatherer(gatherer),
+        };
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap) {
+    pub fn update(
+        &mut self,
+        character_data: &mut CharacterData,
+        game_context: &mut GameContext,
+        map: &mut TileMap,
+    ) {
         match self.gatherer_state {
             GathererState::Idle => (),
             GathererState::LookingForObject { gather_target } => {
-                self.looking_for_object(map, gather_target);
+                self.looking_for_object(character_data, map, gather_target);
             }
             GathererState::MovingToObject {
                 target_pos,
                 gather_target,
             } => {
-                self.moving_to_object(game_context, map, target_pos, gather_target);
+                self.moving_to_object(character_data, game_context, map, target_pos, gather_target);
             }
             GathererState::GatheringObject { gather_target } => {
-                self.gathering_object(game_context, map, gather_target);
+                self.gathering_object(character_data, game_context, map, gather_target);
             }
         }
     }
 
     fn gathering_object(
         &mut self,
+        character_data: &mut CharacterData,
         game_context: &mut GameContext,
         map: &mut TileMap,
         gather_target: GatherTarget,
@@ -178,7 +181,8 @@ impl Gatherer {
         self.gather_anim.reset();
 
         if self.gather(
-            &mut map.map_object_grid[self.current_index.unwrap()],
+            character_data,
+            &mut map.map_object_grid[self.current_index.unwrap()].as_mut().unwrap(),
             game_context,
         ) {
             self.gatherer_state = GathererState::LookingForObject { gather_target };
@@ -187,16 +191,20 @@ impl Gatherer {
 
     fn moving_to_object(
         &mut self,
+        character_data: &mut CharacterData,
         game_context: &mut GameContext,
         map: &mut TileMap,
         target_pos: Vector2,
         gather_target: GatherTarget,
     ) {
-        self.data.character_values.move_anim.update(game_context.dt);
+        character_data
+            .character_values
+            .move_anim
+            .update(game_context.dt);
 
-        match self.data.move_to(target_pos, game_context, map) {
+        match character_data.move_to(target_pos, game_context, map) {
             CharacterMovementResult::Success => {
-                self.data.character_values.move_anim.reset();
+                character_data.character_values.move_anim.reset();
 
                 self.gatherer_state = GathererState::GatheringObject {
                     gather_target: gather_target,
@@ -204,26 +212,26 @@ impl Gatherer {
             }
             CharacterMovementResult::NotArrivedYet => (),
             CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {
-                self.data.character_values.move_anim.reset();
+                character_data.character_values.move_anim.reset();
                 self.object_indices.clear();
-                map.map_object_grid[self.current_index.unwrap()].set_unoccupied();
+                map.map_object_grid[self.current_index.unwrap()].as_mut().unwrap().set_unoccupied();
                 self.current_index = None;
                 self.gatherer_state = GathererState::Idle;
             }
         }
     }
 
-    fn looking_for_object(&mut self, map: &mut TileMap, gather_target: GatherTarget) {
+    fn looking_for_object(&mut self, character_data: &mut CharacterData, map: &mut TileMap, gather_target: GatherTarget) {
         // reset this here because if an object that is currently being gathered is reselected, then
         // i need it to reset the timer so it doesnt just continue off from where it stopped.
         self.gather_timer.reset();
 
         let closest_obj: Option<ObjectEntry> =
-            self.find_closest_target(&map.map_object_grid, gather_target);
+            self.find_closest_target(character_data, &map.map_object_grid, gather_target);
 
         match closest_obj {
             Some(o) => {
-                map.map_object_grid[o.idx].set_occupied();
+                map.map_object_grid[o.idx].as_mut().unwrap().set_occupied();
                 self.current_index = Some(o.idx);
                 self.gatherer_state = MovingToObject {
                     target_pos: o.pos,
@@ -238,14 +246,16 @@ impl Gatherer {
         }
     }
 
-    fn gather(&self, obj: &mut Object, game_context: &mut GameContext) -> bool {
+    fn gather(&self, character_data: &mut CharacterData, obj: &mut Object, game_context: &mut GameContext) -> bool {
         obj.take_hit(
             self.gathering_power,
             game_context,
-            self.data.facing_direction,
+            character_data.facing_direction,
         );
 
-        game_context.visual_effects_manager.add_damage_number(obj.get_center_pos(), self.gathering_power);
+        game_context
+            .visual_effects_manager
+            .add_damage_number(obj.get_center_pos(), self.gathering_power);
 
         if obj.should_not_be_used_again_by_anything() {
             obj.unmark_for_gathering();
@@ -257,6 +267,7 @@ impl Gatherer {
 
     fn find_closest_target(
         &self,
+        character_data: &mut CharacterData,
         object_grid: &MapObjectGrid,
         target_obj: GatherTarget,
     ) -> Option<ObjectEntry> {
@@ -265,9 +276,11 @@ impl Gatherer {
         for idx in &self.object_indices {
             let obj = &object_grid[*idx];
 
-            if let Object::NoObject = obj {
+            if let None = obj {
                 continue;
             }
+
+            let obj = obj.as_ref().unwrap();
 
             if obj.should_not_be_used_again_by_anything() {
                 continue;
@@ -277,16 +290,14 @@ impl Gatherer {
                 continue;
             }
 
-            let obj_data = obj.get_data();
-
             match &closest_obj {
                 Some(obj_entry) => {
-                    let dist = obj_data.pos.distance_to(self.data.pos);
+                    let dist = obj.object_data.pos.distance_to(character_data.pos);
 
                     if dist < obj_entry.dist {
                         closest_obj = Some(ObjectEntry {
                             idx: *idx,
-                            pos: obj_data.pos,
+                            pos: obj.object_data.pos,
                             dist,
                         })
                     }
@@ -294,8 +305,8 @@ impl Gatherer {
                 None => {
                     closest_obj = Some(ObjectEntry {
                         idx: *idx,
-                        pos: obj_data.pos,
-                        dist: obj_data.pos.distance_to(self.data.pos),
+                        pos: obj.object_data.pos,
+                        dist: obj.object_data.pos.distance_to(character_data.pos),
                     })
                 }
             }
@@ -313,16 +324,16 @@ impl Gatherer {
             return false;
         }
 
-        return object_matches_gathering_target(target_obj, obj);
+        return object_matches_gathering_target(target_obj, &obj.object_kind);
     }
 
-    pub fn current_sprite(&self) -> Sprite {
+    pub fn current_sprite(&self, character_data: &CharacterData) -> Sprite {
         match self.gatherer_state {
-            GathererState::Idle => self.data.character_values.idle_anim.current_sprite(),
+            GathererState::Idle => character_data.character_values.idle_anim.current_sprite(),
             GathererState::LookingForObject { .. } => {
-                self.data.character_values.idle_anim.current_sprite()
+                character_data.character_values.idle_anim.current_sprite()
             }
-            MovingToObject { .. } => self.data.character_values.move_anim.current_sprite(),
+            MovingToObject { .. } => character_data.character_values.move_anim.current_sprite(),
             GathererState::GatheringObject { .. } => {
                 if self.gather_anim.is_playing {
                     self.gather_anim.current_sprite()
@@ -335,18 +346,19 @@ impl Gatherer {
 
     pub fn set_new_target(
         &mut self,
+        character_data: &mut CharacterData,
         gather_target: GatherTarget,
         object_grid: &mut MapObjectGrid,
         obj_ids_of_type: &[usize],
     ) {
         // set to idle so that the character doesnt keep fighting or walking
-        self.data.set_idle_character_state();
+        character_data.set_idle_character_state();
 
         // reset current objects in queue
         // also set no current object if there was one
         self.object_indices.clear();
         if let Some(o_idx) = self.current_index {
-            object_grid[o_idx].set_unoccupied();
+            object_grid[o_idx].as_mut().unwrap().set_unoccupied();
             self.current_index = None;
         }
 

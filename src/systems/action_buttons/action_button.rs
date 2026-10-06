@@ -9,14 +9,9 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext,
-    entities::{
-        character::Character,
-        characters::gatherer::{GatherTarget},
-        entity_manager::{CharID, CharacterEntry},
-    },
-    map::tile_map::MapObjectGrid,
-    utils::{
+    GameContext, entities::{
+        character::{CharacterKind, SimpleCharacterKind}, characters::gatherer::GatherTarget, entity_manager::{CharID, CharacterEntry},
+    }, map::tile_map::MapObjectGrid, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         draw_utils,
         entity_utils::{get_char_by_unique_id, object_matches_gathering_target},
@@ -124,7 +119,13 @@ impl ActionButton {
         for obj_id in obj_ids {
             let obj = &mut object_grid[*obj_id];
 
-            let is_match = object_matches_gathering_target(obj_kind, &obj);
+            if let None = obj {
+                continue;
+            }
+
+            let obj = obj.as_mut().unwrap();
+
+            let is_match = object_matches_gathering_target(obj_kind, &obj.object_kind);
 
             if is_match {
                 obj.mark_for_gathering();
@@ -135,8 +136,8 @@ impl ActionButton {
         for char_id in char_ids {
             let char = &mut get_char_by_unique_id(characters, *char_id).character;
 
-            if let Character::Gatherer(gatherer) = char {
-                gatherer.set_new_target(obj_kind, object_grid, &object_ids_with_correct_type);
+            if let CharacterKind::Gatherer(gatherer) = &mut char.character_kind {
+                gatherer.set_new_target(&mut char.character_data, obj_kind, object_grid, &object_ids_with_correct_type);
             }
         }
     }

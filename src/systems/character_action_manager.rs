@@ -39,28 +39,31 @@ impl CharacterActionManager {
                     target_id,
                 } => {
                     let attacker = get_char_by_unique_id(chars, *attacker_id);
-                    let damage = attacker.character.get_data().character_values.attack_power;
+                    let damage = attacker.character.character_data.character_values.attack_power;
 
                     let target = get_char_by_unique_id(chars, *target_id);
-                    target.character.get_mut_data().health -= damage;
+                    target.character.character_data.health -= damage;
                 }
                 CharacterAction::EngageInCombat {
                     attacker_id,
                     target_id,
                 } => {
-                    let attacker = &mut get_char_by_unique_id(chars, *attacker_id).character;
-
-                    // eventually you may encounter a bug where characters who are currently dying are added and then its not valid anymore or something
-                    // either fix that here, or fix it when the character themselves go to resolve their state from incombat and check if the character is alive or exists
-                    // or have the function get_char_by_index return an Optional, (probably the best approach)
-
-                    attacker.get_mut_data().opponents.push(*target_id);
-                    attacker.get_mut_data().state = CharacterState::InCombat;
 
                     let target = &mut get_char_by_unique_id(chars, *target_id).character;
 
-                    target.get_mut_data().opponents.push(*attacker_id);
-                    target.get_mut_data().state = CharacterState::InCombat;
+                    // early return and nothing done if character is dying
+                    if target.character_data.health <= 0.0 {
+                        return;
+                    }
+                    
+                    target.character_data.opponents.push(*attacker_id);
+                    target.character_data.state = CharacterState::InCombat;
+                    
+                    let attacker = &mut get_char_by_unique_id(chars, *attacker_id).character;
+
+                    attacker.character_data.opponents.push(*target_id);
+                    attacker.character_data.state = CharacterState::InCombat;
+
                 }
             }
         }
