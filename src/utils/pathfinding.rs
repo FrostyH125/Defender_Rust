@@ -183,7 +183,12 @@ impl PathFinder {
 
             // goal found, go home
             if current.cord == goal {
-                return Ok(reconstruct_path(&self.parents, tile_map.map_dimensions, start, goal));
+                return Ok(reconstruct_path(
+                    &self.parents,
+                    tile_map.map_dimensions,
+                    start,
+                    goal,
+                ));
             }
 
             // check all neighbors in 8 directions, this is where tiles get added to open if applicable
@@ -284,23 +289,19 @@ fn octile_dist(p1: MapCord, p2: MapCord) -> f32 {
     return f32::max(dx, dy) + (SQRT_2 - 1.0) * f32::min(dx, dy);
 }
 
-fn manhattan_dist(p1: MapCord, p2: MapCord) -> f32 {
-    let dx = (p1.x - p2.x).abs() as f32;
-    let dy = (p1.y - p2.y).abs() as f32;
-
-    dx + dy
-}
-
-fn pythagorean_dist(p1: MapCord, p2: MapCord) -> f32 {
-    let dx = (p2.x - p1.x) as f32;
-    let dy = (p2.y - p1.y) as f32;
-
-    (dx * dx + dy * dy).sqrt()
-}
-
-fn chebyshev_dist(p1: MapCord, p2: MapCord) -> f32 {
-    let dx = (p1.x - p2.x).abs() as f32;
-    let dy = (p1.y - p2.y).abs() as f32;
-
-    dx.max(dy)
-}
+// DISTANCE FORMULA GRAVEYARD
+// fn manhattan_dist(p1: MapCord, p2: MapCord) -> f32 {
+//     let dx = (p1.x - p2.x).abs() as f32;
+//     let dy = (p1.y - p2.y).abs() as f32;
+//     dx + dy
+// }
+// fn pythagorean_dist(p1: MapCord, p2: MapCord) -> f32 {
+//     let dx = (p2.x - p1.x) as f32;
+//     let dy = (p2.y - p1.y) as f32;
+//     (dx * dx + dy * dy).sqrt()
+// }
+// fn chebyshev_dist(p1: MapCord, p2: MapCord) -> f32 {
+//     let dx = (p1.x - p2.x).abs() as f32;
+//     let dy = (p1.y - p2.y).abs() as f32;
+//     dx.max(dy)
+// }

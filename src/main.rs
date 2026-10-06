@@ -7,7 +7,6 @@ use raylib::{
     ffi::KeyboardKey,
     math::{Rectangle, Vector2},
     shaders::RaylibShader,
-    text::Font,
     texture::{RenderTexture2D, Texture2D},
 };
 use zander_game_core_rs::{
@@ -27,7 +26,7 @@ use crate::{
         character_action_manager::CharacterActionManager,
         day_night_cycle::DayNightCycle,
         entity_selecting_manager::EntitySelectingManager,
-        lights::{Light, Lights},
+        lights::Lights,
         select_rect::SelectRect,
         visual_effects_manager::VisualEffectsManager,
     },

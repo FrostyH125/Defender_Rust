@@ -1,6 +1,4 @@
-use raylib::{
-    camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibDrawHandle}, math::Vector2, text::{Font, RaylibFont}, texture::Texture2D,
-};
+use raylib::{drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
 use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
 
 pub enum VisualEffectKind {
@@ -16,7 +14,7 @@ pub struct VisualEffect {
 impl VisualEffect {
     pub fn update(&mut self, dt: f32) {
         match self.kind {
-            VisualEffectKind::DamageNumber{..} => {
+            VisualEffectKind::DamageNumber { .. } => {
                 self.pos.y -= 10.0 * dt;
             }
         }
@@ -45,10 +43,16 @@ impl VisualEffectsManager {
 
         // turn the string into a list of sprites
         for digit in num_str.chars() {
-            let spr_x = NUM_SPRITES_START_X + (NUM_SPRITE_WIDTH * digit.to_digit(10).unwrap() as i32);
-            digit_sprites.push(Sprite::new(spr_x, NUM_SPRITES_Y, NUM_SPRITE_WIDTH, NUM_SPRITE_HEIGHT));
+            let spr_x =
+                NUM_SPRITES_START_X + (NUM_SPRITE_WIDTH * digit.to_digit(10).unwrap() as i32);
+            digit_sprites.push(Sprite::new(
+                spr_x,
+                NUM_SPRITES_Y,
+                NUM_SPRITE_WIDTH,
+                NUM_SPRITE_HEIGHT,
+            ));
         }
-        
+
         let timer_len = 2.0;
         let half_size = (digit_sprites.len() as i32 * NUM_SPRITE_WIDTH / 2) as f32;
         pos.x -= half_size;
@@ -84,7 +88,7 @@ impl VisualEffectsManager {
             match &effect.kind {
                 VisualEffectKind::DamageNumber { digit_sprites } => {
                     let mut x_pos = effect.pos.x;
-                    
+
                     for sprite in digit_sprites {
                         sprite.draw(d, Vector2::new(x_pos, effect.pos.y), texture);
                         x_pos += sprite.src_rect.width.ceil();
