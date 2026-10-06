@@ -11,18 +11,11 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::{
+    GameContext, TILE_SIZE, entities::{
         characters::{
-            enemy::Enemy,
-            gatherer::{Gatherer, GathererState},
-        },
-        entity_manager::{CharID, CharacterInfo},
-        object::Object,
-    },
-    map::tile_map::{MapDimensions, TileMap},
-    systems::character_action_manager::{CharacterAction, CharacterActionManager},
-    utils::{
+            enemy::{Enemy, EnemyKind}, gatherer::{Gatherer, GathererState},
+        }, entity_manager::{CharID, CharacterInfo}, object::{Object, ObjectKind},
+    }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::{CharacterAction, CharacterActionManager}, utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
@@ -36,7 +29,7 @@ use crate::{
 };
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
-pub enum CharacterKind {
+pub enum SimpleCharacterKind {
     Gatherer,
     Enemy,
 }
@@ -112,7 +105,7 @@ pub struct CharacterSpecificData {
     pub width: f32,
     pub height: f32,
     pub affiliation: Affiliation,
-    pub character_kind: CharacterKind,
+    pub character_kind: SimpleCharacterKind,
 }
 
 impl CharacterData {
@@ -225,35 +218,26 @@ impl CharacterData {
     }
 }
 
-pub enum Character {
+pub enum CharacterKind {
     Gatherer(Gatherer),
     Enemy(Enemy),
+}
+
+pub struct Character {
+    pub character_data: CharacterData,
+    pub character_kind: CharacterKind
 }
 
 impl Character {
     pub fn set_move_to(&mut self, target: Vector2) {
         self.set_idle_to_unique_states();
-        self.get_mut_data().state = CharacterState::Moving { target };
+        self.character_data.state = CharacterState::Moving { target };
     }
 
     pub fn set_idle_to_unique_states(&mut self) {
-        match self {
-            Character::Gatherer(gatherer) => gatherer.gatherer_state = GathererState::Idle,
-            Character::Enemy(enemy) => enemy.set_idle(),
-        }
-    }
-
-    pub fn get_data(&self) -> &CharacterData {
-        match self {
-            Character::Gatherer(gatherer) => &gatherer.data,
-            Character::Enemy(enemy) => enemy.get_data(),
-        }
-    }
-
-    pub fn get_mut_data(&mut self) -> &mut CharacterData {
-        match self {
-            Character::Gatherer(gatherer) => &mut gatherer.data,
-            Character::Enemy(enemy) => enemy.get_mut_data(),
+        match &mut self.character_kind {
+            CharacterKind::Gatherer(gatherer) => gatherer.gatherer_state = GathererState::Idle,
+            CharacterKind::Enemy(enemy) => enemy.set_idle(),
         }
     }
 
@@ -264,44 +248,43 @@ impl Character {
         map: &mut TileMap,
         character_info: &HashMap<CharID, CharacterInfo>,
     ) {
-        match self.get_data().state {
+        match self.character_data.state {
             CharacterState::None => {
                 if self.is_idle() {
-                    self.get_mut_data()
+                    self.character_data
                         .character_values
                         .idle_anim
                         .update(game_context.dt);
                 }
 
-                match self {
-                    Character::Gatherer(gatherer) => gatherer.update(game_context, map),
-                    Character::Enemy(enemy) => enemy.update(game_context, map, character_info),
+                match &mut self.character_kind {
+                    CharacterKind::Gatherer(gatherer) => gatherer.update(&mut self.character_data, game_context, map),
+                    CharacterKind::Enemy(enemy) => enemy.update(game_context, map, character_info),
                 }
             }
             CharacterState::Moving { target } => {
-                match self.get_mut_data().move_to(target, game_context, map) {
+                match self.character_data.move_to(target, game_context, map) {
                     CharacterMovementResult::NotArrivedYet => self
-                        .get_mut_data()
+                        .character_data
                         .character_values
                         .move_anim
                         .update(game_context.dt),
                     _ => {
-                        self.get_mut_data().character_values.move_anim.reset();
-                        self.get_mut_data().state = CharacterState::None;
+                        self.character_data.character_values.move_anim.reset();
+                        self.character_data.state = CharacterState::None;
                     }
                 }
             }
             CharacterState::InCombat => {
                 let dt = game_context.dt;
 
-                if let CombatState::None = self.get_data().combat_state {
-                    self.get_mut_data().combat_state = CombatState::EvaluatingState;
+                if let CombatState::None = self.character_data.combat_state {
+                    self.character_data.combat_state = CombatState::EvaluatingState;
                 }
 
-                match self.get_data().combat_state {
+                match self.character_data.combat_state {
                     CombatState::None => panic!("should never happen"),
                     CombatState::EvaluatingState => {
-                        let data = self.get_mut_data();
                         // for now just the first entry is important
                         // this grabs the enemy hp (current enemy) at the first opponents char id's key
                         // the reason i went with a hashmap is to make it easier for characters to look up this sort of thing
@@ -309,31 +292,30 @@ impl Character {
                         // and it also makes it easier to add a spoecific system (such as if i wanted to find the char with the lowest health, for example)
                         // i can simply loop through the opponents list plugging into the hashmap, rather than the obviously idiotic solution
                         // of looping through all characters and finding the ones that are contained within the opponents vec
-                        let enemy_hp = character_info[&data.opponents[0]].health;
+                        let enemy_hp = character_info[&self.character_data.opponents[0]].health;
 
                         // only switches state when opponents are gone
                         if enemy_hp <= 0.0 {
-                            data.opponents.remove(0);
-                            if data.opponents.is_empty() {
-                                data.state = CharacterState::None;
-                                data.combat_state = CombatState::None;
+                            self.character_data.opponents.remove(0);
+                            if self.character_data.opponents.is_empty() {
+                                self.character_data.state = CharacterState::None;
+                                self.character_data.combat_state = CombatState::None;
                             }
                         }
                     }
                     CombatState::PreAttack => {
-                        let data = self.get_mut_data();
-                        if data.attack_timer.is_done() {
-                            data.character_values.attack_anim.update(dt);
-                            if data.character_values.attack_anim.finished_playing {
-                                data.character_values.attack_anim.reset();
-                                data.attack_timer.reset();
-                                data.combat_state = CombatState::Attack;
+                        if self.character_data.attack_timer.is_done() {
+                            self.character_data.character_values.attack_anim.update(dt);
+                            if self.character_data.character_values.attack_anim.finished_playing {
+                                self.character_data.character_values.attack_anim.reset();
+                                self.character_data.attack_timer.reset();
+                                self.character_data.combat_state = CombatState::Attack;
                             }
                         }
                     }
                     CombatState::Attack => {
-                        let self_idx = self.get_data().unique_char_id;
-                        let opponent_idx = self.get_data().opponents[0];
+                        let self_idx = self.character_data.unique_char_id;
+                        let opponent_idx = self.character_data.opponents[0];
 
                         self.attack(
                             self_idx,
@@ -342,27 +324,24 @@ impl Character {
                         );
 
                         // move to the wind down attack before evaluating state
-                        self.get_mut_data().combat_state = CombatState::PostAttack;
+                        self.character_data.combat_state = CombatState::PostAttack;
                     }
                     CombatState::PostAttack => {
-                        let data = self.get_mut_data();
-                        let post_attack_anim = &mut data.character_values.post_attack_anim;
+                        let post_attack_anim = &mut self.character_data.character_values.post_attack_anim;
 
                         post_attack_anim.update(dt);
 
                         if post_attack_anim.finished_playing {
                             post_attack_anim.reset();
-                            data.combat_state = CombatState::EvaluatingState;
+                            self.character_data.combat_state = CombatState::EvaluatingState;
                         }
                     }
                 }
             }
         }
 
-        let data = self.get_mut_data();
-
-        data.is_hovering = false;
-        data.is_hovering_for_move = false;
+        self.character_data.is_hovering = false;
+        self.character_data.is_hovering_for_move = false;
     }
 
     #[inline]
@@ -418,30 +397,30 @@ impl Character {
     /// only used when the main character state is None and the character itself
     /// is not idle, thus, unique actions can be implemented cleanly
     pub fn current_sprite(&self) -> Sprite {
-        let mut spr = match self.get_data().state {
-            CharacterState::None => match self {
-                Character::Gatherer(gatherer) => gatherer.current_sprite(),
-                Character::Enemy(enemy) => enemy.current_sprite(),
+        let mut spr = match self.character_data.state {
+            CharacterState::None => match &self.character_kind {
+                CharacterKind::Gatherer(gatherer) => gatherer.current_sprite(&self.character_data),
+                CharacterKind::Enemy(enemy) => enemy.current_sprite(&self.character_data),
             },
             CharacterState::Moving { .. } => {
-                self.get_data().character_values.move_anim.current_sprite()
+                self.character_data.character_values.move_anim.current_sprite()
             }
-            CharacterState::InCombat => match self.get_data().combat_state {
+            CharacterState::InCombat => match self.character_data.combat_state {
                 CombatState::None => panic!("should never happen"),
                 CombatState::EvaluatingState => {
-                    self.get_data()
+                    self.character_data
                         .character_values
                         .idle_anim
                         .sprite_animation
                         .frames[0]
                 }
                 CombatState::PreAttack => self
-                    .get_data()
+                    .character_data
                     .character_values
                     .attack_anim
                     .current_sprite(),
                 CombatState::Attack => *self
-                    .get_data()
+                    .character_data
                     .character_values
                     .attack_anim
                     .sprite_animation
@@ -449,14 +428,14 @@ impl Character {
                     .last()
                     .unwrap(),
                 CombatState::PostAttack => self
-                    .get_data()
+                    .character_data
                     .character_values
                     .post_attack_anim
                     .current_sprite(),
             },
         };
 
-        if self.get_data().facing_direction == FacingDirection::Left {
+        if self.character_data.facing_direction == FacingDirection::Left {
             // if i dont -0.1 then the width will apparently be less than the width due
             // to floating point shenanigans, since its drawn to a low res grid its
             // rounded down, i have to add to the width essentially
@@ -468,25 +447,23 @@ impl Character {
 
     #[inline]
     pub fn get_draw_pos(&self) -> Vector2 {
-        let data = self.get_data();
-        return data.pos + data.character_values.draw_offset;
+        return self.character_data.pos + self.character_data.character_values.draw_offset;
     }
 
     #[inline]
     pub fn get_hover_rect(&self) -> Rectangle {
-        let data = self.get_data();
         let d_pos = self.get_draw_pos();
         return Rectangle::new(
             d_pos.x,
             d_pos.y,
-            data.character_values.width,
-            data.character_values.height,
+            self.character_data.character_values.width,
+            self.character_data.character_values.height,
         );
     }
 
     #[inline]
     pub fn get_tile_index(&self, map_dimensions: MapDimensions) -> usize {
-        let pos = self.get_data().pos;
+        let pos = self.character_data.pos;
         let cord = MapCord::new(
             pos.x as i16 / TILE_SIZE as i16,
             pos.y as i16 / TILE_SIZE as i16,
@@ -506,9 +483,7 @@ impl Character {
 
     #[inline]
     pub fn update_obj_if_out_of_update_range(object: &mut Object, game_context: &mut GameContext) {
-        let object_pos = object.get_data().pos;
-
-        if !camera_utils::is_in_update_area(object_pos, game_context) {
+        if !camera_utils::is_in_update_area(object.object_data.pos, game_context) {
             return;
         }
 
@@ -516,23 +491,21 @@ impl Character {
     }
 
     pub fn is_idle(&self) -> bool {
-        match self {
-            Character::Gatherer(gatherer) => {
+        match &self.character_kind {
+            CharacterKind::Gatherer(gatherer) => {
                 return gatherer.gatherer_state == GathererState::Idle;
             }
             // enemy itself is a base struct, so dipatch is one level deeper
-            Character::Enemy(enemy) => enemy.is_idle(),
+            CharacterKind::Enemy(enemy) => enemy.is_idle(),
         }
     }
 
     pub fn level_up(&mut self) {
-        let data = self.get_mut_data();
-
-        data.character_values.move_speed += 0.05;
-        data.character_values.attack_power += 1.0;
-        data.character_values.max_health += 5.0;
-        data.character_values.time_between_attacks -= 0.01;
-        data.attack_timer = Timer::new(data.character_values.time_between_attacks);
+        self.character_data.character_values.move_speed += 0.05;
+        self.character_data.character_values.attack_power += 1.0;
+        self.character_data.character_values.max_health += 5.0;
+        self.character_data.character_values.time_between_attacks -= 0.01;
+        self.character_data.attack_timer = Timer::new(self.character_data.character_values.time_between_attacks);
     }
 
     pub fn attack(
