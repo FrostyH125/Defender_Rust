@@ -270,30 +270,34 @@ impl EntityManager {
 
                 let index = map_utils::cords_to_index(self.map_dimensions, cord);
 
-                let object = &mut map.map_object_grid[index];
+                let optional_object = &mut map.map_object_grid[index];
 
-                if let None = object {
+                // iterating over a None would be nonsensical
+                if optional_object.is_none() {
                     continue;
                 }
+
+                // object confirmed to be Some, so can safely unwrap
+                let object = optional_object.as_mut().unwrap();
+
+                let is_object_breaking = object.object_data.state == ObjectState::Breaking;
+                let is_object_out_of_view_or_disappear_timer_done = object
+                    .object_data
+                    .object_specific_data
+                    .disappear_timer
+                    .is_done()
+                    || !is_in_camera_view(object.hover_rect(), game_context);
+
+                let should_obj_delete = is_object_breaking && is_object_out_of_view_or_disappear_timer_done;
 
                 // delete object if its done with breaking or is breaking and left view
-                if let ObjectState::Breaking = object.as_ref().unwrap().object_data.state
-                    && (object
-                        .as_ref()
-                        .unwrap()
-                        .object_data
-                        .object_specific_data
-                        .disappear_timer
-                        .is_done()
-                        || !is_in_camera_view(&object.as_ref().unwrap().hover_rect(), game_context))
-                {
-                    *object = None;
+                if should_obj_delete {
+                    *optional_object = None;
                     continue;
                 }
 
-                let obj = object.as_mut().unwrap();
 
-                obj.update(game_context, selector.is_deselecting_objs);
+                object.update(game_context, selector.is_deselecting_objs);
 
                 if let SelectingMode::Objects = selector.selecting_mode {
                     match select_rect.select_range_active {
@@ -301,17 +305,17 @@ impl EntityManager {
                         true => {
                             let should_hover_obj = select_rect
                                 .rectangle
-                                .check_collision_recs(&obj.hover_rect());
+                                .check_collision_recs(&object.hover_rect());
 
                             if should_hover_obj {
-                                obj.set_hovering();
+                                object.set_hovering();
                                 hover_objs.push(index);
                             }
                         }
                         // carry on as normal if not dragging
                         false => {
                             let should_hover_obj = !are_any_action_buttons_hovering
-                                && obj.is_point_intersecting(mouse_pos);
+                                && object.is_point_intersecting(mouse_pos);
 
                             if should_hover_obj {
                                 hover_obj = Some(index);
