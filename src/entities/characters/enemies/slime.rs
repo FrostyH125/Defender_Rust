@@ -77,7 +77,16 @@ impl Slime {
         };
     }
 
-    pub fn update(&mut self) {}
+    pub fn update(&mut self) {
+        // Idle: 
+        //  find closest target -> MovingToTarget
+        // MovingToTarget: 
+        //  check closest target every second, target could have died or moved further than another one
+        //  once reached a target -> Attacking
+        // Attacking:
+        //  initiate a battle with target
+        //  once done -> Idle
+    }
 
     pub fn current_sprite(&self, character_data: &CharacterData) -> Sprite {
         match self.slime_state {

@@ -1,28 +1,32 @@
 use std::collections::HashSet;
 
-use raylib::{
-    drawing::RaylibDrawHandle,
-    math::Vector2,
-
-};
+use raylib::{drawing::RaylibDrawHandle, math::Vector2};
 
 use crate::{
-    GameContext, entities::{character::SimpleCharacterKind, entity_manager::{CharID, CharacterEntry}, object::{ObjectKind, SimpleObjectKind}}, map::tile_map::MapObjectGrid, systems::{
+    GameContext,
+    entities::{
+        character::SimpleCharacterKind,
+        entity_manager::{CharID, CharacterEntry},
+        object::SimpleObjectKind,
+    },
+    map::tile_map::MapObjectGrid,
+    systems::{
         action_buttons::action_button::{ActionButton, ActionButtonKind},
         entity_selecting_manager::EntitySelectingManager,
-    }, utils::entity_utils::get_char_by_unique_id,
+    },
+    utils::entity_utils::get_char_by_unique_id,
 };
 
 pub struct ActionButtonManager {
     action_buttons: Vec<ActionButton>,
-    pub button_clicked: bool
+    pub button_clicked: bool,
 }
 
 impl ActionButtonManager {
     pub fn new() -> Self {
         return Self {
             action_buttons: Vec::new(),
-            button_clicked: false
+            button_clicked: false,
         };
     }
 
@@ -115,11 +119,22 @@ impl ActionButtonManager {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, selector: &EntitySelectingManager, object_grid: &mut MapObjectGrid, chars: &mut [CharacterEntry]) {
+    pub fn update(
+        &mut self,
+        game_context: &mut GameContext,
+        selector: &EntitySelectingManager,
+        object_grid: &mut MapObjectGrid,
+        chars: &mut [CharacterEntry],
+    ) {
         for b in &mut self.action_buttons {
             b.update(game_context);
             if b.is_hovering && game_context.input_state.left_clicked_once {
-                b.on_click(&selector.selected_objects, &selector.selected_characters, object_grid, chars);
+                b.on_click(
+                    &selector.selected_objects,
+                    &selector.selected_characters,
+                    object_grid,
+                    chars,
+                );
                 b.make_pop_particles(&mut game_context.particle_system);
                 self.button_clicked = true;
             }
@@ -162,7 +177,12 @@ fn check_for_matches(
             continue;
         }
 
-        let obj_kind = obj.as_ref().unwrap().object_data.object_specific_data.object_kind;
+        let obj_kind = obj
+            .as_ref()
+            .unwrap()
+            .object_data
+            .object_specific_data
+            .object_kind;
 
         obj_types.insert(obj_kind);
     }
@@ -170,7 +190,11 @@ fn check_for_matches(
     for c_id in char_ids {
         let character = get_char_by_unique_id(character_entries, *c_id);
 
-        let char_kind = character.character.character_data.character_values.character_kind;
+        let char_kind = character
+            .character
+            .character_data
+            .character_values
+            .character_kind;
 
         char_types.insert(char_kind);
     }

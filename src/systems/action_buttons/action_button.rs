@@ -10,7 +10,7 @@ use zander_game_core_rs::{
 
 use crate::{
     GameContext, entities::{
-        character::{CharacterKind, SimpleCharacterKind}, characters::gatherer::GatherTarget, entity_manager::{CharID, CharacterEntry},
+        character::CharacterKind, characters::gatherer::GatherTarget, entity_manager::{CharID, CharacterEntry},
     }, map::tile_map::MapObjectGrid, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         draw_utils,

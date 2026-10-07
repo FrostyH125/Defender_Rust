@@ -13,8 +13,8 @@ use zander_game_core_rs::{
 use crate::{
     GameContext, TILE_SIZE, entities::{
         characters::{
-            enemy::{Enemy, EnemyKind}, gatherer::{Gatherer, GathererState},
-        }, entity_manager::{CharID, CharacterInfo}, object::{Object, ObjectKind},
+            enemy::Enemy, gatherer::{Gatherer, GathererState},
+        }, entity_manager::{CharID, CharacterInfo}, object::Object,
     }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::{CharacterAction, CharacterActionManager}, utils::{
         camera_utils,
         direction_utils::FacingDirection,

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use raylib::math::Vector2;
 use zander_game_core_rs::raylib::sprite::Sprite;
 
 use crate::{GameContext, entities::{character::CharacterData, characters::enemies::slime::{Slime, SlimeState}, entity_manager::{CharID, CharacterInfo}}, map::tile_map::TileMap};

@@ -11,8 +11,8 @@ use zander_game_core_rs::raylib::sprite::Sprite;
 use crate::{
     GameContext, TILE_SIZE,
     entities::{
-        character::{Affiliation, Character, SimpleCharacterKind},
-        object::{ObjectKind, ObjectState},
+        character::{Affiliation, Character},
+        object::ObjectState,
     },
     map::tile_map::{MapDimensions, MapObjectGrid, TileMap},
     systems::{

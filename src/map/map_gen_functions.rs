@@ -3,16 +3,24 @@ use std::collections::{HashMap, VecDeque};
 use rand::{RngExt, rngs::ThreadRng};
 
 use crate::{
-    GameContext, entities::{
-        object::ObjectKind::{self}, objects::{grass::{Grass, GrassSizePreference}, tree::Tree},
-    }, map::{
+    GameContext,
+    entities::objects::{
+        grass::{Grass, GrassSizePreference},
+        tree::Tree,
+    },
+    map::{
         tile::{LakeSpriteData, RiverSpriteData, TileType},
         tile_map::{MapDimensions, MapObjectGrid, MapTileGrid},
         tile_map_animation_data::{
             FlowDirection, RIVER_CORNER_ANIM_KEY, RIVER_T_SECTION_ANIM_KEY, RiverType,
         },
-    }, utils::{
-        direction_utils::{CARDINAL_DELTAS, Direction, ORTHOGONAL_DELTAS}, map_cord::MapCord, map_utils::{self, get_tile_at_cord, is_tile_in_bounds, tile_not_in_bounds_or_doesnt_match},
+    },
+    utils::{
+        direction_utils::{CARDINAL_DELTAS, Direction, ORTHOGONAL_DELTAS},
+        map_cord::MapCord,
+        map_utils::{
+            self, get_tile_at_cord, is_tile_in_bounds, tile_not_in_bounds_or_doesnt_match,
+        },
     },
 };
 
@@ -53,7 +61,9 @@ pub fn create_lakes(
                 continue;
             }
 
-            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, current_tile) == TileType::Lake {
+            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, current_tile)
+                == TileType::Lake
+            {
                 continue;
             }
 
@@ -112,7 +122,12 @@ pub fn set_lake_shore_and_corner_sprites(
             for i in 0..CARDINAL_DELTAS.len() {
                 let neighbor = current + CARDINAL_DELTAS[i];
 
-                if map_utils::tile_not_in_bounds_or_matches(tile_grid, map_dimensions, neighbor, TileType::Lake) {
+                if map_utils::tile_not_in_bounds_or_matches(
+                    tile_grid,
+                    map_dimensions,
+                    neighbor,
+                    TileType::Lake,
+                ) {
                     continue;
                 }
 
@@ -136,7 +151,12 @@ pub fn set_lake_shore_and_corner_sprites(
 
                 let check = MapCord::new(diag_x, diag_y);
 
-                if map_utils::tile_not_in_bounds_or_matches(tile_grid, map_dimensions, check, TileType::Lake) {
+                if map_utils::tile_not_in_bounds_or_matches(
+                    tile_grid,
+                    map_dimensions,
+                    check,
+                    TileType::Lake,
+                ) {
                     continue;
                 }
 
@@ -406,7 +426,12 @@ pub fn set_river_tile_animations(
         for direction in CARDINAL_DELTAS {
             let check_tile = *cord + direction;
 
-            if map_utils::tile_is_in_bounds_and_matches(tile_grid, map_dimensions, check_tile, TileType::River) {
+            if map_utils::tile_is_in_bounds_and_matches(
+                tile_grid,
+                map_dimensions,
+                check_tile,
+                TileType::River,
+            ) {
                 num_of_neighbors += 1;
             }
         }
@@ -428,13 +453,14 @@ pub fn set_river_tile_animations(
                     continue;
                 }
 
-                let river_type = if map_utils::get_tile_at_cord(tile_grid, map_dimensions, check_tile)
-                    == TileType::Lake
-                {
-                    RiverType::Inlet
-                } else {
-                    RiverType::Outlet
-                };
+                let river_type =
+                    if map_utils::get_tile_at_cord(tile_grid, map_dimensions, check_tile)
+                        == TileType::Lake
+                    {
+                        RiverType::Inlet
+                    } else {
+                        RiverType::Outlet
+                    };
 
                 let index = if let RiverType::Inlet = river_type {
                     (*dir as u8 + 2) % 4
@@ -454,18 +480,26 @@ pub fn set_river_tile_animations(
                 for i in 0..CARDINAL_DELTAS.len() {
                     let first_tile = *cord + CARDINAL_DELTAS[i];
 
-                    if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, first_tile, TileType::River) {
+                    if tile_not_in_bounds_or_doesnt_match(
+                        tile_grid,
+                        map_dimensions,
+                        first_tile,
+                        TileType::River,
+                    ) {
                         continue;
                     }
-                    
+
                     // river found! now, determine whether its a straight or a corner (both have 2 neighbors)
 
                     let straight_check_tile = *cord + CARDINAL_DELTAS[(i + 2) % 4];
 
                     // if its not in bounds, wont check which tile it is, because this has to be a corner
                     if map_utils::is_tile_in_bounds(map_dimensions, straight_check_tile)
-                        && map_utils::get_tile_at_cord(tile_grid, map_dimensions, straight_check_tile)
-                            == TileType::River
+                        && map_utils::get_tile_at_cord(
+                            tile_grid,
+                            map_dimensions,
+                            straight_check_tile,
+                        ) == TileType::River
                     {
                         river_data.insert(
                             *cord,
@@ -488,7 +522,12 @@ pub fn set_river_tile_animations(
                         for j in (i + 1)..CARDINAL_DELTAS.len() {
                             let second_tile = *cord + CARDINAL_DELTAS[j];
 
-                            if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, second_tile, TileType::River) {
+                            if tile_not_in_bounds_or_doesnt_match(
+                                tile_grid,
+                                map_dimensions,
+                                second_tile,
+                                TileType::River,
+                            ) {
                                 continue;
                             }
 
@@ -522,7 +561,12 @@ pub fn set_river_tile_animations(
                 for i in 0..CARDINAL_DELTAS.len() {
                     let first_tile = *cord + CARDINAL_DELTAS[i];
 
-                    if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, first_tile, TileType::River) {
+                    if tile_not_in_bounds_or_doesnt_match(
+                        tile_grid,
+                        map_dimensions,
+                        first_tile,
+                        TileType::River,
+                    ) {
                         continue;
                     }
 
@@ -534,7 +578,12 @@ pub fn set_river_tile_animations(
                     for j in (i + 1)..CARDINAL_DELTAS.len() {
                         let second_tile = *cord + CARDINAL_DELTAS[j];
 
-                        if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, second_tile, TileType::River) {
+                        if tile_not_in_bounds_or_doesnt_match(
+                            tile_grid,
+                            map_dimensions,
+                            second_tile,
+                            TileType::River,
+                        ) {
                             continue;
                         }
 
@@ -546,7 +595,12 @@ pub fn set_river_tile_animations(
                         for k in (j + 1)..CARDINAL_DELTAS.len() {
                             let third_tile = *cord + CARDINAL_DELTAS[k];
 
-                            if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, third_tile, TileType::River) {
+                            if tile_not_in_bounds_or_doesnt_match(
+                                tile_grid,
+                                map_dimensions,
+                                third_tile,
+                                TileType::River,
+                            ) {
                                 continue;
                             }
 
@@ -601,7 +655,12 @@ pub fn spawn_forests_around_lakes(
             for r in 0..=range {
                 let try_tree_tile = lake_tile + (dir * r);
 
-                if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, try_tree_tile, TileType::Grass) {
+                if tile_not_in_bounds_or_doesnt_match(
+                    tile_grid,
+                    map_dimensions,
+                    try_tree_tile,
+                    TileType::Grass,
+                ) {
                     continue;
                 }
 
@@ -613,8 +672,7 @@ pub fn spawn_forests_around_lakes(
                 let index = map_utils::cords_to_index(map_dimensions, try_tree_tile);
 
                 if let None = object_grid[index] {
-                    object_grid[index] =
-                        Some(Tree::new(try_tree_tile, rng));
+                    object_grid[index] = Some(Tree::new(try_tree_tile, rng));
                 }
             }
         }
@@ -663,7 +721,12 @@ pub fn spawn_standalone_forests(
             for j in 0..height {
                 let try_tree_tile = start_pos + CARDINAL_DELTAS[dir_1 as usize] * j;
 
-                if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, try_tree_tile, TileType::Grass) {
+                if tile_not_in_bounds_or_doesnt_match(
+                    tile_grid,
+                    map_dimensions,
+                    try_tree_tile,
+                    TileType::Grass,
+                ) {
                     continue;
                 }
 
@@ -736,7 +799,9 @@ pub fn spawn_standalone_trees(
             let try_tree_tile = MapCord::new(rand_x as i16, rand_y as i16);
 
             // keep trying until you find a grass tile
-            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, try_tree_tile) != TileType::Grass {
+            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, try_tree_tile)
+                != TileType::Grass
+            {
                 continue;
             }
 
@@ -767,14 +832,20 @@ pub fn spawn_standalone_grass(
             let try_grass_tile = MapCord::new(rand_x as i16, rand_y as i16);
 
             // keep trying until you find a grass tile
-            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, try_grass_tile) != TileType::Grass {
+            if map_utils::get_tile_at_cord(tile_grid, map_dimensions, try_grass_tile)
+                != TileType::Grass
+            {
                 continue;
             }
 
             let idx = map_utils::cords_to_index(map_dimensions, try_grass_tile);
 
             if let None = object_grid[idx] {
-                object_grid[idx] = Some(Grass::new(try_grass_tile, game_context, GrassSizePreference::None));
+                object_grid[idx] = Some(Grass::new(
+                    try_grass_tile,
+                    game_context,
+                    GrassSizePreference::None,
+                ));
                 break;
             }
         }
@@ -807,7 +878,12 @@ pub fn spawn_grass_around_lakes(
 
                 let try_grass_tile = dir * range_out + lake_tile;
 
-                if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, try_grass_tile, TileType::Grass) {
+                if tile_not_in_bounds_or_doesnt_match(
+                    tile_grid,
+                    map_dimensions,
+                    try_grass_tile,
+                    TileType::Grass,
+                ) {
                     continue;
                 }
 
@@ -822,17 +898,23 @@ pub fn spawn_grass_around_lakes(
                             *obj = Some(Grass::new(
                                 try_grass_tile,
                                 game_context,
-                                GrassSizePreference::Large
+                                GrassSizePreference::Large,
                             ))
                         }
                         0.7..=1.0 => {
                             *obj = Some(Grass::new(
                                 try_grass_tile,
                                 game_context,
-                                GrassSizePreference::Small
+                                GrassSizePreference::Small,
                             ))
                         }
-                        _ => *obj = Some(Grass::new(try_grass_tile, game_context, GrassSizePreference::None)),
+                        _ => {
+                            *obj = Some(Grass::new(
+                                try_grass_tile,
+                                game_context,
+                                GrassSizePreference::None,
+                            ))
+                        }
                     }
                 }
             }
@@ -864,7 +946,12 @@ pub fn spawn_grass_around_rivers(
 
                 let try_grass_tile = dir * range_out + *cord;
 
-                if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, try_grass_tile, TileType::Grass) {
+                if tile_not_in_bounds_or_doesnt_match(
+                    tile_grid,
+                    map_dimensions,
+                    try_grass_tile,
+                    TileType::Grass,
+                ) {
                     continue;
                 }
 
@@ -879,17 +966,23 @@ pub fn spawn_grass_around_rivers(
                             *obj = Some(Grass::new(
                                 try_grass_tile,
                                 game_context,
-                                GrassSizePreference::Large
+                                GrassSizePreference::Large,
                             ))
                         }
                         0.7..=1.0 => {
                             *obj = Some(Grass::new(
                                 try_grass_tile,
                                 game_context,
-                                GrassSizePreference::Small
+                                GrassSizePreference::Small,
                             ))
                         }
-                        _ => *obj = Some(Grass::new(try_grass_tile, game_context, GrassSizePreference::None)),
+                        _ => {
+                            *obj = Some(Grass::new(
+                                try_grass_tile,
+                                game_context,
+                                GrassSizePreference::None,
+                            ))
+                        }
                     }
                 }
             }
@@ -950,7 +1043,12 @@ pub fn spawn_fields_of_grass(
 
                 let try_grass_tile = start_pos + CARDINAL_DELTAS[dir_1 as usize] * j;
 
-                if tile_not_in_bounds_or_doesnt_match(tile_grid, map_dimensions, try_grass_tile, TileType::Grass) {
+                if tile_not_in_bounds_or_doesnt_match(
+                    tile_grid,
+                    map_dimensions,
+                    try_grass_tile,
+                    TileType::Grass,
+                ) {
                     continue;
                 }
 
@@ -967,7 +1065,7 @@ pub fn spawn_fields_of_grass(
                         *obj = Some(Grass::new(
                             try_grass_tile,
                             game_context,
-                            GrassSizePreference::Small
+                            GrassSizePreference::Small,
                         ))
                     } else {
                         // if its on the edges of the field, make it likely to be small, if in middle, its likely to be large, else, random size
@@ -980,21 +1078,21 @@ pub fn spawn_fields_of_grass(
                                 *obj = Some(Grass::new(
                                     try_grass_tile,
                                     game_context,
-                                    GrassSizePreference::Small
+                                    GrassSizePreference::Small,
                                 ))
                             }
                             0.4..=0.6 => {
                                 *obj = Some(Grass::new(
                                     try_grass_tile,
                                     game_context,
-                                    GrassSizePreference::Large
+                                    GrassSizePreference::Large,
                                 ))
                             }
                             _ => {
                                 *obj = Some(Grass::new(
                                     try_grass_tile,
                                     game_context,
-                                    GrassSizePreference::None
+                                    GrassSizePreference::None,
                                 ))
                             }
                         }

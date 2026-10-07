@@ -12,7 +12,7 @@ use crate::{
         character::{
             Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult,
             CharacterSpecificData, SimpleCharacterKind,
-        }, characters::gatherer::GathererState::MovingToObject, object::{Object, ObjectKind},
+        }, characters::gatherer::GathererState::MovingToObject, object::Object,
     }, map::tile_map::{MapObjectGrid, TileMap}, utils::entity_utils::object_matches_gathering_target,
 };
 

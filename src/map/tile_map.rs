@@ -4,7 +4,9 @@ use raylib::{color::Color, drawing::RaylibDrawHandle, math::Vector2, texture::Te
 use zander_game_core_rs::raylib::animation_data::SpriteAnimationData;
 
 use crate::{
-    GameContext, TILE_SIZE, entities::object::{Object, ObjectKind}, map::{
+    GameContext, TILE_SIZE,
+    entities::object::Object,
+    map::{
         map_gen_functions,
         tile::{
             LakeSpriteData, RiverSpriteData,
@@ -17,7 +19,8 @@ use crate::{
             RiverType::{self},
             SHORE_AND_CORNER_AND_RIVER_FRAME_DURATION, SpriteFlip,
         },
-    }, utils::map_cord::MapCord,
+    },
+    utils::map_cord::MapCord,
 };
 
 pub type MapTileGrid = Vec<TileType>;
@@ -348,7 +351,7 @@ impl TileMap {
                                     d,
                                     &game_context.texture,
                                 );
-                                
+
                                 let anim = &INLET_ANIMS[riv_data.river_sprite_index as usize];
 
                                 let (flp_h, flp_v) = match anim.1 {

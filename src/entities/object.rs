@@ -11,7 +11,7 @@ use crate::{
         object::ObjectKind::*,
         objects::{grass::Grass, tree::Tree},
     },
-    utils::{camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord},
+    utils::{direction_utils::FacingDirection, draw_utils, map_cord::MapCord},
 };
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
