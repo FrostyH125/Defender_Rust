@@ -43,7 +43,7 @@ pub struct CharacterEntry {
     render_index: usize,
 }
 
-pub struct CharacterInfo {
+pub struct BasicCharacterInfo {
     pub health: f32,
     pub char_id: CharID,
     pub position: Vector2,
@@ -147,13 +147,13 @@ impl EntityManager {
 
         let mut moved_anyone = false;
 
-        let character_info: HashMap<CharID, CharacterInfo> = self
+        let character_info: HashMap<CharID, BasicCharacterInfo> = self
             .characters
             .iter()
             .map(|c| {
                 (
                     c.unique_id,
-                    CharacterInfo {
+                    BasicCharacterInfo {
                         health: c.character.character_data.health,
                         affiliation: c.character.character_data.character_values.affiliation,
                         position: c.character.character_data.pos,

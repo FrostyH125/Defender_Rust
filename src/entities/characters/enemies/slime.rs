@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use raylib::math::Vector2;
 use zander_game_core_rs::raylib::{
     animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
@@ -7,8 +9,7 @@ use crate::entities::{
     character::{
         Affiliation, Character, CharacterData, CharacterKind, CharacterSpecificData,
         SimpleCharacterKind,
-    },
-    characters::enemy::{Enemy, EnemyData, EnemyKind},
+    }, characters::enemy::{Enemy, EnemyData, EnemyKind}, entity_manager::{CharID, BasicCharacterInfo},
 };
 
 static SLIME_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -77,7 +78,7 @@ impl Slime {
         };
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, character_info: &HashMap<CharID, BasicCharacterInfo>) {
         // Idle: 
         //  find closest target -> MovingToTarget
         // MovingToTarget: 

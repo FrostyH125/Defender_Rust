@@ -14,7 +14,7 @@ use crate::{
     GameContext, TILE_SIZE, entities::{
         characters::{
             enemy::Enemy, gatherer::{Gatherer, GathererState},
-        }, entity_manager::{CharID, CharacterInfo}, object::Object,
+        }, entity_manager::{CharID, BasicCharacterInfo}, object::Object,
     }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::{CharacterAction, CharacterActionManager}, utils::{
         camera_utils,
         direction_utils::FacingDirection,
@@ -246,7 +246,7 @@ impl Character {
         &mut self,
         game_context: &mut GameContext,
         map: &mut TileMap,
-        character_info: &HashMap<CharID, CharacterInfo>,
+        character_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
         match self.character_data.state {
             CharacterState::None => {

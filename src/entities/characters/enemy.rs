@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use raylib::math::Vector2;
 use zander_game_core_rs::raylib::sprite::Sprite;
 
-use crate::{GameContext, entities::{character::CharacterData, characters::enemies::slime::{Slime, SlimeState}, entity_manager::{CharID, CharacterInfo}}, map::tile_map::TileMap};
+use crate::{GameContext, entities::{character::CharacterData, characters::enemies::slime::{Slime, SlimeState}, entity_manager::{CharID, BasicCharacterInfo}}, map::tile_map::TileMap};
 
 pub enum EnemyKind {
     Slime(Slime)
@@ -32,9 +32,9 @@ impl Enemy {
         }
     }
 
-    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap, character_info: &HashMap<CharID, CharacterInfo>) {
+    pub fn update(&mut self, game_context: &mut GameContext, map: &mut TileMap, character_info: &HashMap<CharID, BasicCharacterInfo>) {
         match &mut self.enemy_kind {
-            EnemyKind::Slime(slime) => slime.update(),
+            EnemyKind::Slime(slime) => slime.update(character_info),
         }
     }
 
