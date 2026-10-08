@@ -219,9 +219,8 @@ impl Object {
         }
     }
 
-    pub fn should_not_be_used_again_by_anything(&self) -> bool {
-        let state = self.object_data.state;
-        return state == ObjectState::Breaking;
+    pub fn is_breaking(&self) -> bool {
+        return self.object_data.state == ObjectState::Breaking;
     }
 
     #[inline]

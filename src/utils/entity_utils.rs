@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use raylib::math::Vector2;
 
-use crate::entities::{characters::gatherer::GatherTarget, entity_manager::{CharID, CharacterEntry, BasicCharacterInfo}, object::ObjectKind};
+use crate::entities::{character::Affiliation, characters::gatherer::GatherTarget, entity_manager::{BasicCharacterInfo, CharID, CharacterEntry}, object::ObjectKind};
 
 #[inline]
 pub fn get_char_by_unique_id(characters: &mut[CharacterEntry], idx: CharID) -> &mut CharacterEntry {
@@ -39,12 +39,16 @@ pub fn object_matches_gathering_target(gather_target: GatherTarget, obj: &Object
 /// this gets the closest target for an enemy of either a character or in the future a building
 /// this ideally can never fail because if all your characters are gone, you lost the game anyway
 /// and even if something is too far away, should still return a value so the caller can decide how to handle it
-pub fn enemy_get_closest_target(current_pos: Vector2, character_info: &HashMap<CharID, BasicCharacterInfo>) -> CharID {
+pub fn enemy_get_closest_target(current_pos: Vector2, character_info: &HashMap<CharID, BasicCharacterInfo>, target_affiliation: Affiliation) -> CharID {
 
     let mut closest_id = CharID(0);
     let mut closest_distance = f32::MAX;
     
     for (id, char_info) in character_info {
+        if char_info.affiliation != target_affiliation {
+            continue;
+        }
+        
         let distance = char_info.position.distance_to(current_pos);
 
         if distance < closest_distance {

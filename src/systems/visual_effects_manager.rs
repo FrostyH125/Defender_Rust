@@ -15,7 +15,10 @@ impl VisualEffect {
     pub fn update(&mut self, dt: f32) {
         match self.kind {
             VisualEffectKind::DamageNumber { .. } => {
-                self.pos.y -= 10.0 * dt;
+                let inverse_progress = 1.0 - self.timer.progress();
+                let speed = 20.0;
+                
+                self.pos.y -= (speed * inverse_progress) * dt;
             }
         }
     }

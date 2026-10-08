@@ -257,7 +257,7 @@ impl Gatherer {
             .visual_effects_manager
             .add_damage_number(obj.get_center_pos(), self.gathering_power);
 
-        if obj.should_not_be_used_again_by_anything() {
+        if obj.is_breaking() {
             obj.unmark_for_gathering();
             return true;
         }
@@ -282,7 +282,7 @@ impl Gatherer {
 
             let obj = obj.as_ref().unwrap();
 
-            if obj.should_not_be_used_again_by_anything() {
+            if obj.is_breaking() {
                 continue;
             }
 

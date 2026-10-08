@@ -44,33 +44,27 @@ pub mod utils;
 
 // any of these can be done in any order:
 //      ENEMY IMPLEMENTATION:
-//          Make unable to move manually
 //          Make look for closest character and change to moving to target state
 //          Once fighter is implemented, add new fight button
 //
 //      FEATURE IMPLEMENTATION:
 //          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
-//
+//          grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
+//          draw grass with a shear when its hit
+//          add slash vfx
+//          make shadows not appear so suddenly at night, even if they ease into the position quickly, would still be better
+//          add clouds
+//          gather all button
+//          wobble shader effect on the action buttons
+//          cool shader for background instead of no tiles -> use that one steam tool it was sick
+//          ALL the sounds from the github repo
+//          On hit visual for characters
+// 
 //      BUGFIX:
 //          If 0 neighbors for a river tile, check what direction its flowing, check in front and behind, and if lakes r present there, make them inlets/outlets and place rivers
 //
-//      grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
-//      make it so that the selectors never select or even hover enemies for movement
-//      draw grass with a shear when its hit
-//      add a type alias for usize : CharID
-//      add a vfx manager for adding things like slashes in a fire and forget kind of way
-//      make shadows not appear so suddenly at night, even if they ease into the position quickly, would still be better
-//      add clouds
-//      gather all button
-//      wobble shader effect on the action buttons (will later be used on building buttons too)
-//      cool shader for background instead of no tiles -> use that one steam tool it was sick
-//      ALL the sounds from the github repo
-//      On hit visual
-//
 //      FIGHTER IMPLEMENTATION
-//          enemy: enum { EnemyKindOne, EnemyKindTwo, etc }
 //          fighter: enum { FighterKindOne, FighterKindTwo, etc..}
-//              Affiliation enum { Good, Bad }
 //          fighter_data: struct
 //          FighterState::Idle
 //          FighterState::LookingForEnemy
@@ -78,9 +72,7 @@ pub mod utils;
 //          FighterState::InCombat
 //          Add fight button
 //          Test fight button, making sure the result is as expected
-//          Also make sure the underlying fighter list of enemies is working as expected, especially
-//          for multiple fighters
-//          Make sure multiple fighters works as expected
+//          Also make sure the underlying fighter list of enemies is working as expected, especially for multiple fighters
 pub const TILE_SIZE: f32 = 8.0;
 
 /// contains values and structs that provide services or critical fields for operation

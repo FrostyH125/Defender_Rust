@@ -76,7 +76,7 @@ impl Tree {
             width: 8.0,
             height: 16.0,
             disappear_timer: Timer::new(
-                TREE_FALL_ANIM_ONE.frame_duration * TREE_FALL_ANIM_ONE.frames.len() as f32,
+                TREE_FALL_ANIM_ONE.total_duration(),
             ),
             health: 100.0,
             object_kind: SimpleObjectKind::Tree,

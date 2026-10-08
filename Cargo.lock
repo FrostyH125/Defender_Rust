@@ -113,9 +113,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.18.0"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
+checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 
 [[package]]
 name = "find-msvc-tools"
@@ -374,7 +374,7 @@ checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
 [[package]]
 name = "zander-game-core-rs"
 version = "0.1.0"
-source = "git+https://github.com/FrostyH125/zander-game-core-rs#0e77ebc4ef0f1cc7cf3b5dbae37a76d2eed1f5b3"
+source = "git+https://github.com/FrostyH125/zander-game-core-rs#782dfe881cf9aded84a4c5016724abe05e818179"
 dependencies = [
  "rand",
  "raylib",
