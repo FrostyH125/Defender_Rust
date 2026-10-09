@@ -300,7 +300,7 @@ impl Character {
                         self.character_data.current_opponent = None;
                     }
                 }
-                
+
                 // if list isnt empty, checks list and assigns next opponent
                 if self.character_data.current_opponent.is_none() {
                     self.clean_opponents_list(character_info);

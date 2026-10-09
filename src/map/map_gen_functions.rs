@@ -232,8 +232,15 @@ pub fn create_rivers(
             ),
         };
 
+        // check to see if its at a boundary
+        // this should remove the errors where the map cant create due to a river tile
+        // having 0 neighbors
+        if !is_tile_in_bounds(map_dimensions, *cord + direction.as_mapcord()) {
+            continue;
+        }
+
         // set the current tile to the coordinate of the viable tile
-        let mut current_tile = MapCord::new(cord.x, cord.y);
+        let mut current_tile = *cord;
         let mut just_turned = false;
 
         // --river creation algorithm here-- //
@@ -259,7 +266,7 @@ pub fn create_rivers(
                 just_turned = true;
             }
 
-            let check_tile = current_tile + CARDINAL_DELTAS[direction as usize];
+            let check_tile = current_tile + direction.as_mapcord();
 
             if current_river.contains_key(&check_tile) {
                 // i dont personally want river loops from one origin
@@ -275,7 +282,7 @@ pub fn create_rivers(
             let check_tile_type = get_tile_at_cord(map, map_dimensions, check_tile);
 
             if check_tile_type == TileType::River {
-                let check_tile_two = check_tile + CARDINAL_DELTAS[direction as usize];
+                let check_tile_two = check_tile + direction.as_mapcord();
 
                 if !is_tile_in_bounds(map_dimensions, check_tile_two) {
                     // not a cross section because the point past the river is out of bounds, just add this river
@@ -334,8 +341,8 @@ pub fn create_rivers(
             }
 
             // get the info on the tiles to the left and right of the current tile (not the check tile)
-            let dir_left = CARDINAL_DELTAS[direction.turn_left() as usize];
-            let dir_right = CARDINAL_DELTAS[direction.turn_right() as usize];
+            let dir_left = direction.turn_left().as_mapcord();
+            let dir_right = direction.turn_right().as_mapcord();
             let tile_to_left = current_tile + dir_left;
             let tile_to_right = current_tile + dir_right;
 
@@ -438,7 +445,7 @@ pub fn set_river_tile_animations(
 
         match num_of_neighbors {
             1 => {
-                let check_dir = CARDINAL_DELTAS[*dir as usize];
+                let check_dir = dir.as_mapcord();
                 let check_tile = *cord + check_dir;
 
                 if !map_utils::is_tile_in_bounds(map_dimensions, check_tile) {
@@ -490,7 +497,6 @@ pub fn set_river_tile_animations(
                     }
 
                     // river found! now, determine whether its a straight or a corner (both have 2 neighbors)
-
                     let straight_check_tile = *cord + CARDINAL_DELTAS[(i + 2) % 4];
 
                     // if its not in bounds, wont check which tile it is, because this has to be a corner
@@ -719,7 +725,7 @@ pub fn spawn_standalone_forests(
         while height > 0 {
             // make a line of trees from 0 to height
             for j in 0..height {
-                let try_tree_tile = start_pos + CARDINAL_DELTAS[dir_1 as usize] * j;
+                let try_tree_tile = start_pos + dir_1.as_mapcord() * j;
 
                 if tile_not_in_bounds_or_doesnt_match(
                     tile_grid,
@@ -738,14 +744,14 @@ pub fn spawn_standalone_forests(
             }
 
             // move it one tile to the left or right
-            start_pos += CARDINAL_DELTAS[dir_2 as usize];
+            start_pos += dir_2.as_mapcord();
 
             // move randomly, primarily in the direction of the first dir
             if rng.random_bool(0.5) {
                 if rng.random_bool(0.2) {
-                    start_pos -= CARDINAL_DELTAS[dir_1 as usize];
+                    start_pos -= dir_1.as_mapcord();
                 } else {
-                    start_pos += CARDINAL_DELTAS[dir_1 as usize];
+                    start_pos += dir_1.as_mapcord();
                 }
             }
 
@@ -1041,7 +1047,7 @@ pub fn spawn_fields_of_grass(
                     }
                 }
 
-                let try_grass_tile = start_pos + CARDINAL_DELTAS[dir_1 as usize] * j;
+                let try_grass_tile = start_pos + dir_1.as_mapcord() * j;
 
                 if tile_not_in_bounds_or_doesnt_match(
                     tile_grid,
@@ -1101,7 +1107,7 @@ pub fn spawn_fields_of_grass(
             }
 
             // move it one tile to the left or right
-            start_pos += CARDINAL_DELTAS[dir_2 as usize];
+            start_pos += dir_2.as_mapcord();
 
             length += 1;
 
@@ -1112,23 +1118,23 @@ pub fn spawn_fields_of_grass(
                 ..=15 => {
                     if rng.random_bool(0.4) {
                         height += rng.random_range(2..=5);
-                        start_pos -= CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                        start_pos -= dir_1.as_mapcord() * rng.random_range(1..=3)
                     }
                 }
                 ..35 => {
                     if rng.random_bool(0.8) {
                         height += rng.random_range(1..=2);
-                        start_pos -= CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                        start_pos -= dir_1.as_mapcord() * rng.random_range(1..=3)
                     }
                     if rng.random_bool(0.8) {
                         height -= rng.random_range(1..=2);
-                        start_pos += CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                        start_pos += dir_1.as_mapcord() * rng.random_range(1..=3)
                     }
                 }
                 35.. => {
                     if rng.random_bool(0.4) {
                         height -= rng.random_range(2..=5);
-                        start_pos += CARDINAL_DELTAS[dir_1 as usize] * rng.random_range(1..=3)
+                        start_pos += dir_1.as_mapcord() * rng.random_range(1..=3)
                     }
                 }
             }

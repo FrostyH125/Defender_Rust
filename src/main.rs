@@ -61,7 +61,7 @@ pub mod utils;
 //          On hit visual for characters
 // 
 //      BUGFIX:
-//          If 0 neighbors for a river tile, check what direction its flowing, check in front and behind, and if lakes r present there, make them inlets/outlets and place rivers
+//          make the tile map creation return a result and keep remaking the map until it produces a valid one, as a last resort fail safe
 //
 //      FIGHTER IMPLEMENTATION
 //          fighter: enum { FighterKindOne, FighterKindTwo, etc..}

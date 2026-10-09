@@ -39,6 +39,11 @@ impl Direction {
         let new_val = (val + 1).rem_euclid(4);
         return Self::get_enum_from_repr(new_val);
     }
+
+    #[inline]
+    pub fn as_mapcord(self) -> MapCord {
+        return CARDINAL_DELTAS[self as usize];
+    }
 }
 
 pub const ORTHOGONAL_DELTAS: [MapCord; 8] = [
