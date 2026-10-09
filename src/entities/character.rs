@@ -1,7 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use raylib::{
     drawing::RaylibDrawHandle,
+    ffi::__bool_true_false_are_defined,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };
@@ -11,11 +12,18 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{
+    GameContext, TILE_SIZE,
+    entities::{
         characters::{
-            enemy::Enemy, gatherer::{Gatherer, GathererState},
-        }, entity_manager::{CharID, BasicCharacterInfo}, object::Object,
-    }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::{CharacterAction, CharacterActionManager}, utils::{
+            enemy::Enemy,
+            gatherer::{Gatherer, GathererState},
+        },
+        entity_manager::{BasicCharacterInfo, CharID},
+        object::Object,
+    },
+    map::tile_map::{MapDimensions, TileMap},
+    systems::character_action_manager::{CharacterAction, CharacterActionManager},
+    utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
@@ -56,11 +64,6 @@ pub enum CharacterState {
 
 #[derive(Clone, Copy)]
 pub enum CombatState {
-    None,
-
-    // for choosing whether to leave combat or move back into pre attack
-    EvaluatingState,
-
     // for handling the attack animation
     PreAttack,
 
@@ -74,7 +77,8 @@ pub enum CombatState {
 pub struct CharacterData {
     pub character_values: CharacterSpecificData,
     pub path: Option<Path>,
-    pub opponents: Vec<CharID>,
+    pub opponents: HashSet<CharID>,
+    current_opponent: Option<CharID>,
     pub pos: Vector2,
     pub target_pos: Option<Vector2>,
     pub facing_direction: FacingDirection,
@@ -112,7 +116,8 @@ impl CharacterData {
     pub fn new(pos: Vector2, character_values: CharacterSpecificData) -> CharacterData {
         return CharacterData {
             state: CharacterState::None,
-            combat_state: CombatState::None,
+            combat_state: CombatState::PreAttack,
+            current_opponent: None,
             pos,
             target_pos: None,
             path: None,
@@ -122,7 +127,7 @@ impl CharacterData {
             is_hovering_for_move: false,
             is_selected: false,
             is_selected_for_move: false,
-            opponents: Vec::new(),
+            opponents: HashSet::new(),
             unique_char_id: CharID(0),
             attack_timer: Timer::new(character_values.time_between_attacks),
             character_values,
@@ -225,7 +230,7 @@ pub enum CharacterKind {
 
 pub struct Character {
     pub character_data: CharacterData,
-    pub character_kind: CharacterKind
+    pub character_kind: CharacterKind,
 }
 
 impl Character {
@@ -258,7 +263,9 @@ impl Character {
                 }
 
                 match &mut self.character_kind {
-                    CharacterKind::Gatherer(gatherer) => gatherer.update(&mut self.character_data, game_context, map),
+                    CharacterKind::Gatherer(gatherer) => {
+                        gatherer.update(&mut self.character_data, game_context, map)
+                    }
                     CharacterKind::Enemy(enemy) => enemy.update(game_context, map, character_info),
                 }
             }
@@ -278,35 +285,54 @@ impl Character {
             CharacterState::InCombat => {
                 let dt = game_context.dt;
 
-                if let CombatState::None = self.character_data.combat_state {
-                    self.character_data.combat_state = CombatState::EvaluatingState;
+                // unfortunately doing this every frame just made a lot of sense
+                // between attack animation times, and many things potentially affecting a potential opponent
+                // i just dont think checking once in a state would make sense
+                // it doesnt make sense to attack an opponent that is potentially dead, or wind
+                // an attack up for one thats dead, etc, id basically be checking in every state anyway every frame
+                if let Some(id) = self.character_data.current_opponent {
+                    let opponent_is_invalid = match character_info.get(&id) {
+                        Some(c_info) => c_info.health <= 0.0,
+                        None => true,
+                    };
+
+                    if opponent_is_invalid {
+                        self.character_data.current_opponent = None;
+                    }
+                }
+                
+                // if list isnt empty, checks list and assigns next opponent
+                if self.character_data.current_opponent.is_none() {
+                    self.clean_opponents_list(character_info);
+
+                    // checks after resolving any issues with the current opponent and cleaning the list if the list is empty
+                    if self.character_data.opponents.is_empty() {
+                        // reset all relevant values
+                        self.character_data.state = CharacterState::None;
+                        self.character_data.combat_state = CombatState::PreAttack;
+                        self.character_data.attack_timer.reset();
+                        self.character_data.character_values.attack_anim.reset();
+                        self.character_data
+                            .character_values
+                            .post_attack_anim
+                            .reset();
+                        return;
+                    }
+
+                    self.character_data.current_opponent =
+                        self.find_suitable_opponent(character_info);
                 }
 
                 match self.character_data.combat_state {
-                    CombatState::None => panic!("should never happen"),
-                    CombatState::EvaluatingState => {
-                        // for now just the first entry is important
-                        // this grabs the enemy hp (current enemy) at the first opponents char id's key
-                        // the reason i went with a hashmap is to make it easier for characters to look up this sort of thing
-                        // especially later on when looking for pos and stuff
-                        // and it also makes it easier to add a spoecific system (such as if i wanted to find the char with the lowest health, for example)
-                        // i can simply loop through the opponents list plugging into the hashmap, rather than the obviously idiotic solution
-                        // of looping through all characters and finding the ones that are contained within the opponents vec
-                        let enemy_hp = character_info[&self.character_data.opponents[0]].health;
-
-                        // only switches state when opponents are gone
-                        if enemy_hp <= 0.0 {
-                            self.character_data.opponents.remove(0);
-                            if self.character_data.opponents.is_empty() {
-                                self.character_data.state = CharacterState::None;
-                                self.character_data.combat_state = CombatState::None;
-                            }
-                        }
-                    }
                     CombatState::PreAttack => {
                         if self.character_data.attack_timer.is_done() {
                             self.character_data.character_values.attack_anim.update(dt);
-                            if self.character_data.character_values.attack_anim.finished_playing {
+                            if self
+                                .character_data
+                                .character_values
+                                .attack_anim
+                                .finished_playing
+                            {
                                 self.character_data.character_values.attack_anim.reset();
                                 self.character_data.attack_timer.reset();
                                 self.character_data.combat_state = CombatState::Attack;
@@ -315,9 +341,9 @@ impl Character {
                     }
                     CombatState::Attack => {
                         let self_idx = self.character_data.unique_char_id;
-                        let opponent_idx = self.character_data.opponents[0];
+                        let opponent_idx = self.character_data.current_opponent.unwrap();
 
-                        self.attack(
+                        self.do_attack(
                             self_idx,
                             opponent_idx,
                             &mut game_context.character_action_manager,
@@ -327,13 +353,14 @@ impl Character {
                         self.character_data.combat_state = CombatState::PostAttack;
                     }
                     CombatState::PostAttack => {
-                        let post_attack_anim = &mut self.character_data.character_values.post_attack_anim;
+                        let post_attack_anim =
+                            &mut self.character_data.character_values.post_attack_anim;
 
                         post_attack_anim.update(dt);
 
                         if post_attack_anim.finished_playing {
                             post_attack_anim.reset();
-                            self.character_data.combat_state = CombatState::EvaluatingState;
+                            self.character_data.combat_state = CombatState::PreAttack;
                         }
                     }
                 }
@@ -402,18 +429,12 @@ impl Character {
                 CharacterKind::Gatherer(gatherer) => gatherer.current_sprite(&self.character_data),
                 CharacterKind::Enemy(enemy) => enemy.current_sprite(&self.character_data),
             },
-            CharacterState::Moving { .. } => {
-                self.character_data.character_values.move_anim.current_sprite()
-            }
+            CharacterState::Moving { .. } => self
+                .character_data
+                .character_values
+                .move_anim
+                .current_sprite(),
             CharacterState::InCombat => match self.character_data.combat_state {
-                CombatState::None => panic!("should never happen"),
-                CombatState::EvaluatingState => {
-                    self.character_data
-                        .character_values
-                        .idle_anim
-                        .sprite_animation
-                        .frames[0]
-                }
                 CombatState::PreAttack => self
                     .character_data
                     .character_values
@@ -443,6 +464,34 @@ impl Character {
         }
 
         return spr;
+    }
+
+    /// for now prioritizes lowest health opponent, but can be changed eventually
+    pub fn find_suitable_opponent(
+        &mut self,
+        character_info: &HashMap<CharID, BasicCharacterInfo>,
+    ) -> Option<CharID> {
+        let mut lowest_id = None;
+        let mut lowest_health = f32::MAX;
+
+        for ch_id in &self.character_data.opponents {
+            let hp = character_info.get(&ch_id).unwrap().health;
+
+            if hp < lowest_health {
+                lowest_id = Some(*ch_id);
+                lowest_health = hp;
+            }
+        }
+
+        return lowest_id;
+    }
+
+    pub fn clean_opponents_list(&mut self, character_info: &HashMap<CharID, BasicCharacterInfo>) {
+        self.character_data.opponents.retain(|ch_id| {
+            character_info
+                .get(ch_id)
+                .is_some_and(|info| info.health > 0.0)
+        });
     }
 
     #[inline]
@@ -505,10 +554,11 @@ impl Character {
         self.character_data.character_values.attack_power += 1.0;
         self.character_data.character_values.max_health += 5.0;
         self.character_data.character_values.time_between_attacks -= 0.01;
-        self.character_data.attack_timer = Timer::new(self.character_data.character_values.time_between_attacks);
+        self.character_data.attack_timer =
+            Timer::new(self.character_data.character_values.time_between_attacks);
     }
 
-    pub fn attack(
+    pub fn do_attack(
         &mut self,
         self_id: CharID,
         target_id: CharID,

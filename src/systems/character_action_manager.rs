@@ -56,12 +56,12 @@ impl CharacterActionManager {
                         return;
                     }
                     
-                    target.character_data.opponents.push(*attacker_id);
+                    target.character_data.opponents.insert(*attacker_id);
                     target.character_data.state = CharacterState::InCombat;
                     
                     let attacker = &mut get_char_by_unique_id(chars, *attacker_id).character;
 
-                    attacker.character_data.opponents.push(*target_id);
+                    attacker.character_data.opponents.insert(*target_id);
                     attacker.character_data.state = CharacterState::InCombat;
 
                 }

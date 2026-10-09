@@ -1,3 +1,5 @@
+use std::iter::Map;
+
 use raylib::math::Vector2;
 use zander_game_core_rs::{
     raylib::{
@@ -8,12 +10,17 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, entities::{
+    GameContext,
+    entities::{
         character::{
             Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult,
             CharacterSpecificData, SimpleCharacterKind,
-        }, characters::gatherer::GathererState::MovingToObject, object::Object,
-    }, map::tile_map::{MapObjectGrid, TileMap}, utils::entity_utils::object_matches_gathering_target,
+        },
+        characters::gatherer::GathererState::MovingToObject,
+        object::Object,
+    },
+    map::tile_map::{MapObjectGrid, TileMap},
+    utils::entity_utils::object_matches_gathering_target,
 };
 
 static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -182,7 +189,9 @@ impl Gatherer {
 
         if self.gather(
             character_data,
-            &mut map.map_object_grid[self.current_index.unwrap()].as_mut().unwrap(),
+            &mut map.map_object_grid[self.current_index.unwrap()]
+                .as_mut()
+                .unwrap(),
             game_context,
         ) {
             self.gatherer_state = GathererState::LookingForObject { gather_target };
@@ -214,17 +223,27 @@ impl Gatherer {
             CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {
                 character_data.character_values.move_anim.reset();
                 self.object_indices.clear();
-                map.map_object_grid[self.current_index.unwrap()].as_mut().unwrap().set_unoccupied();
+                map.map_object_grid[self.current_index.unwrap()]
+                    .as_mut()
+                    .unwrap()
+                    .set_unoccupied();
                 self.current_index = None;
                 self.gatherer_state = GathererState::Idle;
             }
         }
     }
 
-    fn looking_for_object(&mut self, character_data: &mut CharacterData, map: &mut TileMap, gather_target: GatherTarget) {
+    fn looking_for_object(
+        &mut self,
+        character_data: &mut CharacterData,
+        map: &mut TileMap,
+        gather_target: GatherTarget,
+    ) {
         // reset this here because if an object that is currently being gathered is reselected, then
         // i need it to reset the timer so it doesnt just continue off from where it stopped.
         self.gather_timer.reset();
+
+        Self::remove_dead_objects(&mut self.object_indices, &mut map.map_object_grid);
 
         let closest_obj: Option<ObjectEntry> =
             self.find_closest_target(character_data, &map.map_object_grid, gather_target);
@@ -246,7 +265,12 @@ impl Gatherer {
         }
     }
 
-    fn gather(&self, character_data: &mut CharacterData, obj: &mut Object, game_context: &mut GameContext) -> bool {
+    fn gather(
+        &self,
+        character_data: &mut CharacterData,
+        obj: &mut Object,
+        game_context: &mut GameContext,
+    ) -> bool {
         obj.take_hit(
             self.gathering_power,
             game_context,
@@ -367,5 +391,24 @@ impl Gatherer {
 
         // set new state with the proper gather target
         self.gatherer_state = GathererState::LookingForObject { gather_target };
+    }
+
+    pub fn remove_dead_objects(object_indices: &mut Vec<usize>, object_grid: &MapObjectGrid) {
+        for i in (0..object_indices.len()).rev() {
+            let obj = &object_grid[object_indices[i]];
+
+            match obj {
+                Some(o) => {
+                    // even if the object exists, remove it if its unusable, meaning its already been broken
+                    if o.is_breaking() {
+                        object_indices.swap_remove(i);
+                    }
+                }
+                None => {
+                    // object no longer exists
+                    object_indices.swap_remove(i);
+                }
+            }
+        }
     }
 }
