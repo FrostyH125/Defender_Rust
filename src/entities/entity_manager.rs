@@ -47,6 +47,7 @@ pub struct BasicCharacterInfo {
     pub health: f32,
     pub char_id: CharID,
     pub position: Vector2,
+    pub center_pos: Vector2,
     pub affiliation: Affiliation,
 }
 
@@ -157,6 +158,7 @@ impl EntityManager {
                         health: c.character.character_data.health,
                         affiliation: c.character.character_data.character_values.affiliation,
                         position: c.character.character_data.pos,
+                        center_pos: c.character.get_center(),
                         char_id: c.unique_id,
                     },
                 )

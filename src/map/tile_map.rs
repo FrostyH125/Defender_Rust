@@ -244,7 +244,7 @@ impl TileMap {
                     (y as f32 * TILE_SIZE).floor(),
                 );
 
-                if !self.tile_is_in_bounds(x, y) {
+                if !self.x_y_is_in_bounds(x, y) {
                     continue;
                 }
 
@@ -397,10 +397,15 @@ impl TileMap {
 
     pub fn get_tile_from_x_y(&self, x: i16, y: i16) -> TileType {
         let index = y as usize * self.map_dimensions.width as usize + x as usize;
-        return self.map_tile_grid[index as usize];
+        return self.map_tile_grid[index];
     }
 
-    pub fn tile_is_in_bounds(&self, x: i16, y: i16) -> bool {
+    pub fn get_tile_from_cord(&self, cord: MapCord) -> TileType {
+        let index = cord.y as usize * self.map_dimensions.width as usize + cord.x as usize;
+        return self.map_tile_grid[index];
+    }
+
+    pub fn x_y_is_in_bounds(&self, x: i16, y: i16) -> bool {
         let x_in_bounds = x >= 0 && x < self.map_dimensions.width as i16;
         let y_in_bounds = y >= 0 && y < self.map_dimensions.height as i16;
         return x_in_bounds && y_in_bounds;
@@ -413,7 +418,7 @@ impl TileMap {
     }
 
     pub fn tile_is_in_bounds_and_matches(&self, x: i16, y: i16, tile_type: TileType) -> bool {
-        if !self.tile_is_in_bounds(x, y) {
+        if !self.x_y_is_in_bounds(x, y) {
             return false;
         }
 

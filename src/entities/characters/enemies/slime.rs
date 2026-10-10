@@ -5,11 +5,21 @@ use zander_game_core_rs::raylib::{
     animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
 };
 
-use crate::entities::{
-    character::{
-        Affiliation, Character, CharacterData, CharacterKind, CharacterSpecificData,
-        SimpleCharacterKind,
-    }, characters::enemy::{Enemy, EnemyData, EnemyKind}, entity_manager::{CharID, BasicCharacterInfo},
+use crate::{
+    GameContext,
+    entities::{
+        character::{
+            Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult,
+            CharacterSpecificData, SimpleCharacterKind,
+        },
+        characters::{
+            enemies::slime::SlimeState::Attacking,
+            enemy::{Enemy, EnemyData, EnemyKind},
+        },
+        entity_manager::{BasicCharacterInfo, CharID},
+    },
+    map::tile_map::TileMap,
+    utils::entity_utils::enemy_get_closest_target,
 };
 
 static SLIME_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -25,7 +35,7 @@ static SLIME_MOVE_ANIM: SpriteAnimationData = SpriteAnimationData {
 };
 
 static SLIME_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &Sprite::create_sequence_of_sprites::<5>(16, 152, 8, 8),
+    frames: &Sprite::create_sequence_of_sprites::<6>(16, 152, 8, 8),
     frame_duration: 0.25,
     should_loop: false,
 };
@@ -39,6 +49,8 @@ static SLIME_POST_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
 #[derive(PartialEq)]
 pub enum SlimeState {
     Idle,
+    MovingToTarget { target_pos: Vector2 },
+    Attacking,
 }
 
 pub struct Slime {
@@ -72,26 +84,19 @@ impl Slime {
         return Character {
             character_data: data,
             character_kind: CharacterKind::Enemy(Enemy {
-                enemy_data: EnemyData {},
+                enemy_data: EnemyData::new(2.0, 8.0),
                 enemy_kind: EnemyKind::Slime(slime),
             }),
         };
     }
 
-    pub fn update(&mut self, character_info: &HashMap<CharID, BasicCharacterInfo>) {
-        // Idle: 
-        //  find closest target -> MovingToTarget
-        // MovingToTarget: 
-        //  check closest target every second, target could have died or moved further than another one
-        //  once reached a target -> Attacking
-        // Attacking:
-        //  initiate a battle with target
-        //  once done -> Idle
-    }
-
     pub fn current_sprite(&self, character_data: &CharacterData) -> Sprite {
         match self.slime_state {
             SlimeState::Idle => character_data.character_values.idle_anim.current_sprite(),
+            SlimeState::MovingToTarget { .. } => {
+                character_data.character_values.move_anim.current_sprite()
+            }
+            SlimeState::Attacking => SLIME_IDLE_ANIM.frames[0],
         }
     }
 }

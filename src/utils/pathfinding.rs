@@ -7,14 +7,11 @@ use std::{
 use raylib::math::Vector2;
 
 use crate::{
-    map::{
+    entities::character::Affiliation, map::{
         tile::TileType,
         tile_map::{MapDimensions, TileMap},
-    },
-    utils::{
-        direction_utils::ORTHOGONAL_DELTAS,
-        map_cord::MapCord,
-        map_utils::{self, cords_to_index, get_tile_at_cord, is_tile_in_bounds},
+    }, utils::{
+        direction_utils::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::{self, cords_to_index, get_tile_at_cord, is_tile_in_bounds}, vector2_utils,
     },
 };
 
@@ -101,37 +98,43 @@ impl PathFinder {
     /// what happened. The path does not, in fact, have an available
     /// route to it, even though the path is still technically open for
     /// traversal.
+    /// it takes in affiliation because enemies can traverse water, players cannot
     pub fn a_star(
         &mut self,
-        start: MapCord,
-        goal: MapCord,
+        start: Vector2,
+        goal: Vector2,
         tile_map: &TileMap,
         max_radius_for_path: f32,
+        affiliation: Affiliation,
     ) -> Result<Path, PathError> {
+
+        let start_map_cord = MapCord::from_vec2(start);
+        let goal_map_cord = MapCord::from_vec2(goal);
+        
         // base case handling
-        if goal.dist_to(start) >= max_radius_for_path {
+        if goal_map_cord.dist_to(start_map_cord) >= max_radius_for_path {
             println!("current pathfinding goal too far away");
             return Err(PathError::TooLong);
         }
 
-        if !is_tile_in_bounds(tile_map.map_dimensions, goal) {
+        if !tile_map.cord_is_in_bounds(goal_map_cord) {
             println!("current pathfinding goal out of bounds");
             return Err(PathError::NoRoute);
         }
 
-        if !is_tile_in_bounds(tile_map.map_dimensions, start) {
+        if !tile_map.cord_is_in_bounds(start_map_cord) {
             println!("current pathfinding start out of bounds");
             return Err(PathError::NoRoute);
         }
 
-        if get_tile_at_cord(&tile_map.map_tile_grid, tile_map.map_dimensions, goal)
+        if tile_map.get_tile_from_cord(goal_map_cord)
             != TileType::Grass
         {
             println!("current pathfinding goal is not grass");
             return Err(PathError::NoRoute);
         }
 
-        if get_tile_at_cord(&tile_map.map_tile_grid, tile_map.map_dimensions, start)
+        if tile_map.get_tile_from_cord(start_map_cord)
             != TileType::Grass
         {
             println!("current pathfinding start is not grass");
@@ -151,7 +154,7 @@ impl PathFinder {
         self.generation += 1;
         self.open.clear();
 
-        let start_index = cords_to_index(tile_map.map_dimensions, start);
+        let start_index = cords_to_index(tile_map.map_dimensions, start_map_cord);
 
         // set g
         let start_g = 0.0;
@@ -164,7 +167,7 @@ impl PathFinder {
         let parent = MapCord::new(i16::MAX, i16::MAX);
 
         self.open.push(Node {
-            cord: start,
+            cord: start_map_cord,
             parent,
             f: start_f,
             g: start_g,
@@ -182,7 +185,7 @@ impl PathFinder {
             self.parents[current_index] = current.parent;
 
             // goal found, go home
-            if current.cord == goal {
+            if current.cord == goal_map_cord {
                 return Ok(reconstruct_path(
                     &self.parents,
                     tile_map.map_dimensions,
@@ -196,19 +199,17 @@ impl PathFinder {
                 let check_tile = current.cord + ORTHOGONAL_DELTAS[i];
 
                 // tile is too far away, don't add it
-                if check_tile.dist_to(start) > max_radius_for_path {
+                if check_tile.dist_to(start_map_cord) > max_radius_for_path {
                     continue;
                 }
 
-                if !map_utils::is_tile_in_bounds(tile_map.map_dimensions, check_tile) {
+                if !tile_map.cord_is_in_bounds(check_tile) {
                     continue;
                 }
 
-                if map_utils::get_tile_at_cord(
-                    &tile_map.map_tile_grid,
-                    tile_map.map_dimensions,
-                    check_tile,
-                ) != TileType::Grass
+                // enemies can traverse water
+                if tile_map.get_tile_from_cord(check_tile) != TileType::Grass
+                    && affiliation == Affiliation::Good
                 {
                     continue;
                 }
@@ -242,7 +243,7 @@ impl PathFinder {
 
                     // calculate the final f value so this tile can be sorted appropriately for
                     // efficient check
-                    let f = tentative_g + octile_dist(check_tile, goal);
+                    let f = tentative_g + octile_dist(check_tile.map_pos(), goal);
 
                     // finally, push the node to be properly evaluated by the first half of this algorithm
                     self.open.push(Node {
@@ -264,13 +265,14 @@ impl PathFinder {
 fn reconstruct_path(
     parents: &[MapCord],
     map_dimensions: MapDimensions,
-    start: MapCord,
-    goal: MapCord,
+    start: Vector2,
+    goal: Vector2,
 ) -> Path {
     let mut path: VecDeque<Vector2> = VecDeque::new();
-    let mut current = goal;
+    let mut current = MapCord::from_vec2(goal);
+    let start_map_cord = MapCord::from_vec2(start);
 
-    while current != start {
+    while current != start_map_cord {
         path.push_front(current.map_pos());
 
         let index = cords_to_index(map_dimensions, current);
@@ -278,11 +280,14 @@ fn reconstruct_path(
         current = parents[index];
     }
 
+    path.pop_back();
+    path.push_back(goal);
+
     return path;
 }
 
 #[inline]
-fn octile_dist(p1: MapCord, p2: MapCord) -> f32 {
+fn octile_dist(p1: Vector2, p2: Vector2) -> f32 {
     let dx = (p1.x - p2.x).abs() as f32;
     let dy = (p1.y - p2.y).abs() as f32;
 

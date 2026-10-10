@@ -78,7 +78,7 @@ pub struct CharacterData {
     pub character_values: CharacterSpecificData,
     pub path: Option<Path>,
     pub opponents: HashSet<CharID>,
-    current_opponent: Option<CharID>,
+    pub current_opponent: Option<CharID>,
     pub pos: Vector2,
     pub target_pos: Option<Vector2>,
     pub facing_direction: FacingDirection,
@@ -149,10 +149,11 @@ impl CharacterData {
             self.target_pos = Some(target);
 
             match game_context.path_finder.a_star(
-                MapCord::from_vec2(self.pos),
-                MapCord::from_vec2(target),
+                self.pos,
+                target,
                 map,
                 100.0,
+                self.character_values.affiliation,
             ) {
                 Ok(path) => self.path = Some(path),
                 Err(path_error) => match path_error {
@@ -221,6 +222,11 @@ impl CharacterData {
 
         return CharacterMovementResult::NotArrivedYet;
     }
+
+    #[inline]
+    pub fn get_center(&self) -> Vector2 {
+        return self.pos + Vector2::new(self.character_values.width / 2.0, self.character_values.height / 2.0);
+    }
 }
 
 pub enum CharacterKind {
@@ -266,7 +272,9 @@ impl Character {
                     CharacterKind::Gatherer(gatherer) => {
                         gatherer.update(&mut self.character_data, game_context, map)
                     }
-                    CharacterKind::Enemy(enemy) => enemy.update(game_context, map, character_info),
+                    CharacterKind::Enemy(enemy) => {
+                        enemy.update(&mut self.character_data, game_context, map, character_info)
+                    }
                 }
             }
             CharacterState::Moving { target } => {
@@ -325,6 +333,7 @@ impl Character {
 
                 match self.character_data.combat_state {
                     CombatState::PreAttack => {
+                        self.character_data.attack_timer.track(dt);
                         if self.character_data.attack_timer.is_done() {
                             self.character_data.character_values.attack_anim.update(dt);
                             if self
@@ -343,11 +352,7 @@ impl Character {
                         let self_idx = self.character_data.unique_char_id;
                         let opponent_idx = self.character_data.current_opponent.unwrap();
 
-                        self.do_attack(
-                            self_idx,
-                            opponent_idx,
-                            &mut game_context.character_action_manager,
-                        );
+                        self.do_attack(self_idx, opponent_idx, game_context, character_info);
 
                         // move to the wind down attack before evaluating state
                         self.character_data.combat_state = CombatState::PostAttack;
@@ -378,6 +383,15 @@ impl Character {
 
     #[inline]
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
+
+        // PATH DEBUGGING:
+        // if let Some(path) = &self.character_data.path {
+        //     for p in path {
+        //         const SPR: Sprite = Sprite::new(64, 72, 8, 8);
+        //         SPR.draw(d, *p, texture);
+        //     }
+        // }
+        
         let sprite = self.current_sprite();
         sprite.draw(d, self.get_draw_pos(), texture);
     }
@@ -558,15 +572,34 @@ impl Character {
             Timer::new(self.character_data.character_values.time_between_attacks);
     }
 
+    /// can be overridden for special attacks
     pub fn do_attack(
         &mut self,
         self_id: CharID,
         target_id: CharID,
-        character_action_manager: &mut CharacterActionManager,
+        game_context: &mut GameContext,
+        character_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
-        character_action_manager.push_action(CharacterAction::Attack {
-            attacker_id: self_id,
-            target_id,
-        });
+        let damage = self.character_data.character_values.attack_power;
+
+        game_context
+            .character_action_manager
+            .push_action(CharacterAction::Attack {
+                attacker_id: self_id,
+                target_id,
+            });
+
+        let char_info = character_info
+            .get(&self.character_data.current_opponent.unwrap())
+            .unwrap();
+
+        game_context
+            .visual_effects_manager
+            .add_damage_number(char_info.center_pos, damage);
+    }
+
+    #[inline]
+    pub fn get_center(&self) -> Vector2 {
+        return self.character_data.get_center()
     }
 }

@@ -44,7 +44,7 @@ pub mod utils;
 
 // any of these can be done in any order:
 //      ENEMY IMPLEMENTATION:
-//          Make look for closest character and change to moving to target state
+//          Handle when a character dies
 //          Once fighter is implemented, add new fight button
 //
 //      FEATURE IMPLEMENTATION:
@@ -196,11 +196,10 @@ fn main() {
     //
     // DEBUG START
     //
-    for i in 0..5 {
-        entity_manager.add_character(Gatherer::new(Vector2::new(100.0 + i as f32 * 5.0, 100.0)));
-    }
+    entity_manager.add_character(Gatherer::new(Vector2::new(100.0 as f32, 104.0)));
 
-    entity_manager.add_character(Slime::new(Vector2::new(150.0, 100.0)));
+
+    entity_manager.add_character(Slime::new(Vector2::new(200.0, 104.0)));
 
     //
     // DEBUG END
