@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use raylib::{
     drawing::RaylibDrawHandle,
-    ffi::__bool_true_false_are_defined,
     math::{Rectangle, Vector2},
     texture::Texture2D,
 };

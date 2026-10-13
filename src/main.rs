@@ -1,3 +1,22 @@
+use crate::{
+    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX},
+    entities::{
+        characters::{enemies::slime::Slime, gatherer::Gatherer},
+        entity_manager::EntityManager,
+    },
+    map::tile_map::TileMap,
+    systems::{
+        action_button_manager::ActionButtonManager,
+        character_action_manager::CharacterActionManager, day_night_cycle::DayNightCycle,
+        entity_selecting_manager::EntitySelectingManager, lights::Lights, select_rect::SelectRect,
+        visual_effects_manager::VisualEffectsManager,
+    },
+    utils::{
+        direction_utils::ORTHOGONAL_DELTAS,
+        mouse_utils::{self, mouse_world_coords},
+        pathfinding::PathFinder,
+    },
+};
 use rand::rngs::ThreadRng;
 use raylib::{
     RaylibHandle, RaylibThread,
@@ -12,29 +31,6 @@ use raylib::{
 use zander_game_core_rs::{
     raylib::sprite::Sprite,
     system::{input_handler::InputState, sprite_particle_system::SpriteParticleSystem},
-};
-
-use crate::{
-    ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX},
-    entities::{
-        characters::{enemies::slime::Slime, gatherer::Gatherer},
-        entity_manager::EntityManager,
-    },
-    map::tile_map::TileMap,
-    systems::{
-        action_button_manager::ActionButtonManager,
-        character_action_manager::CharacterActionManager,
-        day_night_cycle::DayNightCycle,
-        entity_selecting_manager::EntitySelectingManager,
-        lights::Lights,
-        select_rect::SelectRect,
-        visual_effects_manager::VisualEffectsManager,
-    },
-    utils::{
-        direction_utils::ORTHOGONAL_DELTAS,
-        mouse_utils::{self, mouse_world_coords},
-        pathfinding::PathFinder,
-    },
 };
 
 pub mod entities;
@@ -60,7 +56,7 @@ pub mod utils;
 //          ALL the sounds from the github repo
 //          On hit visual for characters
 //          UI layer render target, probably larger, only one necessary.
-// 
+//
 //      BUGFIX:
 //          make the tile map creation return a result and keep remaking the map until it produces a valid one, as a last resort fail safe
 //
@@ -199,8 +195,7 @@ fn main() {
     //
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0 as f32, 104.0)));
 
-
-    entity_manager.add_character(Slime::new(Vector2::new(160.0, 104.0)));
+    entity_manager.add_character(Slime::new(Vector2::new(120.0, 104.0)));
 
     //
     // DEBUG END
@@ -211,7 +206,6 @@ fn main() {
         game_context.total_game_time = rl.get_time() as f32;
 
         let dt = game_context.dt;
-        let total_game_time = game_context.total_game_time;
 
         // update input first
         handle_input_and_update_camera(
@@ -228,7 +222,7 @@ fn main() {
         //--UPDATE BEGINS HERE--//
 
         // update map first
-        map.update(game_context.dt);
+        map.update(dt);
 
         // entity selecting manager updated next in order to properly maintain good order with
         // select modes
@@ -331,8 +325,9 @@ fn main() {
                     );
                 } // end shader drawing
 
-                game_context.visual_effects_manager.draw_effects(&mut cam, &game_context.texture);
-                
+                game_context
+                    .visual_effects_manager
+                    .draw_effects(&mut cam, &game_context.texture);
             } // end camera drawing
         } // end object rt drawing
 
@@ -373,10 +368,9 @@ fn main() {
             );
         }
 
-
         game_context.day_night_cycle.draw_dbg(&mut d);
         entity_selecting_manager.draw(&mut d);
-    //--DRAWING ENDS HERE--//
+        //--DRAWING ENDS HERE--//
     }
 }
 

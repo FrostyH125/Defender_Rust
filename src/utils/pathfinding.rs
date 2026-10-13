@@ -7,12 +7,12 @@ use std::{
 use raylib::math::Vector2;
 
 use crate::{
-    entities::character::Affiliation, map::{
+    entities::character::Affiliation,
+    map::{
         tile::TileType,
         tile_map::{MapDimensions, TileMap},
-    }, utils::{
-        direction_utils::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::{self, cords_to_index, get_tile_at_cord, is_tile_in_bounds}, vector2_utils,
     },
+    utils::{direction_utils::ORTHOGONAL_DELTAS, map_cord::MapCord, map_utils::cords_to_index},
 };
 
 struct Node {
@@ -107,10 +107,9 @@ impl PathFinder {
         max_radius_for_path: f32,
         affiliation: Affiliation,
     ) -> Result<Path, PathError> {
-
         let start_map_cord = MapCord::from_vec2(start);
         let goal_map_cord = MapCord::from_vec2(goal);
-        
+
         // base case handling
         if goal_map_cord.dist_to(start_map_cord) >= max_radius_for_path {
             println!("current pathfinding goal too far away");
@@ -127,16 +126,12 @@ impl PathFinder {
             return Err(PathError::NoRoute);
         }
 
-        if tile_map.get_tile_from_cord(goal_map_cord)
-            != TileType::Grass
-        {
+        if tile_map.get_tile_from_cord(goal_map_cord) != TileType::Grass {
             println!("current pathfinding goal is not grass");
             return Err(PathError::NoRoute);
         }
 
-        if tile_map.get_tile_from_cord(start_map_cord)
-            != TileType::Grass
-        {
+        if tile_map.get_tile_from_cord(start_map_cord) != TileType::Grass {
             println!("current pathfinding start is not grass");
             return Err(PathError::NoRoute);
         }
