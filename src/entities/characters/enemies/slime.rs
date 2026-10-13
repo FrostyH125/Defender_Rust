@@ -1,25 +1,14 @@
-use std::collections::HashMap;
-
 use raylib::math::Vector2;
 use zander_game_core_rs::raylib::{
     animation_data::SpriteAnimationData, sprite::Sprite, sprite_animation::SpriteAnimationInstance,
 };
 
-use crate::{
-    GameContext,
-    entities::{
-        character::{
-            Affiliation, Character, CharacterData, CharacterKind, CharacterMovementResult,
-            CharacterSpecificData, SimpleCharacterKind,
-        },
-        characters::{
-            enemies::slime::SlimeState::Attacking,
-            enemy::{Enemy, EnemyData, EnemyKind},
-        },
-        entity_manager::{BasicCharacterInfo, CharID},
+use crate::entities::{
+    character::{
+        Affiliation, Character, CharacterData, CharacterKind, CharacterSpecificData,
+        SimpleCharacterKind,
     },
-    map::tile_map::TileMap,
-    utils::entity_utils::enemy_get_closest_target,
+    characters::enemy::{Enemy, EnemyData, EnemyKind},
 };
 
 static SLIME_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
@@ -46,15 +35,13 @@ static SLIME_POST_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
     should_loop: false,
 };
 
-#[derive(PartialEq)]
-pub enum SlimeState {
-    Idle,
-    MovingToTarget { target_pos: Vector2 },
-    Attacking,
-}
+static SLIME_DYING_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &Sprite::create_sequence_of_sprites::<7>(16, 168, 8, 8),
+    frame_duration: 0.1,
+    should_loop: false,
+};
 
 pub struct Slime {
-    pub slime_state: SlimeState,
 }
 
 impl Slime {
@@ -64,6 +51,7 @@ impl Slime {
             move_anim: SpriteAnimationInstance::new(&SLIME_MOVE_ANIM),
             attack_anim: SpriteAnimationInstance::new(&SLIME_ATTACK_ANIM),
             post_attack_anim: SpriteAnimationInstance::new(&SLIME_POST_ATTACK_ANIM),
+            dying_anim: SpriteAnimationInstance::new(&SLIME_DYING_ANIM),
             draw_offset: Vector2::zero(),
             max_health: 30.0,
             time_between_attacks: 3.0,
@@ -78,7 +66,7 @@ impl Slime {
         let data = CharacterData::new(pos, character_values);
 
         let slime = Slime {
-            slime_state: SlimeState::Idle,
+
         };
 
         return Character {
@@ -88,15 +76,5 @@ impl Slime {
                 enemy_kind: EnemyKind::Slime(slime),
             }),
         };
-    }
-
-    pub fn current_sprite(&self, character_data: &CharacterData) -> Sprite {
-        match self.slime_state {
-            SlimeState::Idle => character_data.character_values.idle_anim.current_sprite(),
-            SlimeState::MovingToTarget { .. } => {
-                character_data.character_values.move_anim.current_sprite()
-            }
-            SlimeState::Attacking => SLIME_IDLE_ANIM.frames[0],
-        }
     }
 }

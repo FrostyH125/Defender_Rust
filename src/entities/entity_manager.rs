@@ -54,6 +54,7 @@ pub struct BasicCharacterInfo {
 pub struct EntityManager {
     next_unique_character_id: CharID,
     pub characters: Vec<CharacterEntry>,
+    pub characters_to_remove: Vec<usize>,
     map_dimensions: MapDimensions,
     start_tile_x: i16,
     start_tile_y: i16,
@@ -66,6 +67,7 @@ impl EntityManager {
         return EntityManager {
             next_unique_character_id: CharID(0),
             characters: Vec::with_capacity(200),
+            characters_to_remove: Vec::with_capacity(10),
             map_dimensions,
             start_tile_x: 0,
             start_tile_y: 0,
@@ -165,7 +167,7 @@ impl EntityManager {
             })
             .collect();
 
-        for character in &mut self.characters {
+        for (i, character) in self.characters.iter_mut().enumerate() {
             let affiliation = character
                 .character
                 .character_data
@@ -178,11 +180,9 @@ impl EntityManager {
                 character.character.character_data.is_selected = false;
             }
 
-            if right_clicked {
-                if character.character.character_data.is_selected_for_move {
-                    character.character.set_move_to(mouse_pos);
-                    moved_anyone = true;
-                }
+            if right_clicked && character.character.character_data.is_selected_for_move {
+                character.character.set_move_to(mouse_pos);
+                moved_anyone = true;
             }
 
             if selector.is_deselecting_move {
@@ -194,6 +194,11 @@ impl EntityManager {
             character
                 .character
                 .update(game_context, map, &character_info);
+
+            if character.character.character_data.waiting_for_removal {
+                self.characters_to_remove.push(i);
+                continue;
+            }
 
             let should_spawn_new_selected_for_move_particle =
                 character.character.character_data.is_selected_for_move
@@ -290,14 +295,14 @@ impl EntityManager {
                     .is_done()
                     || !is_in_camera_view(object.hover_rect(), game_context);
 
-                let should_obj_delete = is_object_breaking && is_object_out_of_view_or_disappear_timer_done;
+                let should_obj_delete =
+                    is_object_breaking && is_object_out_of_view_or_disappear_timer_done;
 
                 // delete object if its done with breaking or is breaking and left view
                 if should_obj_delete {
                     *optional_object = None;
                     continue;
                 }
-
 
                 object.update(game_context, selector.is_deselecting_objs);
 
@@ -333,16 +338,14 @@ impl EntityManager {
                 if select_rect.is_selecting_this_frame {
                     selector.select_multiple_objs(&mut map.map_object_grid, hover_objs);
                     was_anything_selected_this_frame = true;
-                } else {
-                    if let Some(idx) = hover_obj {
-                        let obj = &mut map.map_object_grid[idx].as_mut().unwrap();
+                } else if let Some(idx) = hover_obj {
+                    let obj = &mut map.map_object_grid[idx].as_mut().unwrap();
 
-                        obj.set_hovering();
+                    obj.set_hovering();
 
-                        if left_clicked {
-                            selector.select_single_obj(obj, idx);
-                            was_anything_selected_this_frame = true;
-                        }
+                    if left_clicked {
+                        selector.select_single_obj(obj, idx);
+                        was_anything_selected_this_frame = true;
                     }
                 }
             }
@@ -350,14 +353,12 @@ impl EntityManager {
                 if select_rect.is_selecting_this_frame {
                     selector.select_multiple_chars(hover_chars);
                     was_anything_selected_this_frame = true;
-                } else {
-                    if let Some(ch) = hover_char {
-                        ch.character.character_data.is_hovering = true;
+                } else if let Some(ch) = hover_char {
+                    ch.character.character_data.is_hovering = true;
 
-                        if left_clicked {
-                            selector.select_single_char(ch);
-                            was_anything_selected_this_frame = true;
-                        }
+                    if left_clicked {
+                        selector.select_single_char(ch);
+                        was_anything_selected_this_frame = true;
                     }
                 }
             }
@@ -365,13 +366,11 @@ impl EntityManager {
 
         if select_rect.is_selecting_for_move_this_frame {
             selector.select_multiple_moves(hover_chars_for_move);
-        } else {
-            if let Some(ch) = hover_char_for_move {
-                ch.character.character_data.is_hovering_for_move = true;
+        } else if let Some(ch) = hover_char_for_move {
+            ch.character.character_data.is_hovering_for_move = true;
 
-                if right_clicked {
-                    selector.select_single_move(ch);
-                }
+            if right_clicked {
+                selector.select_single_move(ch);
             }
         }
 
@@ -391,6 +390,14 @@ impl EntityManager {
                 &mut self.characters,
             );
         }
+
+        // need to iterate backwards because these are ordered
+        // so if i remove one in front of another one, the indices wont line up
+        for i in (0..self.characters_to_remove.len()).rev() {
+            let index = self.characters_to_remove[i];
+            self.characters.remove(index);
+        }
+        self.characters_to_remove.clear();
 
         // sort the characters by tile index (important)
         self.characters.sort_by_key(|c| c.render_index);

@@ -7,10 +7,7 @@ use crate::{
     GameContext,
     entities::{
         character::{CharacterData, CharacterMovementResult},
-        characters::{
-            enemies::slime::{Slime, SlimeState},
-            enemy::EnemyState::SelectingOpponent,
-        },
+        characters::enemies::slime::Slime,
         entity_manager::{BasicCharacterInfo, CharID},
     },
     map::tile_map::TileMap,
@@ -51,18 +48,6 @@ pub struct Enemy {
 }
 
 impl Enemy {
-    pub fn set_idle(&mut self) {
-        match &mut self.enemy_kind {
-            EnemyKind::Slime(slime) => slime.slime_state = SlimeState::Idle,
-        }
-    }
-
-    pub fn is_idle(&self) -> bool {
-        match &self.enemy_kind {
-            EnemyKind::Slime(slime) => return slime.slime_state == SlimeState::Idle,
-        }
-    }
-
     pub fn update(
         &mut self,
         this_characters_data: &mut CharacterData,
@@ -128,8 +113,12 @@ impl Enemy {
     }
 
     pub fn current_sprite(&self, character_data: &CharacterData) -> Sprite {
-        match &self.enemy_kind {
-            EnemyKind::Slime(slime) => slime.current_sprite(character_data),
+
+        match self.enemy_data.enemy_state {
+            EnemyState::SelectingOpponent | EnemyState::Attacking => {
+                character_data.character_values.idle_anim.current_sprite()
+            }
+            EnemyState::Moving { .. } => character_data.character_values.move_anim.current_sprite(),
         }
     }
 }

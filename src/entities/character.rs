@@ -22,7 +22,7 @@ use crate::{
         object::Object,
     },
     map::tile_map::{MapDimensions, TileMap},
-    systems::character_action_manager::{CharacterAction, CharacterActionManager},
+    systems::character_action_manager::CharacterAction,
     utils::{
         camera_utils,
         direction_utils::FacingDirection,
@@ -60,6 +60,7 @@ pub enum CharacterState {
     None,
     Moving { target: Vector2 },
     InCombat,
+    Dying,
 }
 
 #[derive(Clone, Copy)]
@@ -91,6 +92,7 @@ pub struct CharacterData {
     pub combat_state: CombatState,
     pub unique_char_id: CharID,
     pub attack_timer: Timer,
+    pub waiting_for_removal: bool,
 }
 
 /// this struct is for things that are based on T type character, not characters as a whole and not things managed by the code specifically
@@ -101,6 +103,7 @@ pub struct CharacterSpecificData {
     pub move_anim: SpriteAnimationInstance,
     pub attack_anim: SpriteAnimationInstance,
     pub post_attack_anim: SpriteAnimationInstance,
+    pub dying_anim: SpriteAnimationInstance,
     pub draw_offset: Vector2,
     pub max_health: f32,
     pub time_between_attacks: f32,
@@ -131,6 +134,7 @@ impl CharacterData {
             unique_char_id: CharID(0),
             attack_timer: Timer::new(character_values.time_between_attacks),
             character_values,
+            waiting_for_removal: false,
         };
     }
 
@@ -225,7 +229,11 @@ impl CharacterData {
 
     #[inline]
     pub fn get_center(&self) -> Vector2 {
-        return self.pos + Vector2::new(self.character_values.width / 2.0, self.character_values.height / 2.0);
+        return self.pos
+            + Vector2::new(
+                self.character_values.width / 2.0,
+                self.character_values.height / 2.0,
+            );
     }
 }
 
@@ -248,7 +256,7 @@ impl Character {
     pub fn set_idle_to_unique_states(&mut self) {
         match &mut self.character_kind {
             CharacterKind::Gatherer(gatherer) => gatherer.gatherer_state = GathererState::Idle,
-            CharacterKind::Enemy(enemy) => enemy.set_idle(),
+            CharacterKind::Enemy(..) => (),
         }
     }
 
@@ -259,6 +267,11 @@ impl Character {
         map: &mut TileMap,
         character_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
+
+        if self.character_data.health <= 0.0 {
+            self.character_data.state = CharacterState::Dying;
+        }
+        
         match self.character_data.state {
             CharacterState::None => {
                 if self.is_idle() {
@@ -370,6 +383,21 @@ impl Character {
                     }
                 }
             }
+            CharacterState::Dying => {
+                self.character_data
+                    .character_values
+                    .dying_anim
+                    .update(game_context.dt);
+
+                if self
+                    .character_data
+                    .character_values
+                    .dying_anim
+                    .finished_playing
+                {
+                    self.character_data.waiting_for_removal = true;
+                }
+            }
         }
 
         self.character_data.is_hovering = false;
@@ -383,7 +411,6 @@ impl Character {
 
     #[inline]
     pub fn draw(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
-
         // PATH DEBUGGING:
         // if let Some(path) = &self.character_data.path {
         //     for p in path {
@@ -391,7 +418,7 @@ impl Character {
         //         SPR.draw(d, *p, texture);
         //     }
         // }
-        
+
         let sprite = self.current_sprite();
         sprite.draw(d, self.get_draw_pos(), texture);
     }
@@ -468,6 +495,11 @@ impl Character {
                     .post_attack_anim
                     .current_sprite(),
             },
+            CharacterState::Dying => self
+                .character_data
+                .character_values
+                .dying_anim
+                .current_sprite(),
         };
 
         if self.character_data.facing_direction == FacingDirection::Left {
@@ -558,8 +590,8 @@ impl Character {
             CharacterKind::Gatherer(gatherer) => {
                 return gatherer.gatherer_state == GathererState::Idle;
             }
-            // enemy itself is a base struct, so dipatch is one level deeper
-            CharacterKind::Enemy(enemy) => enemy.is_idle(),
+            // enemy is never considered idle, is always moving or attacking
+            CharacterKind::Enemy(..) => false,
         }
     }
 
@@ -600,6 +632,6 @@ impl Character {
 
     #[inline]
     pub fn get_center(&self) -> Vector2 {
-        return self.character_data.get_center()
+        return self.character_data.get_center();
     }
 }

@@ -42,19 +42,25 @@ static GATHERER_MOVE_ANIM: SpriteAnimationData = SpriteAnimationData {
 };
 
 static GATHERER_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &Sprite::create_sequence_of_sprites::<5>(16, 192, 8, 8),
-    frame_duration: 0.25,
+    frames: &Sprite::create_sequence_of_sprites::<8>(16, 192, 8, 8),
+    frame_duration: 0.05,
     should_loop: false,
 };
 
 static GATHERER_GATHER_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &Sprite::create_sequence_of_sprites::<9>(16, 200, 8, 8),
+    frames: &Sprite::create_sequence_of_sprites::<8>(16, 192, 8, 8),
     frame_duration: 0.05,
     should_loop: false,
 };
 
 static GATHERER_POST_ATTACK_ANIM: SpriteAnimationData = SpriteAnimationData {
-    frames: &Sprite::create_sequence_of_sprites::<5>(64, 192, 8, 8),
+    frames: &Sprite::create_sequence_of_sprites::<3>(16, 200, 8, 8),
+    frame_duration: 0.1,
+    should_loop: false,
+};
+
+static GATHERER_DYING_ANIM: SpriteAnimationData = SpriteAnimationData {
+    frames: &Sprite::create_sequence_of_sprites::<6>(16, 208, 8, 8),
     frame_duration: 0.1,
     should_loop: false,
 };
@@ -114,6 +120,7 @@ impl Gatherer {
             move_anim: SpriteAnimationInstance::new(&GATHERER_MOVE_ANIM),
             attack_anim: SpriteAnimationInstance::new(&GATHERER_ATTACK_ANIM),
             post_attack_anim: SpriteAnimationInstance::new(&GATHERER_POST_ATTACK_ANIM),
+            dying_anim: SpriteAnimationInstance::new(&GATHERER_DYING_ANIM),
             affiliation: Affiliation::Good,
             draw_offset: Vector2::zero(),
             time_between_attacks: 1.0,

@@ -59,6 +59,7 @@ pub mod utils;
 //          cool shader for background instead of no tiles -> use that one steam tool it was sick
 //          ALL the sounds from the github repo
 //          On hit visual for characters
+//          UI layer render target, probably larger, only one necessary.
 // 
 //      BUGFIX:
 //          make the tile map creation return a result and keep remaking the map until it produces a valid one, as a last resort fail safe
@@ -199,7 +200,7 @@ fn main() {
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0 as f32, 104.0)));
 
 
-    entity_manager.add_character(Slime::new(Vector2::new(200.0, 104.0)));
+    entity_manager.add_character(Slime::new(Vector2::new(160.0, 104.0)));
 
     //
     // DEBUG END
