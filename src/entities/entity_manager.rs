@@ -99,6 +99,9 @@ impl EntityManager {
         action_button_manager: &mut ActionButtonManager,
         zoom: u32,
     ) {
+
+        println!("number of characters: {}", self.characters.len());
+        
         // update the action buttons first so that they can interrupt and do their on_click before the next batch of selections starts
         // since left clicking ALWAYS removes the selected objects and clears the action buttons active
         action_button_manager.update(

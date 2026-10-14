@@ -1,3 +1,6 @@
+// the way i want this games main combat phase to work, is for it to be based more on smart
+// fighter placement before the night starts, rather than 
+
 use crate::{
     ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX},
     entities::{
@@ -38,8 +41,6 @@ pub mod map;
 pub mod systems;
 pub mod utils;
 
-// any of these can be done in any order:
-//
 //      FEATURE IMPLEMENTATION:
 //          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
 //          grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
@@ -58,6 +59,12 @@ pub mod utils;
 //          as opposed to the devotees generating spirit during the day
 //          upgrade from monolith thing that let you heal characters in a circle
 //          upgrade from monolith to move all characters to center for reinforcements or something
+//          "in combat, can't move" message when trying to move a fighter whilst in combat
+//          also disable moving characters at night, only able to retreat temporarily and help them out with special abilities
+//          EnemyState::RunningAway for running away at the end of night time
+//          eventually, the game will show you which enemies are where before the night happens, or maybe during a special placement phase
+//          in this placement phase player will also see detection range of every fighter
+//          this will allow you to place your fighters in the best possible spots and watch things unfold
 //
 //      BUGFIX:
 //          make the tile map creation return a result and keep remaking the map until it produces a valid one, as a last resort fail safe
@@ -65,12 +72,6 @@ pub mod utils;
 //      FIGHTER IMPLEMENTATION
 //          fighter: enum { FighterKindOne, FighterKindTwo, etc..}
 //          fighter_data: struct
-//          FighterState::Idle
-//          FighterState::LookingForEnemy
-//          FighterState::MovingToEnemy
-//          FighterState::InCombat
-//          Add fight button
-//          Test fight button, making sure the result is as expected
 //          Also make sure the underlying fighter list of enemies is working as expected, especially for multiple fighters
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -197,7 +198,7 @@ fn main() {
     //
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0 as f32, 104.0)));
 
-    entity_manager.add_character(Slime::new(Vector2::new(200.0, 104.0)));
+    entity_manager.add_character(Slime::new(Vector2::new(120.0, 104.0)));
 
     //
     // DEBUG END

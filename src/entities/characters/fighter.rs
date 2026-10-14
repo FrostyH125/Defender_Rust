@@ -1,0 +1,2 @@
+// very very similar to enemy. actually, almost identical, except the way the find opponent function
+// will work is that itll look within a detection_range and see if any enemy is there, if is, find closest one, and walk to it

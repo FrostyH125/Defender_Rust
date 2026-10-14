@@ -1,4 +1,9 @@
-use std::collections::{HashMap, HashSet};
+// combat behavior
+// characters will move to the opponent
+// when they reach the opponent, start attacking, and attempt to engage in combat with them
+// will only succeed if they dont already have an opponent, but character is still free to attack opponent
+
+use std::collections::HashMap;
 
 use raylib::{
     drawing::RaylibDrawHandle,
@@ -62,7 +67,7 @@ pub enum CharacterState {
     Dying,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum CombatState {
     // another moving state, this one nested in combat state for specifically combat
     // focused movement to determined opponent
@@ -339,14 +344,18 @@ impl Character {
                             .reset();
                         return;
                     } else {
-                        // try to engage in combat each frame so that if character is surrounded it will have another opponent
-                        // after killing one
-                        game_context.character_action_manager.push_action(
-                            CharacterAction::TryEngageInCombat {
-                                attacker_id: self.character_data.unique_char_id,
-                                target_id: id,
-                            },
-                        );
+
+                        // only do this part when you actually arrived and start attacking
+                        if self.character_data.combat_state != CombatState::MovingToTarget {
+                            // try to engage in combat each frame so that if character is surrounded it will have another opponent
+                            // after killing one
+                            game_context.character_action_manager.push_action(
+                                CharacterAction::TryEngageInCombat {
+                                    attacker_id: self.character_data.unique_char_id,
+                                    target_id: id,
+                                },
+                            );        
+                        }
 
                         let distance_to_opponent = self.character_data.pos.distance_to(opponent_info.unwrap().position);
                         if distance_to_opponent > self.character_data.character_values.attack_range {
