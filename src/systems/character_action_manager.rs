@@ -9,7 +9,7 @@ pub enum CharacterAction {
         attacker_id: CharID,
         target_id: CharID,
     },
-    EngageInCombat {
+    TryEngageInCombat {
         attacker_id: CharID,
         target_id: CharID,
     },
@@ -50,14 +50,14 @@ impl CharacterActionManager {
                     let target = get_char_by_unique_id(chars, *target_id);
                     target.character.character_data.health -= damage;
                 }
-                CharacterAction::EngageInCombat {
+                CharacterAction::TryEngageInCombat {
                     attacker_id,
                     target_id,
                 } => {
                     let target = &mut get_char_by_unique_id(chars, *target_id).character;
 
                     // early return and nothing done if character is dying
-                    if target.character_data.health <= 0.0 {
+                    if target.character_data.state == CharacterState::Dying {
                         return;
                     }
 

@@ -10,7 +10,7 @@ use zander_game_core_rs::{
 
 use crate::{
     GameContext, entities::{
-        character::CharacterKind, characters::gatherer::GatherTarget, entity_manager::{CharID, CharacterEntry},
+        character::{CharacterKind, CharacterState}, characters::gatherer::GatherTarget, entity_manager::{CharID, CharacterEntry},
     }, map::tile_map::MapObjectGrid, utils::{
         direction_utils::ORTHOGONAL_DELTAS,
         draw_utils,
@@ -137,6 +137,7 @@ impl ActionButton {
             let char = &mut get_char_by_unique_id(characters, *char_id).character;
 
             if let CharacterKind::Gatherer(gatherer) = &mut char.character_kind {
+                char.character_data.state = CharacterState::None;
                 gatherer.set_new_target(&mut char.character_data, obj_kind, object_grid, &object_ids_with_correct_type);
             }
         }

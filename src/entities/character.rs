@@ -54,7 +54,7 @@ pub enum CharacterMovementResult {
     TooLong,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum CharacterState {
     None,
     Moving { target: Vector2 },
@@ -65,7 +65,7 @@ pub enum CharacterState {
 #[derive(Clone, Copy)]
 pub enum CombatState {
     // another moving state, this one nested in combat state for specifically combat
-    // focused movement
+    // focused movement to determined opponent
     MovingToTarget,
 
     // for handling the attack animation
@@ -122,7 +122,7 @@ impl CharacterData {
     pub fn new(pos: Vector2, character_values: CharacterSpecificData) -> CharacterData {
         return CharacterData {
             state: CharacterState::None,
-            combat_state: CombatState::PreAttack,
+            combat_state: CombatState::MovingToTarget,
             current_opponent: None,
             pos,
             target_pos: None,
@@ -273,6 +273,18 @@ impl Character {
             self.character_data.state = CharacterState::Dying;
         }
 
+        // update enemy no matter what to allow for special behavior since enemies are never idle
+        // might include this for fighter class units eventually as well because theyre planned to be
+        // only idle and fighting, and i want them to be able to do small special things while fighting not
+        // tied to the do_attack() action
+        // i think that combat focused units are just needing to be handled a little bit differently than
+        // more functional or system based ones, which really should only do their actions when not being controlled
+        // by the player, as well as because the combat state is fairly robust at preventing weird behaviors as its not
+        // tied to the character specific update methods as opposed to something like the gatherer or something
+        if let CharacterKind::Enemy(e) = &mut self.character_kind {
+            e.update(&mut self.character_data, game_context, map, character_info);
+        }
+
         match self.character_data.state {
             CharacterState::None => {
                 if self.is_idle() {
@@ -286,9 +298,8 @@ impl Character {
                     CharacterKind::Gatherer(gatherer) => {
                         gatherer.update(&mut self.character_data, game_context, map)
                     }
-                    CharacterKind::Enemy(enemy) => {
-                        enemy.update(&mut self.character_data, game_context, map, character_info)
-                    }
+                    // updated already
+                    CharacterKind::Enemy(..) => ()
                 }
             }
             CharacterState::Moving { target } => {
@@ -308,11 +319,6 @@ impl Character {
             CharacterState::InCombat => {
                 let dt = game_context.dt;
 
-                // unfortunately doing this every frame just made a lot of sense
-                // between attack animation times, and many things potentially affecting a potential opponent
-                // i just dont think checking once in a state would make sense
-                // it doesnt make sense to attack an opponent that is potentially dead, or wind
-                // an attack up for one thats dead, etc, id basically be checking in every state anyway every frame
                 if let Some(id) = self.character_data.current_opponent {
                     let opponent_info = character_info.get(&id);
                     
@@ -324,7 +330,7 @@ impl Character {
                     if opponent_is_invalid {
                         self.character_data.current_opponent = None;
                         self.character_data.state = CharacterState::None;
-                        self.character_data.combat_state = CombatState::PreAttack;
+                        self.character_data.combat_state = CombatState::MovingToTarget;
                         self.character_data.attack_timer.reset();
                         self.character_data.character_values.attack_anim.reset();
                         self.character_data
@@ -336,7 +342,7 @@ impl Character {
                         // try to engage in combat each frame so that if character is surrounded it will have another opponent
                         // after killing one
                         game_context.character_action_manager.push_action(
-                            CharacterAction::EngageInCombat {
+                            CharacterAction::TryEngageInCombat {
                                 attacker_id: self.character_data.unique_char_id,
                                 target_id: id,
                             },
@@ -366,6 +372,7 @@ impl Character {
                             self.character_data.character_values.move_anim.update(dt);
                         } else {
                             self.character_data.combat_state = CombatState::PreAttack;
+                            self.character_data.character_values.move_anim.reset();
                         }
                     }
                     CombatState::PreAttack => {
