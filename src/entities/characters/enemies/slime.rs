@@ -61,6 +61,7 @@ impl Slime {
             height: 8.0,
             affiliation: Affiliation::Evil,
             character_kind: SimpleCharacterKind::Enemy,
+            attack_range: 8.0
         };
 
         let data = CharacterData::new(pos, character_values);
@@ -72,7 +73,7 @@ impl Slime {
         return Character {
             character_data: data,
             character_kind: CharacterKind::Enemy(Enemy {
-                enemy_data: EnemyData::new(2.0, 8.0),
+                enemy_data: EnemyData::new(2.0),
                 enemy_kind: EnemyKind::Slime(slime),
             }),
         };

@@ -128,6 +128,7 @@ impl Gatherer {
             move_speed: 30.0,
             max_health: 100.0,
             character_kind: SimpleCharacterKind::Gatherer,
+            attack_range: 8.0,
         };
 
         let data = CharacterData::new(pos, character_values);

@@ -39,9 +39,6 @@ pub mod systems;
 pub mod utils;
 
 // any of these can be done in any order:
-//      ENEMY IMPLEMENTATION:
-//          Handle when a character dies
-//          Once fighter is implemented, add new fight button
 //
 //      FEATURE IMPLEMENTATION:
 //          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
@@ -56,6 +53,11 @@ pub mod utils;
 //          ALL the sounds from the github repo
 //          On hit visual for characters
 //          UI layer render target, probably larger, only one necessary.
+//          retreat button with a special character retreated state
+//          all non fighter characters will hide away at night, meaning the only way to generate spirit at night is from killing enemies
+//          as opposed to the devotees generating spirit during the day
+//          upgrade from monolith thing that let you heal characters in a circle
+//          upgrade from monolith to move all characters to center for reinforcements or something
 //
 //      BUGFIX:
 //          make the tile map creation return a result and keep remaking the map until it produces a valid one, as a last resort fail safe
@@ -195,7 +197,7 @@ fn main() {
     //
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0 as f32, 104.0)));
 
-    entity_manager.add_character(Slime::new(Vector2::new(120.0, 104.0)));
+    entity_manager.add_character(Slime::new(Vector2::new(200.0, 104.0)));
 
     //
     // DEBUG END

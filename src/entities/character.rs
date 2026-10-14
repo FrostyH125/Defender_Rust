@@ -64,6 +64,10 @@ pub enum CharacterState {
 
 #[derive(Clone, Copy)]
 pub enum CombatState {
+    // another moving state, this one nested in combat state for specifically combat
+    // focused movement
+    MovingToTarget,
+
     // for handling the attack animation
     PreAttack,
 
@@ -77,7 +81,6 @@ pub enum CombatState {
 pub struct CharacterData {
     pub character_values: CharacterSpecificData,
     pub path: Option<Path>,
-    pub opponents: HashSet<CharID>,
     pub current_opponent: Option<CharID>,
     pub pos: Vector2,
     pub target_pos: Option<Vector2>,
@@ -108,6 +111,7 @@ pub struct CharacterSpecificData {
     pub time_between_attacks: f32,
     pub attack_power: f32,
     pub move_speed: f32,
+    pub attack_range: f32,
     pub width: f32,
     pub height: f32,
     pub affiliation: Affiliation,
@@ -129,7 +133,6 @@ impl CharacterData {
             is_hovering_for_move: false,
             is_selected: false,
             is_selected_for_move: false,
-            opponents: HashSet::new(),
             unique_char_id: CharID(0),
             attack_timer: Timer::new(character_values.time_between_attacks),
             character_values,
@@ -266,11 +269,10 @@ impl Character {
         map: &mut TileMap,
         character_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
-
         if self.character_data.health <= 0.0 {
             self.character_data.state = CharacterState::Dying;
         }
-        
+
         match self.character_data.state {
             CharacterState::None => {
                 if self.is_idle() {
@@ -299,6 +301,7 @@ impl Character {
                     _ => {
                         self.character_data.character_values.move_anim.reset();
                         self.character_data.state = CharacterState::None;
+                        self.character_data.current_opponent = None;
                     }
                 }
             }
@@ -311,23 +314,15 @@ impl Character {
                 // it doesnt make sense to attack an opponent that is potentially dead, or wind
                 // an attack up for one thats dead, etc, id basically be checking in every state anyway every frame
                 if let Some(id) = self.character_data.current_opponent {
-                    let opponent_is_invalid = match character_info.get(&id) {
+                    let opponent_info = character_info.get(&id);
+                    
+                    let opponent_is_invalid = match opponent_info {
                         Some(c_info) => c_info.health <= 0.0,
                         None => true,
                     };
 
                     if opponent_is_invalid {
                         self.character_data.current_opponent = None;
-                    }
-                }
-
-                // if list isnt empty, checks list and assigns next opponent
-                if self.character_data.current_opponent.is_none() {
-                    self.clean_opponents_list(character_info);
-
-                    // checks after resolving any issues with the current opponent and cleaning the list if the list is empty
-                    if self.character_data.opponents.is_empty() {
-                        // reset all relevant values
                         self.character_data.state = CharacterState::None;
                         self.character_data.combat_state = CombatState::PreAttack;
                         self.character_data.attack_timer.reset();
@@ -337,13 +332,42 @@ impl Character {
                             .post_attack_anim
                             .reset();
                         return;
-                    }
+                    } else {
+                        // try to engage in combat each frame so that if character is surrounded it will have another opponent
+                        // after killing one
+                        game_context.character_action_manager.push_action(
+                            CharacterAction::EngageInCombat {
+                                attacker_id: self.character_data.unique_char_id,
+                                target_id: id,
+                            },
+                        );
 
-                    self.character_data.current_opponent =
-                        self.find_suitable_opponent(character_info);
+                        let distance_to_opponent = self.character_data.pos.distance_to(opponent_info.unwrap().position);
+                        if distance_to_opponent > self.character_data.character_values.attack_range {
+                            self.character_data.combat_state = CombatState::MovingToTarget;
+                        }
+                    }
                 }
 
                 match self.character_data.combat_state {
+                    CombatState::MovingToTarget => {
+                        let opponent_pos = character_info
+                            .get(&self.character_data.current_opponent.unwrap())
+                            .unwrap()
+                            .position;
+                        let distance_to_opponent =
+                            opponent_pos.distance_to(self.character_data.pos);
+
+                        // basically if not close enough, move closer, else, do combat. this is actually
+                        // quite a long iteration chain away from how things started
+                        if distance_to_opponent > self.character_data.character_values.attack_range
+                        {
+                            self.character_data.move_to(opponent_pos, game_context, map);
+                            self.character_data.character_values.move_anim.update(dt);
+                        } else {
+                            self.character_data.combat_state = CombatState::PreAttack;
+                        }
+                    }
                     CombatState::PreAttack => {
                         self.character_data.attack_timer.track(dt);
                         if self.character_data.attack_timer.is_done() {
@@ -467,7 +491,9 @@ impl Character {
         let mut spr = match self.character_data.state {
             CharacterState::None => match &self.character_kind {
                 CharacterKind::Gatherer(gatherer) => gatherer.current_sprite(&self.character_data),
-                CharacterKind::Enemy(enemy) => enemy.current_sprite(&self.character_data),
+
+                // enemy is never idle/none state
+                CharacterKind::Enemy(..) => panic!(),
             },
             CharacterState::Moving { .. } => self
                 .character_data
@@ -475,6 +501,11 @@ impl Character {
                 .move_anim
                 .current_sprite(),
             CharacterState::InCombat => match self.character_data.combat_state {
+                CombatState::MovingToTarget => self
+                    .character_data
+                    .character_values
+                    .move_anim
+                    .current_sprite(),
                 CombatState::PreAttack => self
                     .character_data
                     .character_values
@@ -509,34 +540,6 @@ impl Character {
         }
 
         return spr;
-    }
-
-    /// for now prioritizes lowest health opponent, but can be changed eventually
-    pub fn find_suitable_opponent(
-        &mut self,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
-    ) -> Option<CharID> {
-        let mut lowest_id = None;
-        let mut lowest_health = f32::MAX;
-
-        for ch_id in &self.character_data.opponents {
-            let hp = character_info.get(&ch_id).unwrap().health;
-
-            if hp < lowest_health {
-                lowest_id = Some(*ch_id);
-                lowest_health = hp;
-            }
-        }
-
-        return lowest_id;
-    }
-
-    pub fn clean_opponents_list(&mut self, character_info: &HashMap<CharID, BasicCharacterInfo>) {
-        self.character_data.opponents.retain(|ch_id| {
-            character_info
-                .get(ch_id)
-                .is_some_and(|info| info.health > 0.0)
-        });
     }
 
     #[inline]

@@ -1,5 +1,7 @@
 use crate::{
-    entities::{character::CharacterState, entity_manager::{CharID, CharacterEntry}}, utils::entity_utils::get_char_by_unique_id,
+    entities::{
+        character::{CharacterKind, CharacterState, CombatState}, entity_manager::{CharID, CharacterEntry},
+    }, utils::entity_utils::get_char_by_unique_id,
 };
 
 pub enum CharacterAction {
@@ -39,7 +41,11 @@ impl CharacterActionManager {
                     target_id,
                 } => {
                     let attacker = get_char_by_unique_id(chars, *attacker_id);
-                    let damage = attacker.character.character_data.character_values.attack_power;
+                    let damage = attacker
+                        .character
+                        .character_data
+                        .character_values
+                        .attack_power;
 
                     let target = get_char_by_unique_id(chars, *target_id);
                     target.character.character_data.health -= damage;
@@ -48,22 +54,26 @@ impl CharacterActionManager {
                     attacker_id,
                     target_id,
                 } => {
-
                     let target = &mut get_char_by_unique_id(chars, *target_id).character;
 
                     // early return and nothing done if character is dying
                     if target.character_data.health <= 0.0 {
                         return;
                     }
-                    
-                    target.character_data.opponents.insert(*attacker_id);
-                    target.character_data.state = CharacterState::InCombat;
-                    
+
+                    if target.character_data.current_opponent.is_none() {
+                        target.character_data.current_opponent = Some(*attacker_id);
+                        target.character_data.state = CharacterState::InCombat;
+                        target.character_data.combat_state = CombatState::MovingToTarget;
+                    }
+
                     let attacker = &mut get_char_by_unique_id(chars, *attacker_id).character;
 
-                    attacker.character_data.opponents.insert(*target_id);
-                    attacker.character_data.state = CharacterState::InCombat;
-
+                    if attacker.character_data.current_opponent.is_none() {
+                        attacker.character_data.current_opponent = Some(*target_id);
+                        attacker.character_data.state = CharacterState::InCombat;
+                        attacker.character_data.combat_state = CombatState::MovingToTarget;
+                    }
                 }
             }
         }
