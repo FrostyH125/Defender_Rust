@@ -42,3 +42,22 @@ pub fn world_to_screen(world_pos: Vector2, camera: &Camera2D, zoom: ZoomSizes) -
         return screen_raw * scale;
     }
 }
+
+#[inline]
+pub fn world_to_screen_ui(
+    world_pos: Vector2,
+    camera: &Camera2D,
+    game_rt_width: u32,
+    ui_rt_width: i32,
+) -> Vector2 {
+    let ffi_v2: raylib::ffi::Vector2 = world_pos.into();
+    let ffi_camera: raylib::ffi::Camera2D = camera.into();
+
+    let game_rt_pos: Vector2 = unsafe {
+        GetWorldToScreen2D(ffi_v2, ffi_camera).into()
+    };
+
+    let scale = ui_rt_width as f32 / game_rt_width as f32;
+
+    return game_rt_pos * scale;
+}

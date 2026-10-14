@@ -1,5 +1,5 @@
 // the way i want this games main combat phase to work, is for it to be based more on smart
-// fighter placement before the night starts, rather than 
+// fighter placement before the night starts, rather than
 
 use crate::{
     ZoomSizes::{FiveX, FourX, SevenX, SixX, ThreeX, TwoX},
@@ -15,6 +15,7 @@ use crate::{
         visual_effects_manager::VisualEffectsManager,
     },
     utils::{
+        camera_utils::world_to_screen_ui,
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -42,6 +43,8 @@ pub mod systems;
 pub mod utils;
 
 //      FEATURE IMPLEMENTATION:
+//          separate ui visual effects and game visual effects
+//          make damage numbers ui visual effects with a font
 //          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
 //          grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
 //          draw grass with a shear when its hit
@@ -190,6 +193,10 @@ fn main() {
         game_context.logical_window_height,
     );
 
+    let mut ui_rt = rl
+        .load_render_texture(&thread, logical_window_width / 3, logical_window_height / 3)
+        .unwrap();
+
     rl.set_target_fps(60);
     rl.disable_cursor();
 
@@ -334,6 +341,21 @@ fn main() {
             } // end camera drawing
         } // end object rt drawing
 
+        {
+            let ui_rt_width = ui_rt.texture.width;
+            let mut ui_rt_draw_handle = d.begin_texture_mode(&thread, &mut ui_rt);
+            ui_rt_draw_handle.clear_background(Color::BLANK);
+
+            let pos = world_to_screen_ui(
+                Vector2::new(16.0, 16.0),
+                &game_context.camera,
+                current_zoom.v_width(logical_window_width),
+                ui_rt_width,
+            );
+            let sprite = Sprite::new(160, 0, 3, 5);
+            sprite.draw(&mut ui_rt_draw_handle, pos, &game_context.texture);
+        }
+
         let source_rec = Rectangle::new(
             0.0,
             0.0,
@@ -370,6 +392,15 @@ fn main() {
                 Color::WHITE,
             );
         }
+
+        let source_rec = Rectangle::new(
+            0.0,
+            0.0,
+            ui_rt.texture.width as f32,
+            -ui_rt.texture.height as f32,
+        );
+
+        d.draw_texture_pro(&ui_rt, source_rec, dest_rec, origin, 0.0, Color::WHITE);
 
         game_context.day_night_cycle.draw_dbg(&mut d);
         entity_selecting_manager.draw(&mut d);
