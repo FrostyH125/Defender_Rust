@@ -15,7 +15,6 @@ use crate::{
         visual_effects_manager::VisualEffectsManager,
     },
     utils::{
-        camera_utils::world_to_screen_ui,
         direction_utils::ORTHOGONAL_DELTAS,
         mouse_utils::{self, mouse_world_coords},
         pathfinding::PathFinder,
@@ -23,14 +22,7 @@ use crate::{
 };
 use rand::rngs::ThreadRng;
 use raylib::{
-    RaylibHandle, RaylibThread,
-    camera::Camera2D,
-    color::Color,
-    drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt},
-    ffi::KeyboardKey,
-    math::{Rectangle, Vector2},
-    shaders::RaylibShader,
-    texture::{RenderTexture2D, Texture2D},
+    RaylibHandle, RaylibThread, camera::Camera2D, color::Color, drawing::{RaylibDraw, RaylibMode2DExt, RaylibShaderModeExt, RaylibTextureModeExt}, ffi::KeyboardKey, math::{Rectangle, Vector2}, shaders::RaylibShader, text::Font, texture::{RaylibTexture2D, RenderTexture2D, Texture2D},
 };
 use zander_game_core_rs::{
     raylib::sprite::Sprite,
@@ -43,8 +35,7 @@ pub mod systems;
 pub mod utils;
 
 //      FEATURE IMPLEMENTATION:
-//          separate ui visual effects and game visual effects
-//          make damage numbers ui visual effects with a font
+//          damage numbers have slight rotation
 //          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
 //          grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
 //          draw grass with a shear when its hit
@@ -97,6 +88,7 @@ pub struct GameContext {
     particle_system: SpriteParticleSystem,
     character_action_manager: CharacterActionManager,
     visual_effects_manager: VisualEffectsManager,
+    damage_number_font: Font
 }
 
 fn main() {
@@ -157,6 +149,7 @@ fn main() {
         update_rect: Rectangle::default(),
         character_action_manager: CharacterActionManager::new(),
         visual_effects_manager: VisualEffectsManager::new(),
+        damage_number_font: rl.load_font(&thread, "SourceCodePro-Bold.ttf").unwrap()
     };
 
     let mut map = TileMap::generate_map(map_width, map_height, &mut game_context);
@@ -194,7 +187,7 @@ fn main() {
     );
 
     let mut ui_rt = rl
-        .load_render_texture(&thread, logical_window_width / 3, logical_window_height / 3)
+        .load_render_texture(&thread, logical_window_width, logical_window_height)
         .unwrap();
 
     rl.set_target_fps(60);
@@ -334,10 +327,6 @@ fn main() {
                         &game_context.texture,
                     );
                 } // end shader drawing
-
-                game_context
-                    .visual_effects_manager
-                    .draw_effects(&mut cam, &game_context.texture);
             } // end camera drawing
         } // end object rt drawing
 
@@ -346,14 +335,9 @@ fn main() {
             let mut ui_rt_draw_handle = d.begin_texture_mode(&thread, &mut ui_rt);
             ui_rt_draw_handle.clear_background(Color::BLANK);
 
-            let pos = world_to_screen_ui(
-                Vector2::new(16.0, 16.0),
-                &game_context.camera,
-                current_zoom.v_width(logical_window_width),
-                ui_rt_width,
-            );
-            let sprite = Sprite::new(160, 0, 3, 5);
-            sprite.draw(&mut ui_rt_draw_handle, pos, &game_context.texture);
+            game_context
+                .visual_effects_manager
+                .draw_ui_effects(&mut ui_rt_draw_handle, &game_context, ui_rt_width);
         }
 
         let source_rec = Rectangle::new(

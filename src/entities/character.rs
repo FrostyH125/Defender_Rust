@@ -326,6 +326,14 @@ impl Character {
 
                 if let Some(id) = self.character_data.current_opponent {
                     let opponent_info = character_info.get(&id);
+
+                    if let Some(c_info) = opponent_info {
+                        if c_info.position.x < self.character_data.pos.x {
+                            self.character_data.facing_direction = FacingDirection::Left;
+                        } else {
+                            self.character_data.facing_direction = FacingDirection::Right;
+                        }
+                    }
                     
                     let opponent_is_invalid = match opponent_info {
                         Some(c_info) => c_info.health <= 0.0,
@@ -639,13 +647,13 @@ impl Character {
                 target_id,
             });
 
-        let char_info = character_info
+        let opponent_info = character_info
             .get(&self.character_data.current_opponent.unwrap())
             .unwrap();
 
         game_context
             .visual_effects_manager
-            .add_damage_number(char_info.center_pos, damage);
+            .add_damage_number(opponent_info.center_pos, damage, &game_context.damage_number_font, &mut game_context.rng);
     }
 
     #[inline]

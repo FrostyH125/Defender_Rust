@@ -1,8 +1,22 @@
-use raylib::{drawing::RaylibDrawHandle, math::Vector2, texture::Texture2D};
-use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
+use rand::{RngExt, rngs::ThreadRng};
+use raylib::{
+    color::Color,
+    drawing::{RaylibDraw, RaylibDrawHandle},
+    math::Vector2,
+    text::{Font, RaylibFont},
+    texture::Texture2D,
+};
+use zander_game_core_rs::system::timer::{self, Timer};
+
+use crate::{GameContext, utils::{camera_utils::world_to_screen_ui, vector2_utils::random_offset_in_range}};
 
 pub enum VisualEffectKind {
-    DamageNumber { digit_sprites: Vec<Sprite> },
+    DamageNumber {
+        offset: Vector2,
+        num_str: String,
+        font_size: f32,
+        rotation: f32
+    },
 }
 
 pub struct VisualEffect {
@@ -17,7 +31,7 @@ impl VisualEffect {
             VisualEffectKind::DamageNumber { .. } => {
                 let inverse_progress = 1.0 - self.timer.progress();
                 let speed = 20.0;
-                
+
                 self.pos.y -= (speed * inverse_progress) * dt;
             }
         }
@@ -25,60 +39,59 @@ impl VisualEffect {
 }
 
 pub struct VisualEffectsManager {
-    effects: Vec<VisualEffect>,
+    world_space_effects: Vec<VisualEffect>,
+    ui_space_effects: Vec<VisualEffect>,
 }
 
 impl VisualEffectsManager {
     pub fn new() -> Self {
         return Self {
-            effects: Vec::with_capacity(50),
+            world_space_effects: Vec::with_capacity(50),
+            ui_space_effects: Vec::with_capacity(50),
         };
     }
 
-    pub fn add_damage_number(&mut self, mut pos: Vector2, number: f32) {
+    pub fn add_damage_number(&mut self, pos: Vector2, number: f32, font: &Font, rng: &mut ThreadRng) {
+        let font_size = 40.0;
+
         let num_str = number.to_string();
-        const NUM_SPRITES_START_X: i32 = 160;
-        const NUM_SPRITES_Y: i32 = 0;
-        const NUM_SPRITE_WIDTH: i32 = 4;
-        const NUM_SPRITE_HEIGHT: i32 = 5;
+        let string_size = font.measure_text(&num_str, font_size, 0.0);
 
-        let mut digit_sprites = Vec::new();
-
-        // turn the string into a list of sprites
-        for digit in num_str.chars() {
-            let spr_x =
-                NUM_SPRITES_START_X + (NUM_SPRITE_WIDTH * digit.to_digit(10).unwrap() as i32);
-            digit_sprites.push(Sprite::new(
-                spr_x,
-                NUM_SPRITES_Y,
-                NUM_SPRITE_WIDTH,
-                NUM_SPRITE_HEIGHT,
-            ));
-        }
-
+        let offset = string_size / 2.0;
         let timer_len = 2.0;
-        let half_size = (digit_sprites.len() as i32 * NUM_SPRITE_WIDTH / 2) as f32;
-        pos.x -= half_size;
-
-        let kind = VisualEffectKind::DamageNumber { digit_sprites };
-
-        let effect = VisualEffect {
-            kind,
+        self.ui_space_effects.push(VisualEffect {
+            kind: VisualEffectKind::DamageNumber {
+                offset,
+                num_str,
+                font_size,
+                rotation: rng.random_range(-15.0..=15.0)
+            },
             timer: Timer::new(timer_len),
-            pos,
-        };
-
-        self.effects.push(effect);
+            pos: pos + random_offset_in_range(rng, 2.0),
+        });
     }
 
     pub fn update_effects(&mut self, dt: f32) {
-        for i in (0..self.effects.len()).rev() {
-            let effect = &mut self.effects[i];
+        for i in (0..self.world_space_effects.len()).rev() {
+            let effect = &mut self.world_space_effects[i];
 
             effect.timer.track(dt);
 
             if effect.timer.is_done() {
-                self.effects.swap_remove(i);
+                self.world_space_effects.swap_remove(i);
+                continue;
+            }
+
+            effect.update(dt);
+        }
+
+        for i in (0..self.ui_space_effects.len()).rev() {
+            let effect = &mut self.ui_space_effects[i];
+
+            effect.timer.track(dt);
+
+            if effect.timer.is_done() {
+                self.ui_space_effects.swap_remove(i);
                 continue;
             }
 
@@ -86,16 +99,37 @@ impl VisualEffectsManager {
         }
     }
 
-    pub fn draw_effects(&self, d: &mut RaylibDrawHandle, texture: &Texture2D) {
-        for effect in &self.effects {
+    pub fn draw_ui_effects(
+        &self,
+        d: &mut RaylibDrawHandle,
+        game_context: &GameContext,
+        ui_rt_width: i32,
+    ) {
+        for effect in &self.ui_space_effects {
             match &effect.kind {
-                VisualEffectKind::DamageNumber { digit_sprites } => {
-                    let mut x_pos = effect.pos.x;
+                VisualEffectKind::DamageNumber {
+                    offset,
+                    num_str,
+                    font_size,
+                    rotation
+                } => {
+                    let screen_pos = world_to_screen_ui(
+                        effect.pos,
+                        &game_context.camera,
+                        game_context.v_width,
+                        ui_rt_width,
+                    );
 
-                    for sprite in digit_sprites {
-                        sprite.draw(d, Vector2::new(x_pos, effect.pos.y), texture);
-                        x_pos += sprite.src_rect.width.ceil();
-                    }
+                    d.draw_text_pro(
+                        &game_context.damage_number_font,
+                        num_str,
+                        screen_pos,
+                        offset,
+                        *rotation,
+                        *font_size,
+                        0.0,
+                        Color::WHITE,
+                    );
                 }
             }
         }
