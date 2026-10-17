@@ -12,3 +12,7 @@ pub fn random_offset_in_range(rng: &mut ThreadRng, range: f32) -> Vector2 {
     let y_offset = rng.random_range(-range..=range);
     return Vector2::new(x_offset, y_offset);
 }
+
+pub fn floor(vec: Vector2) -> Vector2 {
+    return Vector2::new(vec.x.floor(), vec.y.floor());
+}

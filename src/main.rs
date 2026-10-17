@@ -35,7 +35,6 @@ pub mod systems;
 pub mod utils;
 
 //      FEATURE IMPLEMENTATION:
-//          damage numbers have slight rotation
 //          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
 //          grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
 //          draw grass with a shear when its hit
@@ -47,7 +46,6 @@ pub mod utils;
 //          cool shader for background instead of no tiles -> use that one steam tool it was sick
 //          ALL the sounds from the github repo
 //          On hit visual for characters
-//          UI layer render target, probably larger, only one necessary.
 //          retreat button with a special character retreated state
 //          all non fighter characters will hide away at night, meaning the only way to generate spirit at night is from killing enemies
 //          as opposed to the devotees generating spirit during the day

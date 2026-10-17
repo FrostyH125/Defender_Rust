@@ -39,41 +39,21 @@ impl Enemy {
         &mut self,
         this_characters_data: &mut CharacterData,
         game_context: &mut GameContext,
-        map: &mut TileMap,
         character_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
+        self.enemy_data
+            .new_opponent_check_timer
+            .track(game_context.dt);
         // allows it to check on first frame of being spawned and find an opponent immediately
         // continues to check every second or so after
-        // otherwise it just checks no matter what if theres no opponent
-        if let None = this_characters_data.current_opponent {
-            self.select_new_opponent(this_characters_data, character_info);
+        if self.enemy_data.new_opponent_check_timer.is_done()
+            || this_characters_data.current_opponent.is_none()
+        {
+            let next_opponent_id =
+                enemy_get_closest_target(this_characters_data.pos, character_info);
+            this_characters_data.select_new_opponent_and_enter_combat(next_opponent_id);
             self.enemy_data.new_opponent_check_timer.reset();
-        } else {
-            self.enemy_data.new_opponent_check_timer.track(game_context.dt);
-            
-            if self.enemy_data.new_opponent_check_timer.is_done() {
-                self.select_new_opponent(this_characters_data, character_info);
-                self.enemy_data.new_opponent_check_timer.reset();
-            }
         }
-
-        // available for enemies with special functionality
-        match &mut self.enemy_kind {
-            EnemyKind::Slime(..) => (),
-        }
-    }
-
-    pub fn select_new_opponent(
-        &mut self,
-        this_characters_data: &mut CharacterData,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
-    ) {
-        this_characters_data.current_opponent = Some(enemy_get_closest_target(
-            this_characters_data.pos,
-            character_info,
-        ));
-        this_characters_data.state = CharacterState::InCombat;
-        this_characters_data.combat_state = CombatState::MovingToTarget;
 
         // available for enemies with special functionality
         match &mut self.enemy_kind {

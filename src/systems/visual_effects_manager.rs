@@ -8,7 +8,7 @@ use raylib::{
 };
 use zander_game_core_rs::system::timer::{self, Timer};
 
-use crate::{GameContext, utils::{camera_utils::world_to_screen_ui, vector2_utils::random_offset_in_range}};
+use crate::{GameContext, utils::{camera_utils::world_to_screen_ui, vector2_utils::{floor, random_offset_in_range}}};
 
 pub enum VisualEffectKind {
     DamageNumber {
@@ -67,7 +67,7 @@ impl VisualEffectsManager {
                 rotation: rng.random_range(-15.0..=15.0)
             },
             timer: Timer::new(timer_len),
-            pos: pos + random_offset_in_range(rng, 2.0),
+            pos: floor(pos)  + random_offset_in_range(rng, 2.0),
         });
     }
 

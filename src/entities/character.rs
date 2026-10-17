@@ -16,18 +16,11 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE,
-    entities::{
+    GameContext, TILE_SIZE, entities::{
         characters::{
-            enemy::Enemy,
-            gatherer::{Gatherer, GathererState},
-        },
-        entity_manager::{BasicCharacterInfo, CharID},
-        object::Object,
-    },
-    map::tile_map::{MapDimensions, TileMap},
-    systems::character_action_manager::CharacterAction,
-    utils::{
+            enemy::Enemy, fighter::Fighter, gatherer::{Gatherer, GathererState},
+        }, entity_manager::{BasicCharacterInfo, CharID}, object::Object,
+    }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::CharacterAction, utils::{
         camera_utils,
         direction_utils::FacingDirection,
         draw_utils,
@@ -242,11 +235,24 @@ impl CharacterData {
                 self.character_values.height / 2.0,
             );
     }
+
+    pub fn select_new_opponent_and_enter_combat(&mut self, id: CharID) {
+        self.current_opponent = Some(id);
+        self.state = CharacterState::InCombat;
+        self.combat_state = CombatState::MovingToTarget;
+    }
 }
 
 pub enum CharacterKind {
     Gatherer(Gatherer),
+    Fighter(Fighter),
     Enemy(Enemy),
+    // devotees are the last ones
+    // they will simply pray day and night to the monolith
+    // only attacking enemies when the monolith attacks one of them or the monolith
+    // which is the enemys' target
+    // devotees are considered a neutral affiliation, and thus are not
+    // directly controlled by the player, however are very powerful for progression
 }
 
 pub struct Character {
@@ -256,15 +262,12 @@ pub struct Character {
 
 impl Character {
     pub fn set_move_to(&mut self, target: Vector2) {
-        self.set_idle_to_unique_states();
-        self.character_data.state = CharacterState::Moving { target };
-    }
-
-    pub fn set_idle_to_unique_states(&mut self) {
-        match &mut self.character_kind {
-            CharacterKind::Gatherer(gatherer) => gatherer.gatherer_state = GathererState::Idle,
-            CharacterKind::Enemy(..) => (),
+        // only need to micro state manage gatherer as it has its own state
+        if let CharacterKind::Gatherer(g) = &mut self.character_kind {
+            g.gatherer_state = GathererState::Idle;
         }
+        
+        self.character_data.state = CharacterState::Moving { target };
     }
 
     #[inline]
@@ -287,7 +290,11 @@ impl Character {
         // by the player, as well as because the combat state is fairly robust at preventing weird behaviors as its not
         // tied to the character specific update methods as opposed to something like the gatherer or something
         if let CharacterKind::Enemy(e) = &mut self.character_kind {
-            e.update(&mut self.character_data, game_context, map, character_info);
+            e.update(&mut self.character_data, game_context, character_info);
+        }
+
+        if let CharacterKind::Fighter(f) = &mut self.character_kind {
+            f.update(&mut self.character_data, game_context, character_info);
         }
 
         match self.character_data.state {
@@ -297,14 +304,21 @@ impl Character {
                         .character_values
                         .idle_anim
                         .update(game_context.dt);
-                }
 
-                match &mut self.character_kind {
-                    CharacterKind::Gatherer(gatherer) => {
-                        gatherer.update(&mut self.character_data, game_context, map)
+                    // only run gatherer update if its idle
+                    // the reason being is that unlike fighter or enemy, the gatherers
+                    // main loop is not built in to the character state machine itself
+                    // as such, it should not interfere with character actions that
+                    // change the character state like fighting or moving
+                    // the enemies and fighters do not have this restriction
+                    // because their main loop is combat, which is all handled
+                    // cleanly by the character state itself (making most of them
+                    // stateless and purely controlled by a single update method
+                    // with no state management and a character state. unlike 
+                    // gatherers who themselves own a GathererState)
+                    if let CharacterKind::Gatherer(g) = &mut self.character_kind {
+                        g.update(&mut self.character_data, game_context, map);
                     }
-                    // updated already
-                    CharacterKind::Enemy(..) => ()
                 }
             }
             CharacterState::Moving { target } => {
@@ -515,7 +529,7 @@ impl Character {
         let mut spr = match self.character_data.state {
             CharacterState::None => match &self.character_kind {
                 CharacterKind::Gatherer(gatherer) => gatherer.current_sprite(&self.character_data),
-
+                CharacterKind::Fighter(fighter) => fighter.current_sprite(&self.character_data),
                 // enemy is never idle/none state
                 CharacterKind::Enemy(..) => panic!(),
             },
@@ -618,6 +632,9 @@ impl Character {
             }
             // enemy is never considered idle, is always moving or attacking
             CharacterKind::Enemy(..) => false,
+            CharacterKind::Fighter(..) => {
+                return self.character_data.current_opponent.is_none();
+            }
         }
     }
 

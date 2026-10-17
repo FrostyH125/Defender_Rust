@@ -62,17 +62,13 @@ impl CharacterActionManager {
                     }
 
                     if target.character_data.current_opponent.is_none() {
-                        target.character_data.current_opponent = Some(*attacker_id);
-                        target.character_data.state = CharacterState::InCombat;
-                        target.character_data.combat_state = CombatState::MovingToTarget;
+                        target.character_data.select_new_opponent_and_enter_combat(*attacker_id);
                     }
 
                     let attacker = &mut get_char_by_unique_id(chars, *attacker_id).character;
 
                     if attacker.character_data.current_opponent.is_none() {
-                        attacker.character_data.current_opponent = Some(*target_id);
-                        attacker.character_data.state = CharacterState::InCombat;
-                        attacker.character_data.combat_state = CombatState::MovingToTarget;
+                        attacker.character_data.select_new_opponent_and_enter_combat(*target_id);
                     }
                 }
             }
