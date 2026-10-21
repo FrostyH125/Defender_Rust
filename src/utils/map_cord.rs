@@ -12,7 +12,6 @@ pub struct MapCord {
 }
 
 impl MapCord {
-
     #[inline]
     pub const fn new(x: i16, y: i16) -> Self {
         MapCord { x, y }

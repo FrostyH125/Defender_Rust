@@ -18,18 +18,17 @@ use zander_game_core_rs::{
 use crate::{
     GameContext, TILE_SIZE, entities::{
         characters::{
-            enemy::Enemy, fighter::Fighter, gatherer::{Gatherer, GathererState},
-        }, entity_manager::{BasicCharacterInfo, CharID}, object::Object,
+            enemy::Enemy,
+            fighter::Fighter,
+            gatherer::{Gatherer, GathererState},
+        },
+        entity_manager::{BasicCharacterInfo, CharID},
+        object::Object,
     }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::CharacterAction, utils::{
-        camera_utils,
-        direction_utils::FacingDirection,
-        draw_utils,
-        map_cord::MapCord,
-        map_utils,
-        pathfinding::{
+        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils, pathfinding::{
             Path,
             PathError::{self},
-        },
+        }, vector2_utils::floor,
     },
 };
 
@@ -169,20 +168,6 @@ impl CharacterData {
                         println!("There is no viable route for character");
                         return CharacterMovementResult::NoRoute;
                     }
-                },
-            }
-
-            if let Some(path) = &mut self.path {
-                path.push_back(target);
-
-                // if the target path entry is more than or equal to an eigth of a block away from the last
-                // real final path entry, remove the real final path entry
-                // this reduces backtracking
-
-                if path.len() > 1 {
-                    if path[0].distance_to(path[1]) >= 2.0 {
-                        path.remove(1);
-                    }
                 }
             }
         }
@@ -211,17 +196,16 @@ impl CharacterData {
 
             let mut delta = *next - self.pos;
 
-            if delta.y.abs() > 1.0 || delta.x.abs() > 1.0 {
-                delta.normalize();
-            }
-
-            self.pos += delta * self.character_values.move_speed * game_context.dt;
-
+            delta.normalize();
+            
             if delta.x < 0.0 {
                 self.facing_direction = FacingDirection::Left;
             } else {
                 self.facing_direction = FacingDirection::Right;
             }
+
+            self.pos += delta * self.character_values.move_speed * game_context.dt;
+
         }
 
         return CharacterMovementResult::NotArrivedYet;
@@ -266,7 +250,7 @@ impl Character {
         if let CharacterKind::Gatherer(g) = &mut self.character_kind {
             g.gatherer_state = GathererState::Idle;
         }
-        
+
         self.character_data.state = CharacterState::Moving { target };
     }
 
@@ -314,7 +298,7 @@ impl Character {
                     // because their main loop is combat, which is all handled
                     // cleanly by the character state itself (making most of them
                     // stateless and purely controlled by a single update method
-                    // with no state management and a character state. unlike 
+                    // with no state management and a character state. unlike
                     // gatherers who themselves own a GathererState)
                     if let CharacterKind::Gatherer(g) = &mut self.character_kind {
                         g.update(&mut self.character_data, game_context, map);
@@ -348,7 +332,7 @@ impl Character {
                             self.character_data.facing_direction = FacingDirection::Right;
                         }
                     }
-                    
+
                     let opponent_is_invalid = match opponent_info {
                         Some(c_info) => c_info.health <= 0.0,
                         None => true,
@@ -366,7 +350,6 @@ impl Character {
                             .reset();
                         return;
                     } else {
-
                         // only do this part when you actually arrived and start attacking
                         if self.character_data.combat_state != CombatState::MovingToTarget {
                             // try to engage in combat each frame so that if character is surrounded it will have another opponent
@@ -376,11 +359,15 @@ impl Character {
                                     attacker_id: self.character_data.unique_char_id,
                                     target_id: id,
                                 },
-                            );        
+                            );
                         }
 
-                        let distance_to_opponent = self.character_data.pos.distance_to(opponent_info.unwrap().position);
-                        if distance_to_opponent > self.character_data.character_values.attack_range {
+                        let distance_to_opponent = self
+                            .character_data
+                            .pos
+                            .distance_to(opponent_info.unwrap().position);
+                        if distance_to_opponent > self.character_data.character_values.attack_range
+                        {
                             self.character_data.combat_state = CombatState::MovingToTarget;
                         }
                     }
@@ -582,7 +569,7 @@ impl Character {
 
     #[inline]
     pub fn get_draw_pos(&self) -> Vector2 {
-        return self.character_data.pos + self.character_data.character_values.draw_offset;
+        return floor(self.character_data.pos + self.character_data.character_values.draw_offset);
     }
 
     #[inline]
@@ -668,9 +655,12 @@ impl Character {
             .get(&self.character_data.current_opponent.unwrap())
             .unwrap();
 
-        game_context
-            .visual_effects_manager
-            .add_damage_number(opponent_info.center_pos, damage, &game_context.damage_number_font, &mut game_context.rng);
+        game_context.visual_effects_manager.add_damage_number(
+            opponent_info.center_pos,
+            damage,
+            &game_context.damage_number_font,
+            &mut game_context.rng,
+        );
     }
 
     #[inline]

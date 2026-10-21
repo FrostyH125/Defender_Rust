@@ -34,6 +34,8 @@ pub mod map;
 pub mod systems;
 pub mod utils;
 
+// for when you come back, simply add a simple sword fighter to the game, any issues arising in this way will be naturally solvable
+
 //      FEATURE IMPLEMENTATION:
 //          When multiple characters are selected for move, move them to the nearest proper square that isnt occupied in a square
 //          grass visual upon disappearing, maybe extra particles or something, maybe just draw the anim with a shear making it fall down, maybe both
@@ -62,8 +64,6 @@ pub mod utils;
 //          make the tile map creation return a result and keep remaking the map until it produces a valid one, as a last resort fail safe
 //
 //      FIGHTER IMPLEMENTATION
-//          fighter: enum { FighterKindOne, FighterKindTwo, etc..}
-//          fighter_data: struct
 //          Also make sure the underlying fighter list of enemies is working as expected, especially for multiple fighters
 pub const TILE_SIZE: f32 = 8.0;
 
@@ -196,7 +196,7 @@ fn main() {
     //
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0 as f32, 104.0)));
 
-    entity_manager.add_character(Slime::new(Vector2::new(120.0, 104.0)));
+    //entity_manager.add_character(Slime::new(Vector2::new(120.0, 104.0)));
 
     //
     // DEBUG END
