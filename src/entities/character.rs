@@ -561,7 +561,7 @@ impl Character {
             // if i dont -0.1 then the width will apparently be less than the width due
             // to floating point shenanigans, since its drawn to a low res grid its
             // rounded down, i have to add to the width essentially
-            spr.src_rect.width = -spr.src_rect.width - 0.1;
+            spr.src_rect.width = -spr.src_rect.width - 0.01;
         }
 
         return spr;

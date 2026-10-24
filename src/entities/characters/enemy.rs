@@ -4,11 +4,10 @@ use zander_game_core_rs::system::timer::Timer;
 use crate::{
     GameContext,
     entities::{
-        character::{CharacterData, CharacterState, CombatState},
+        character::CharacterData,
         characters::enemies::slime::Slime,
         entity_manager::{BasicCharacterInfo, CharID},
     },
-    map::tile_map::TileMap,
     utils::entity_utils::enemy_get_closest_target,
 };
 

@@ -22,12 +22,6 @@ use crate::{
 };
 
 static GATHERER_IDLE_ANIM: SpriteAnimationData = SpriteAnimationData {
-    // frames: &[
-    //     Sprite::new(16, 176, 8, 8),
-    //     Sprite::new(24, 176, 8, 8),
-    //     Sprite::new(32, 176, 8, 8),
-    //     Sprite::new(40, 176, 8, 8),
-    // ],
     frames: &Sprite::create_sequence_of_sprites::<4>(16, 176, 8, 8),
     frame_duration: 0.5,
     should_loop: true,
