@@ -16,7 +16,8 @@ use zander_game_core_rs::{
 };
 
 use crate::{
-    GameContext, TILE_SIZE, entities::{
+    GameContext, TILE_SIZE,
+    entities::{
         characters::{
             enemy::Enemy,
             fighter::Fighter,
@@ -24,11 +25,20 @@ use crate::{
         },
         entity_manager::{BasicCharacterInfo, CharID},
         object::Object,
-    }, map::tile_map::{MapDimensions, TileMap}, systems::character_action_manager::CharacterAction, utils::{
-        camera_utils, direction_utils::FacingDirection, draw_utils, map_cord::MapCord, map_utils, pathfinding::{
+    },
+    map::tile_map::{MapDimensions, TileMap},
+    systems::character_action_manager::CharacterAction,
+    utils::{
+        camera_utils,
+        direction_utils::FacingDirection,
+        draw_utils,
+        map_cord::MapCord,
+        map_utils,
+        pathfinding::{
             Path,
             PathError::{self},
-        }, vector2_utils::floor,
+        },
+        vector2_utils::floor,
     },
 };
 
@@ -61,6 +71,10 @@ pub enum CharacterState {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum CombatState {
+    // exists for characters to use to do their own stuff, this basically blocks the combat state
+    // from updating, and allows characters to micro manage their state (this is for combat units only)
+    UniqueState,
+    
     // another moving state, this one nested in combat state for specifically combat
     // focused movement to determined opponent
     MovingToTarget,
@@ -168,7 +182,7 @@ impl CharacterData {
                         println!("There is no viable route for character");
                         return CharacterMovementResult::NoRoute;
                     }
-                }
+                },
             }
         }
 
@@ -197,7 +211,7 @@ impl CharacterData {
             let mut delta = *next - self.pos;
 
             delta.normalize();
-            
+
             if delta.x < 0.0 {
                 self.facing_direction = FacingDirection::Left;
             } else {
@@ -205,7 +219,6 @@ impl CharacterData {
             }
 
             self.pos += delta * self.character_values.move_speed * game_context.dt;
-
         }
 
         return CharacterMovementResult::NotArrivedYet;
@@ -224,6 +237,32 @@ impl CharacterData {
         self.current_opponent = Some(id);
         self.state = CharacterState::InCombat;
         self.combat_state = CombatState::MovingToTarget;
+    }
+
+    pub fn basic_attack(
+        &mut self,
+        self_id: CharID,
+        target_id: CharID,
+        game_context: &mut GameContext,
+        character_info: &HashMap<CharID, BasicCharacterInfo>,
+    ) {
+        let damage = self.character_values.attack_power;
+
+        game_context
+            .character_action_manager
+            .push_action(CharacterAction::Attack {
+                attacker_id: self_id,
+                target_id,
+            });
+
+        let opponent_info = character_info.get(&self.current_opponent.unwrap()).unwrap();
+
+        game_context.visual_effects_manager.add_damage_number(
+            opponent_info.center_pos,
+            damage,
+            &game_context.damage_number_font,
+            &mut game_context.rng,
+        );
     }
 }
 
@@ -374,6 +413,7 @@ impl Character {
                 }
 
                 match self.character_data.combat_state {
+                    CombatState::UniqueState => (),
                     CombatState::MovingToTarget => {
                         let opponent_pos = character_info
                             .get(&self.character_data.current_opponent.unwrap())
@@ -526,6 +566,13 @@ impl Character {
                 .move_anim
                 .current_sprite(),
             CharacterState::InCombat => match self.character_data.combat_state {
+                CombatState::UniqueState => {
+                    match &self.character_kind {
+                        CharacterKind::Gatherer(gatherer) => panic!("should never happen"),
+                        CharacterKind::Fighter(fighter) => fighter.current_sprite(&self.character_data),
+                        CharacterKind::Enemy(enemy) => enemy.current_sprite(&self.character_data),
+                    }
+                }
                 CombatState::MovingToTarget => self
                     .character_data
                     .character_values
@@ -634,7 +681,8 @@ impl Character {
             Timer::new(self.character_data.character_values.time_between_attacks);
     }
 
-    /// can be overridden for special attacks
+    // basic attack exists for characters with no special functionality
+    // it is simply a request to do damage to a character, lasts one frame, thats it
     pub fn do_attack(
         &mut self,
         self_id: CharID,
@@ -642,25 +690,26 @@ impl Character {
         game_context: &mut GameContext,
         character_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
-        let damage = self.character_data.character_values.attack_power;
-
-        game_context
-            .character_action_manager
-            .push_action(CharacterAction::Attack {
-                attacker_id: self_id,
+        match &mut self.character_kind {
+            CharacterKind::Gatherer(_) => {
+                self.character_data
+                    .basic_attack(self_id, target_id, game_context, character_info)
+            }
+            CharacterKind::Fighter(fighter) => fighter.do_attack(
+                &mut self.character_data,
+                self_id,
                 target_id,
-            });
-
-        let opponent_info = character_info
-            .get(&self.character_data.current_opponent.unwrap())
-            .unwrap();
-
-        game_context.visual_effects_manager.add_damage_number(
-            opponent_info.center_pos,
-            damage,
-            &game_context.damage_number_font,
-            &mut game_context.rng,
-        );
+                game_context,
+                character_info,
+            ),
+            CharacterKind::Enemy(enemy) => enemy.do_attack(
+                &mut self.character_data,
+                self_id,
+                target_id,
+                game_context,
+                character_info,
+            ),
+        }
     }
 
     #[inline]

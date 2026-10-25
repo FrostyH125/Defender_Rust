@@ -8,7 +8,7 @@ use zander_game_core_rs::raylib::sprite::Sprite;
 use crate::{
     GameContext,
     entities::{
-        character::CharacterData,
+        character::{CharacterData, CombatState},
         entity_manager::{BasicCharacterInfo, CharID},
     },
 };
@@ -38,10 +38,10 @@ impl Fighter {
         // as their main game loop is actually integrated into the character state
         // due to other units being eligible for fighting capabilities, unlike
         // say gatherers who have their whole gathering loop just when theyre in the
-        // CharacterState::None state, and that should not be intertwined with 
+        // CharacterState::None state, and that should not be intertwined with
         // combat and moving due to user input, so rightfully thats all separated
         // for them.
-        // 
+        //
         // if you ever find this too limiting, look at the bottom of this file
         // for ways to add unique functionality
         if this_characters_data.current_opponent.is_none() {
@@ -52,7 +52,7 @@ impl Fighter {
             );
 
             // the moment a character gets a new opponent, it enters combat
-            // maybe the function name isnt obvious for that, 
+            // maybe the function name isnt obvious for that,
             if let Some(id) = next_opponent {
                 this_characters_data.select_new_opponent_and_enter_combat(id);
             }
@@ -86,13 +86,38 @@ impl Fighter {
     }
 
     pub fn current_sprite(&self, this_character_data: &CharacterData) -> Sprite {
-        match self.fighter_kind {
-
-            _ => ()
+        // if in unique state, then branch for unique logic
+        if this_character_data.combat_state == CombatState::UniqueState {
+            match self.fighter_kind {
+                _ => (),
+            }
         }
 
         // if no unique behavior, just return idle
-        return this_character_data.character_values.idle_anim.current_sprite();
+        return this_character_data
+            .character_values
+            .idle_anim
+            .current_sprite();
+    }
+
+    pub fn do_attack(
+        &mut self,
+        this_character_data: &mut CharacterData,
+        self_id: CharID,
+        target_id: CharID,
+        game_context: &mut GameContext,
+        character_info: &HashMap<CharID, BasicCharacterInfo>,
+    ) {
+
+        // so for example if you wanted to add a bow person that say shot three shots in a row
+        // youd simply, on do attack, change their combat state to unique state
+        // then, make the bow state to something like BowFighterState::StartAttack
+        // follow the states through to BowFighterState::EndAttack, then reset bow state to None,
+        // then put combat state onto PostAttack for the post attack anim, and its just that easy
+        
+        match self.fighter_kind {
+            // Fighter::Fighter1(f1) => f1.do_attack()
+        }
     }
 
     // on_being_hit function() for unique functionality on being hit, can implement timer and
@@ -101,6 +126,6 @@ impl Fighter {
     // on_hitting_opponent function() for unique functionality on hitting the opponent, can implement
     // timer and unique animations
 
-    // on_opponent_kill function() for unique functionality, 
+    // on_opponent_kill function() for unique functionality,
     // which can implement a timer to do special animations and logic while opponent.is_none()
 }

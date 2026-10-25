@@ -1,14 +1,10 @@
 use std::collections::HashMap;
-use zander_game_core_rs::system::timer::Timer;
+use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
 
 use crate::{
-    GameContext,
-    entities::{
-        character::CharacterData,
-        characters::enemies::slime::Slime,
-        entity_manager::{BasicCharacterInfo, CharID},
-    },
-    utils::entity_utils::enemy_get_closest_target,
+    GameContext, entities::{
+        character::{CharacterData, CombatState}, characters::enemies::slime::Slime, entity_manager::{BasicCharacterInfo, CharID},
+    }, utils::entity_utils::enemy_get_closest_target,
 };
 
 pub enum EnemyKind {
@@ -58,5 +54,36 @@ impl Enemy {
         match &mut self.enemy_kind {
             EnemyKind::Slime(..) => (),
         }
+    }
+
+    pub fn do_attack(
+        &mut self,
+        this_character_data: &mut CharacterData,
+        self_id: CharID,
+        target_id: CharID,
+        game_context: &mut GameContext,
+        character_info: &HashMap<CharID, BasicCharacterInfo>,
+    ) {
+        match &mut self.enemy_kind {
+            EnemyKind::Slime(slime) => {
+                this_character_data.basic_attack(self_id, target_id, game_context, character_info)
+            }
+        }
+    }
+
+    /// is only called when in a unique state
+    pub fn current_sprite(&self, this_character_data: &CharacterData) -> Sprite {
+        // if in unique state, then branch for unique logic
+        if this_character_data.combat_state == CombatState::UniqueState {
+            match &self.enemy_kind {
+                EnemyKind::Slime(_) => (),
+            }
+        }
+
+        // if no unique behavior, just return idle
+        return this_character_data
+            .character_values
+            .idle_anim
+            .current_sprite();
     }
 }
