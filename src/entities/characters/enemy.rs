@@ -56,17 +56,19 @@ impl Enemy {
         }
     }
 
-    pub fn do_attack(
+    /// returns a bool when finished
+    pub fn attack_update (
         &mut self,
         this_character_data: &mut CharacterData,
         self_id: CharID,
         target_id: CharID,
         game_context: &mut GameContext,
         character_info: &HashMap<CharID, BasicCharacterInfo>,
-    ) {
+    ) -> bool {
         match &mut self.enemy_kind {
-            EnemyKind::Slime(slime) => {
-                this_character_data.basic_attack(self_id, target_id, game_context, character_info)
+            EnemyKind::Slime(_) => {
+                this_character_data.basic_attack(self_id, target_id, game_context, character_info);
+                return true;
             }
         }
     }
@@ -74,7 +76,7 @@ impl Enemy {
     /// is only called when in a unique state
     pub fn current_sprite(&self, this_character_data: &CharacterData) -> Sprite {
         // if in unique state, then branch for unique logic
-        if this_character_data.combat_state == CombatState::UniqueState {
+        if this_character_data.combat_state == CombatState::InAttack {
             match &self.enemy_kind {
                 EnemyKind::Slime(_) => (),
             }

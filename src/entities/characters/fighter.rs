@@ -87,7 +87,7 @@ impl Fighter {
 
     pub fn current_sprite(&self, this_character_data: &CharacterData) -> Sprite {
         // if in unique state, then branch for unique logic
-        if this_character_data.combat_state == CombatState::UniqueState {
+        if this_character_data.combat_state == CombatState::InAttack {
             match self.fighter_kind {
                 _ => (),
             }
@@ -100,25 +100,24 @@ impl Fighter {
             .current_sprite();
     }
 
-    pub fn do_attack(
+    /// the actual place where any attack specific actions should happen
+    /// this is where fighter specific logic should happen
+    pub fn attack_update(
         &mut self,
         this_character_data: &mut CharacterData,
         self_id: CharID,
         target_id: CharID,
         game_context: &mut GameContext,
         character_info: &HashMap<CharID, BasicCharacterInfo>,
-    ) {
-
-        // so for example if you wanted to add a bow person that say shot three shots in a row
-        // youd simply, on do attack, change their combat state to unique state
-        // then, make the bow state to something like BowFighterState::StartAttack
-        // follow the states through to BowFighterState::EndAttack, then reset bow state to None,
-        // then put combat state onto PostAttack for the post attack anim, and its just that easy
-        
+    ) -> bool { 
         match self.fighter_kind {
             // Fighter::Fighter1(f1) => f1.do_attack()
         }
     }
+}
+
+
+
 
     // on_being_hit function() for unique functionality on being hit, can implement timer and
     // unique animations
@@ -128,4 +127,3 @@ impl Fighter {
 
     // on_opponent_kill function() for unique functionality,
     // which can implement a timer to do special animations and logic while opponent.is_none()
-}

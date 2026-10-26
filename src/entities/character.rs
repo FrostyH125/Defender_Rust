@@ -71,10 +71,6 @@ pub enum CharacterState {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum CombatState {
-    // exists for characters to use to do their own stuff, this basically blocks the combat state
-    // from updating, and allows characters to micro manage their state (this is for combat units only)
-    UniqueState,
-    
     // another moving state, this one nested in combat state for specifically combat
     // focused movement to determined opponent
     MovingToTarget,
@@ -83,7 +79,7 @@ pub enum CombatState {
     PreAttack,
 
     // for handling the attack action itself
-    Attack,
+    InAttack,
 
     // for handling an optional post attack cooldown animation
     PostAttack,
@@ -413,7 +409,6 @@ impl Character {
                 }
 
                 match self.character_data.combat_state {
-                    CombatState::UniqueState => (),
                     CombatState::MovingToTarget => {
                         let opponent_pos = character_info
                             .get(&self.character_data.current_opponent.unwrap())
@@ -445,18 +440,28 @@ impl Character {
                             {
                                 self.character_data.character_values.attack_anim.reset();
                                 self.character_data.attack_timer.reset();
-                                self.character_data.combat_state = CombatState::Attack;
+                                self.character_data.combat_state = CombatState::InAttack;
                             }
                         }
                     }
-                    CombatState::Attack => {
-                        let self_idx = self.character_data.unique_char_id;
-                        let opponent_idx = self.character_data.current_opponent.unwrap();
+                    CombatState::InAttack => {
+                        let self_id = self.character_data.unique_char_id;
+                        let target_id = self.character_data.current_opponent.unwrap();
+                        
+                        match &mut self.character_kind {
+                            CharacterKind::Gatherer(_) => {
+                                self.character_data.basic_attack(self_id, target_id, game_context, character_info);
+                                self.character_data.combat_state = CombatState::PostAttack;
+                            }
 
-                        self.do_attack(self_idx, opponent_idx, game_context, character_info);
-
-                        // move to the wind down attack before evaluating state
-                        self.character_data.combat_state = CombatState::PostAttack;
+                            // these two types have unique combat states and should be treated accordingly
+                            CharacterKind::Fighter(fighter) => if fighter.attack_update(&mut self.character_data, self_id, target_id, game_context, character_info) {
+                                self.character_data.combat_state = CombatState::PostAttack;
+                            },
+                            CharacterKind::Enemy(enemy) => if enemy.attack_update(&mut self.character_data, self_id, target_id, game_context, character_info) {
+                                self.character_data.combat_state = CombatState::PostAttack;
+                            },
+                        }
                     }
                     CombatState::PostAttack => {
                         let post_attack_anim =
@@ -566,13 +571,6 @@ impl Character {
                 .move_anim
                 .current_sprite(),
             CharacterState::InCombat => match self.character_data.combat_state {
-                CombatState::UniqueState => {
-                    match &self.character_kind {
-                        CharacterKind::Gatherer(gatherer) => panic!("should never happen"),
-                        CharacterKind::Fighter(fighter) => fighter.current_sprite(&self.character_data),
-                        CharacterKind::Enemy(enemy) => enemy.current_sprite(&self.character_data),
-                    }
-                }
                 CombatState::MovingToTarget => self
                     .character_data
                     .character_values
@@ -583,14 +581,18 @@ impl Character {
                     .character_values
                     .attack_anim
                     .current_sprite(),
-                CombatState::Attack => *self
-                    .character_data
-                    .character_values
-                    .attack_anim
-                    .sprite_animation
-                    .frames
-                    .last()
-                    .unwrap(),
+                CombatState::InAttack => match &self.character_kind {
+                    CharacterKind::Gatherer(_) => *self
+                        .character_data
+                        .character_values
+                        .attack_anim
+                        .sprite_animation
+                        .frames
+                        .last()
+                        .unwrap(),
+                    CharacterKind::Fighter(fighter) => fighter.current_sprite(&self.character_data),
+                    CharacterKind::Enemy(enemy) => enemy.current_sprite(&self.character_data),
+                },
                 CombatState::PostAttack => self
                     .character_data
                     .character_values
@@ -679,37 +681,6 @@ impl Character {
         self.character_data.character_values.time_between_attacks -= 0.01;
         self.character_data.attack_timer =
             Timer::new(self.character_data.character_values.time_between_attacks);
-    }
-
-    // basic attack exists for characters with no special functionality
-    // it is simply a request to do damage to a character, lasts one frame, thats it
-    pub fn do_attack(
-        &mut self,
-        self_id: CharID,
-        target_id: CharID,
-        game_context: &mut GameContext,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
-    ) {
-        match &mut self.character_kind {
-            CharacterKind::Gatherer(_) => {
-                self.character_data
-                    .basic_attack(self_id, target_id, game_context, character_info)
-            }
-            CharacterKind::Fighter(fighter) => fighter.do_attack(
-                &mut self.character_data,
-                self_id,
-                target_id,
-                game_context,
-                character_info,
-            ),
-            CharacterKind::Enemy(enemy) => enemy.do_attack(
-                &mut self.character_data,
-                self_id,
-                target_id,
-                game_context,
-                character_info,
-            ),
-        }
     }
 
     #[inline]
