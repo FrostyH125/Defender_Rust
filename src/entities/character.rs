@@ -54,6 +54,7 @@ pub enum Affiliation {
     Evil,
 }
 
+#[derive(PartialEq)]
 pub enum CharacterMovementResult {
     Success,
     NotArrivedYet,
@@ -184,8 +185,11 @@ impl CharacterData {
 
         if let Some(path) = &mut self.path {
             if path.is_empty() {
+                self.character_values.move_anim.reset();
                 return CharacterMovementResult::Success;
             }
+
+            self.character_values.move_anim.update(game_context.dt);
 
             let mut next = &path[0];
 
@@ -341,17 +345,11 @@ impl Character {
                 }
             }
             CharacterState::Moving { target } => {
-                match self.character_data.move_to(target, game_context, map) {
-                    CharacterMovementResult::NotArrivedYet => self
-                        .character_data
-                        .character_values
-                        .move_anim
-                        .update(game_context.dt),
-                    _ => {
-                        self.character_data.character_values.move_anim.reset();
-                        self.character_data.state = CharacterState::None;
-                        self.character_data.current_opponent = None;
-                    }
+                if self.character_data.move_to(target, game_context, map)
+                    != CharacterMovementResult::NotArrivedYet
+                {
+                    self.character_data.state = CharacterState::None;
+                    self.character_data.current_opponent = None;
                 }
             }
             CharacterState::InCombat => {
@@ -422,10 +420,8 @@ impl Character {
                         if distance_to_opponent > self.character_data.character_values.attack_range
                         {
                             self.character_data.move_to(opponent_pos, game_context, map);
-                            self.character_data.character_values.move_anim.update(dt);
                         } else {
                             self.character_data.combat_state = CombatState::PreAttack;
-                            self.character_data.character_values.move_anim.reset();
                         }
                     }
                     CombatState::PreAttack => {
@@ -447,20 +443,41 @@ impl Character {
                     CombatState::InAttack => {
                         let self_id = self.character_data.unique_char_id;
                         let target_id = self.character_data.current_opponent.unwrap();
-                        
+
                         match &mut self.character_kind {
                             CharacterKind::Gatherer(_) => {
-                                self.character_data.basic_attack(self_id, target_id, game_context, character_info);
+                                self.character_data.basic_attack(
+                                    self_id,
+                                    target_id,
+                                    game_context,
+                                    character_info,
+                                );
                                 self.character_data.combat_state = CombatState::PostAttack;
                             }
 
                             // these two types have unique combat states and should be treated accordingly
-                            CharacterKind::Fighter(fighter) => if fighter.attack_update(&mut self.character_data, self_id, target_id, game_context, character_info) {
-                                self.character_data.combat_state = CombatState::PostAttack;
-                            },
-                            CharacterKind::Enemy(enemy) => if enemy.attack_update(&mut self.character_data, self_id, target_id, game_context, character_info) {
-                                self.character_data.combat_state = CombatState::PostAttack;
-                            },
+                            CharacterKind::Fighter(fighter) => {
+                                if fighter.attack_update(
+                                    &mut self.character_data,
+                                    self_id,
+                                    target_id,
+                                    game_context,
+                                    character_info,
+                                ) {
+                                    self.character_data.combat_state = CombatState::PostAttack;
+                                }
+                            }
+                            CharacterKind::Enemy(enemy) => {
+                                if enemy.attack_update(
+                                    &mut self.character_data,
+                                    self_id,
+                                    target_id,
+                                    game_context,
+                                    character_info,
+                                ) {
+                                    self.character_data.combat_state = CombatState::PostAttack;
+                                }
+                            }
                         }
                     }
                     CombatState::PostAttack => {

@@ -206,22 +206,14 @@ impl Gatherer {
         target_pos: Vector2,
         gather_target: GatherTarget,
     ) {
-        character_data
-            .character_values
-            .move_anim
-            .update(game_context.dt);
-
         match character_data.move_to(target_pos, game_context, map) {
             CharacterMovementResult::Success => {
-                character_data.character_values.move_anim.reset();
-
                 self.gatherer_state = GathererState::GatheringObject {
                     gather_target: gather_target,
                 };
             }
             CharacterMovementResult::NotArrivedYet => (),
             CharacterMovementResult::NoRoute | CharacterMovementResult::TooLong => {
-                character_data.character_values.move_anim.reset();
                 self.object_indices.clear();
                 map.map_object_grid[self.current_index.unwrap()]
                     .as_mut()

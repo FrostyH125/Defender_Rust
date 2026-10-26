@@ -101,7 +101,8 @@ impl Fighter {
     }
 
     /// the actual place where any attack specific actions should happen
-    /// this is where fighter specific logic should happen
+    /// this is where fighter specific attack logic should happen
+    /// returns a bool when finished
     pub fn attack_update(
         &mut self,
         this_character_data: &mut CharacterData,
