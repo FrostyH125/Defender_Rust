@@ -1,10 +1,14 @@
+use raylib::math::Vector2;
 use std::collections::HashMap;
 use zander_game_core_rs::{raylib::sprite::Sprite, system::timer::Timer};
 
 use crate::{
-    GameContext, entities::{
-        character::{CharacterData, CombatState}, characters::enemies::slime::Slime, entity_manager::{BasicCharacterInfo, CharID},
-    }, utils::entity_utils::enemy_get_closest_target,
+    GameContext,
+    entities::{
+        character::{Affiliation, CharacterData, CombatState},
+        characters::enemies::slime::Slime,
+        entity_manager::{BasicCharacterInfo, CharID},
+    },
 };
 
 pub enum EnemyKind {
@@ -45,7 +49,7 @@ impl Enemy {
             || this_characters_data.current_opponent.is_none()
         {
             let next_opponent_id =
-                enemy_get_closest_target(this_characters_data.pos, character_info);
+                Enemy::enemy_get_closest_target(this_characters_data.get_center(), character_info);
             this_characters_data.select_new_opponent_and_enter_combat(next_opponent_id);
             self.enemy_data.new_opponent_check_timer.reset();
         }
@@ -57,7 +61,7 @@ impl Enemy {
     }
 
     /// returns a bool when finished
-    pub fn attack_update (
+    pub fn attack_update(
         &mut self,
         this_character_data: &mut CharacterData,
         self_id: CharID,
@@ -87,5 +91,31 @@ impl Enemy {
             .character_values
             .idle_anim
             .current_sprite();
+    }
+
+    /// this gets the closest target for an enemy of either a character or in the future a building
+    /// this ideally can never fail because if all your characters are gone, you lost the game anyway
+    /// and even if something is too far away, should still return a value so the caller can decide how to handle it
+    pub fn enemy_get_closest_target(
+        current_center_pos: Vector2,
+        character_info: &HashMap<CharID, BasicCharacterInfo>,
+    ) -> CharID {
+        let mut closest_id = CharID(0);
+        let mut closest_distance = f32::MAX;
+
+        for (id, char_info) in character_info {
+            if char_info.affiliation != Affiliation::Good {
+                continue;
+            }
+
+            let distance = char_info.center_pos.distance_to(current_center_pos);
+
+            if distance < closest_distance {
+                closest_distance = distance;
+                closest_id = *id;
+            }
+        }
+
+        return closest_id;
     }
 }

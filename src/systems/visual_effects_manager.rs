@@ -4,9 +4,8 @@ use raylib::{
     drawing::{RaylibDraw, RaylibDrawHandle},
     math::Vector2,
     text::{Font, RaylibFont},
-    texture::Texture2D,
 };
-use zander_game_core_rs::system::timer::{self, Timer};
+use zander_game_core_rs::system::timer::Timer;
 
 use crate::{GameContext, utils::{camera_utils::world_to_screen_ui, vector2_utils::{floor, random_offset_in_range}}};
 

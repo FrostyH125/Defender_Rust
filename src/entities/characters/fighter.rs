@@ -66,9 +66,10 @@ impl Fighter {
     ) -> Option<CharID> {
         let mut closest: Option<CharID> = None;
         let mut closest_distance: f32 = f32::MAX;
+        let this_center_pos = this_characters_data.get_center();
 
         for (id, ch_info) in character_info {
-            let dist_to_char = ch_info.position.distance_to(this_characters_data.pos);
+            let dist_to_char = ch_info.center_pos.distance_to(this_center_pos);
 
             if dist_to_char > fighter_data.detection_range {
                 continue;

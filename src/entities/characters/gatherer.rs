@@ -59,7 +59,6 @@ static GATHERER_DYING_ANIM: SpriteAnimationData = SpriteAnimationData {
 
 struct ObjectEntry {
     idx: usize,
-    pos: Vector2,
     dist: f32,
 }
 
@@ -242,10 +241,11 @@ impl Gatherer {
 
         match closest_obj {
             Some(o) => {
-                map.map_object_grid[o.idx].as_mut().unwrap().set_occupied();
+                let object = &mut map.map_object_grid[o.idx].as_mut().unwrap();
+                object.set_occupied();
                 self.current_index = Some(o.idx);
                 self.gatherer_state = MovingToObject {
-                    target_pos: o.pos,
+                    target_pos: object.object_data.pos,
                     gather_target: gather_target,
                 };
             }
@@ -311,12 +311,11 @@ impl Gatherer {
 
             match &closest_obj {
                 Some(obj_entry) => {
-                    let dist = obj.object_data.pos.distance_to(character_data.pos);
+                    let dist = obj.get_center_pos().distance_to(character_data.get_center());
 
                     if dist < obj_entry.dist {
                         closest_obj = Some(ObjectEntry {
                             idx: *idx,
-                            pos: obj.object_data.pos,
                             dist,
                         })
                     }
@@ -324,8 +323,7 @@ impl Gatherer {
                 None => {
                     closest_obj = Some(ObjectEntry {
                         idx: *idx,
-                        pos: obj.object_data.pos,
-                        dist: obj.object_data.pos.distance_to(character_data.pos),
+                        dist: obj.get_center_pos().distance_to(character_data.get_center()),
                     })
                 }
             }
