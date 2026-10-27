@@ -57,11 +57,6 @@ static GATHERER_DYING_ANIM: SpriteAnimationData = SpriteAnimationData {
     should_loop: false,
 };
 
-struct ObjectEntry {
-    idx: usize,
-    dist: f32,
-}
-
 #[derive(Clone, Copy, Eq, PartialEq)]
 // when adding a new gather target, you need to add the match to entity_utils::object_matches_gather_target()
 pub enum GatherTarget {
@@ -162,6 +157,8 @@ impl Gatherer {
                 self.gathering_object(character_data, game_context, map, gather_target);
             }
         }
+
+        println!("state: {:?}, num of objs: {}", self.gatherer_state, self.object_indices.len())
     }
 
     fn gathering_object(
@@ -236,14 +233,14 @@ impl Gatherer {
 
         Self::remove_dead_objects(&mut self.object_indices, &mut map.map_object_grid);
 
-        let closest_obj: Option<ObjectEntry> =
+        let closest_obj: Option<usize> =
             self.find_closest_target(character_data, &map.map_object_grid, gather_target);
 
         match closest_obj {
-            Some(o) => {
-                let object = &mut map.map_object_grid[o.idx].as_mut().unwrap();
+            Some(obj_id) => {
+                let object = &mut map.map_object_grid[obj_id].as_mut().unwrap();
                 object.set_occupied();
-                self.current_index = Some(o.idx);
+                self.current_index = Some(obj_id);
                 self.gatherer_state = MovingToObject {
                     target_pos: object.object_data.pos,
                     gather_target: gather_target,
@@ -289,8 +286,9 @@ impl Gatherer {
         character_data: &mut CharacterData,
         object_grid: &MapObjectGrid,
         target_obj: GatherTarget,
-    ) -> Option<ObjectEntry> {
-        let mut closest_obj: Option<ObjectEntry> = None;
+    ) -> Option<usize> {
+        let mut closest_obj_id: Option<usize> = None;
+        let mut closest_dist = f32::MAX;
 
         for idx in &self.object_indices {
             let obj = &object_grid[*idx];
@@ -309,27 +307,26 @@ impl Gatherer {
                 continue;
             }
 
-            match &closest_obj {
-                Some(obj_entry) => {
-                    let dist = obj.get_center_pos().distance_to(character_data.get_center());
+            let dist = obj
+                .get_center_pos()
+                .distance_to(character_data.get_center());
 
-                    if dist < obj_entry.dist {
-                        closest_obj = Some(ObjectEntry {
-                            idx: *idx,
-                            dist,
-                        })
+            match &closest_obj_id {
+                Some(obj_id) => {
+                    if dist < closest_dist {
+                        closest_obj_id = Some(*idx);
+                        closest_dist = dist;
                     }
                 }
+
                 None => {
-                    closest_obj = Some(ObjectEntry {
-                        idx: *idx,
-                        dist: obj.get_center_pos().distance_to(character_data.get_center()),
-                    })
+                    closest_obj_id = Some(*idx);
+                    closest_dist = dist;
                 }
             }
         }
 
-        return closest_obj;
+        return closest_obj_id;
     }
 
     fn obj_matches_target_and_is_available(obj: &Object, target_obj: GatherTarget) -> bool {
@@ -361,6 +358,7 @@ impl Gatherer {
         }
     }
 
+    /// sets the gatherer targets to a new list of indices of a specific type
     pub fn set_new_target(
         &mut self,
         character_data: &mut CharacterData,

@@ -62,7 +62,7 @@ pub enum CharacterMovementResult {
     TooLong,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum CharacterState {
     None,
     Moving { target: Vector2 },
@@ -300,6 +300,8 @@ impl Character {
         map: &mut TileMap,
         character_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
+        println!("char state: {:?}", self.character_data.state);
+
         if self.character_data.health <= 0.0 {
             self.character_data.state = CharacterState::Dying;
         }
@@ -322,26 +324,28 @@ impl Character {
 
         match self.character_data.state {
             CharacterState::None => {
+
+                // only necessary to update idle anim if the character is considered idle
                 if self.is_idle() {
                     self.character_data
                         .character_values
                         .idle_anim
                         .update(game_context.dt);
-
-                    // only run gatherer update if its idle
-                    // the reason being is that unlike fighter or enemy, the gatherers
-                    // main loop is not built in to the character state machine itself
-                    // as such, it should not interfere with character actions that
-                    // change the character state like fighting or moving
-                    // the enemies and fighters do not have this restriction
-                    // because their main loop is combat, which is all handled
-                    // cleanly by the character state itself (making most of them
-                    // stateless and purely controlled by a single update method
-                    // with no state management and a character state. unlike
-                    // gatherers who themselves own a GathererState)
-                    if let CharacterKind::Gatherer(g) = &mut self.character_kind {
-                        g.update(&mut self.character_data, game_context, map);
-                    }
+                }
+                
+                // only run gatherer update if its idle
+                // the reason being is that unlike fighter or enemy, the gatherers
+                // main loop is not built in to the character state machine itself
+                // as such, it should not interfere with character actions that
+                // change the character state like fighting or moving
+                // the enemies and fighters do not have this restriction
+                // because their main loop is combat, which is all handled
+                // cleanly by the character state itself (making most of them
+                // stateless and purely controlled by a single update method
+                // with no state management and a character state. unlike
+                // gatherers who themselves own a GathererState)
+                if let CharacterKind::Gatherer(g) = &mut self.character_kind {
+                    g.update(&mut self.character_data, game_context, map);
                 }
             }
             CharacterState::Moving { target } => {

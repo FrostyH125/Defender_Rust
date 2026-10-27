@@ -197,7 +197,7 @@ fn main() {
     
     entity_manager.add_character(Gatherer::new(Vector2::new(100.0 as f32, 104.0)));
 
-    entity_manager.add_character(Slime::new(Vector2::new(120.0, 104.0)));
+    //entity_manager.add_character(Slime::new(Vector2::new(120.0, 104.0)));
 
     //
     // DEBUG END
