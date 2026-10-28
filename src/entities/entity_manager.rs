@@ -35,7 +35,7 @@ pub const DRAW_SHADOW_EXTRA_MARGIN: f32 = 2.0;
 static HOVER_SELECT_PARTICLE_SPRITE: Sprite = Sprite::new(64, 72, 1, 1);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CharID(pub usize);
+pub struct CharID(pub usize); 
 
 pub struct CharacterEntry {
     pub character: Character,
@@ -153,7 +153,7 @@ impl EntityManager {
 
         let mut moved_anyone = false;
 
-        let character_info: HashMap<CharID, BasicCharacterInfo> = self
+        let all_chars_info: HashMap<CharID, BasicCharacterInfo> = self
             .characters
             .iter()
             .map(|c| {
@@ -196,7 +196,7 @@ impl EntityManager {
 
             character
                 .character
-                .update(game_context, map, &character_info);
+                .update(game_context, map, &all_chars_info);
 
             if character.character.character_data.waiting_for_removal {
                 self.characters_to_remove.push(i);

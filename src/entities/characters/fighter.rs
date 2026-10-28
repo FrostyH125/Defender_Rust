@@ -29,13 +29,13 @@ impl Fighter {
         &mut self,
         this_characters_data: &mut CharacterData,
         game_context: &mut GameContext,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
         // try to select a new opponent continuously until it finds one
         // this update method (as well as the one for enemy) will run
-        // regardless of the character state of this character because
-        // fighting class units (including enemies) behave a little differently
-        // as their main game loop is actually integrated into the character state
+        // regardless of the character state of these characters because
+        // fighting class units behave a little differently.
+        // their main game loop is actually integrated into the character state
         // due to other units being eligible for fighting capabilities, unlike
         // say gatherers who have their whole gathering loop just when theyre in the
         // CharacterState::None state, and that should not be intertwined with
@@ -48,11 +48,10 @@ impl Fighter {
             let next_opponent = Fighter::try_select_new_opponent(
                 &self.fighter_data,
                 this_characters_data,
-                character_info,
+                all_chars_info,
             );
 
-            // the moment a character gets a new opponent, it enters combat
-            // maybe the function name isnt obvious for that,
+            // the moment a fighter finds a new opponent, it enters combat
             if let Some(id) = next_opponent {
                 this_characters_data.select_new_opponent_and_enter_combat(id);
             }
@@ -62,13 +61,13 @@ impl Fighter {
     pub fn try_select_new_opponent(
         fighter_data: &FighterData,
         this_characters_data: &mut CharacterData,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) -> Option<CharID> {
         let mut closest: Option<CharID> = None;
         let mut closest_distance: f32 = f32::MAX;
         let this_center_pos = this_characters_data.get_center();
 
-        for (id, ch_info) in character_info {
+        for (id, ch_info) in all_chars_info {
             let dist_to_char = ch_info.center_pos.distance_to(this_center_pos);
 
             if dist_to_char > fighter_data.detection_range {
@@ -110,7 +109,7 @@ impl Fighter {
         self_id: CharID,
         target_id: CharID,
         game_context: &mut GameContext,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) -> bool { 
         match self.fighter_kind {
             // Fighter::Fighter1(f1) => f1.do_attack()
@@ -118,8 +117,7 @@ impl Fighter {
     }
 }
 
-
-
+    // retreat()
 
     // on_being_hit function() for unique functionality on being hit, can implement timer and
     // unique animations

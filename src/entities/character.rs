@@ -244,7 +244,7 @@ impl CharacterData {
         self_id: CharID,
         target_id: CharID,
         game_context: &mut GameContext,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
         let damage = self.character_values.attack_power;
 
@@ -255,7 +255,7 @@ impl CharacterData {
                 target_id,
             });
 
-        let opponent_info = character_info.get(&self.current_opponent.unwrap()).unwrap();
+        let opponent_info = all_chars_info.get(&self.current_opponent.unwrap()).unwrap();
 
         game_context.visual_effects_manager.add_damage_number(
             opponent_info.center_pos,
@@ -298,7 +298,7 @@ impl Character {
         &mut self,
         game_context: &mut GameContext,
         map: &mut TileMap,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
         println!("char state: {:?}", self.character_data.state);
 
@@ -306,25 +306,20 @@ impl Character {
             self.character_data.state = CharacterState::Dying;
         }
 
-        // update enemy no matter what to allow for special behavior since enemies are never idle
-        // might include this for fighter class units eventually as well because theyre planned to be
-        // only idle and fighting, and i want them to be able to do small special things while fighting not
-        // tied to the do_attack() action
         // i think that combat focused units are just needing to be handled a little bit differently than
-        // more functional or system based ones, which really should only do their actions when not being controlled
-        // by the player, as well as because the combat state is fairly robust at preventing weird behaviors as its not
+        // more unique system based ones, which really should only do their actions when not being controlled
+        // by the player/in combat, as well as because the combat state is fairly robust at preventing weird behaviors as its not
         // tied to the character specific update methods as opposed to something like the gatherer or something
         if let CharacterKind::Enemy(e) = &mut self.character_kind {
-            e.update(&mut self.character_data, game_context, character_info);
+            e.update(&mut self.character_data, game_context, all_chars_info);
         }
 
         if let CharacterKind::Fighter(f) = &mut self.character_kind {
-            f.update(&mut self.character_data, game_context, character_info);
+            f.update(&mut self.character_data, game_context, all_chars_info);
         }
 
         match self.character_data.state {
             CharacterState::None => {
-
                 // only necessary to update idle anim if the character is considered idle
                 if self.is_idle() {
                     self.character_data
@@ -332,7 +327,7 @@ impl Character {
                         .idle_anim
                         .update(game_context.dt);
                 }
-                
+
                 // only run gatherer update if its idle
                 // the reason being is that unlike fighter or enemy, the gatherers
                 // main loop is not built in to the character state machine itself
@@ -360,7 +355,7 @@ impl Character {
                 let dt = game_context.dt;
 
                 if let Some(id) = self.character_data.current_opponent {
-                    let opponent_info = character_info.get(&id);
+                    let opponent_info = all_chars_info.get(&id);
 
                     if let Some(c_info) = opponent_info {
                         if c_info.position.x < self.character_data.pos.x {
@@ -412,7 +407,7 @@ impl Character {
 
                 match self.character_data.combat_state {
                     CombatState::MovingToTarget => {
-                        let opponent_pos = character_info
+                        let opponent_pos = all_chars_info
                             .get(&self.character_data.current_opponent.unwrap())
                             .unwrap()
                             .position;
@@ -454,7 +449,7 @@ impl Character {
                                     self_id,
                                     target_id,
                                     game_context,
-                                    character_info,
+                                    all_chars_info,
                                 );
                                 self.character_data.combat_state = CombatState::PostAttack;
                             }
@@ -466,7 +461,7 @@ impl Character {
                                     self_id,
                                     target_id,
                                     game_context,
-                                    character_info,
+                                    all_chars_info,
                                 ) {
                                     self.character_data.combat_state = CombatState::PostAttack;
                                 }
@@ -477,7 +472,7 @@ impl Character {
                                     self_id,
                                     target_id,
                                     game_context,
-                                    character_info,
+                                    all_chars_info,
                                 ) {
                                     self.character_data.combat_state = CombatState::PostAttack;
                                 }

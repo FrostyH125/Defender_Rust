@@ -38,7 +38,7 @@ impl Enemy {
         &mut self,
         this_characters_data: &mut CharacterData,
         game_context: &mut GameContext,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) {
         self.enemy_data
             .new_opponent_check_timer
@@ -49,7 +49,7 @@ impl Enemy {
             || this_characters_data.current_opponent.is_none()
         {
             let next_opponent_id =
-                Enemy::enemy_get_closest_target(this_characters_data.get_center(), character_info);
+                Enemy::enemy_get_closest_target(this_characters_data.get_center(), all_chars_info);
             this_characters_data.select_new_opponent_and_enter_combat(next_opponent_id);
             self.enemy_data.new_opponent_check_timer.reset();
         }
@@ -67,11 +67,11 @@ impl Enemy {
         self_id: CharID,
         target_id: CharID,
         game_context: &mut GameContext,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) -> bool {
         match &mut self.enemy_kind {
             EnemyKind::Slime(_) => {
-                this_character_data.basic_attack(self_id, target_id, game_context, character_info);
+                this_character_data.basic_attack(self_id, target_id, game_context, all_chars_info);
                 return true;
             }
         }
@@ -98,12 +98,12 @@ impl Enemy {
     /// and even if something is too far away, should still return a value so the caller can decide how to handle it
     pub fn enemy_get_closest_target(
         current_center_pos: Vector2,
-        character_info: &HashMap<CharID, BasicCharacterInfo>,
+        all_chars_info: &HashMap<CharID, BasicCharacterInfo>,
     ) -> CharID {
         let mut closest_id = CharID(0);
         let mut closest_distance = f32::MAX;
 
-        for (id, char_info) in character_info {
+        for (id, char_info) in all_chars_info {
             if char_info.affiliation != Affiliation::Good {
                 continue;
             }
